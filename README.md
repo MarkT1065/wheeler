@@ -4,7 +4,7 @@ A sophisticated web-based portfolio tracking system built with Go, specializing 
 
 ⚠️ Disclaimer
 
-This tool is for educational and research purposes only. Rallies CLI does not provide investment advice, recommendations, or financial guidance. All information provided is for informational purposes only and should not be considered as investment advice. Always consult with a qualified financial advisor before making any investment decisions. Past performance does not guarantee future results. Trading and investing involve risk of loss.
+This tool is for educational and research purposes only. Wheeler does not provide investment advice, recommendations, or financial guidance. All information provided is for informational purposes only and should not be considered as investment advice. Always consult with a qualified financial advisor before making any investment decisions. Past performance does not guarantee future results. Trading and investing involve risk of loss.
 
 ## Features
 
