@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treasuries - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="treasuries-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item active">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .Symbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Collapsible Admin Section -->
+            <div class="admin-section">
+                <button class="admin-toggle" id="adminToggle">
+                    <i class="fas fa-cog"></i>
+                    Admin
+                    <i class="fas fa-chevron-right chevron"></i>
+                </button>
+                <div class="admin-list" id="adminList">
+                    <a href="/import" class="nav-item admin-nav-item">
+                        <i class="fas fa-upload"></i>
+                        Import
+                    </a>
+                    <a href="/backup" class="nav-item admin-nav-item">
+                        <i class="fas fa-database"></i>
+                        Database
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <a href="/help" class="nav-item">
+            <i class="fas fa-question-circle"></i>
+            Help
+        </a>
+    </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Performance Summary -->
+            <div class="content-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="section-title">Performance Summary</div>
+                    <button class="btn btn-primary" onclick="openAddModal()">
+                        <i class="fas fa-plus"></i>
+                        New Treasury
+                    </button>
+                </div>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Total Interest Earned</div>
+                        <div class="summary-value positive">${{printf "%.2f" .Summary.TotalInterest}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Average Return</div>
+                        <div class="summary-value">{{printf "%.2f" .Summary.AverageReturn}}%</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Capital Invested</div>
+                        <div class="summary-value">${{printf "%.0f" .Summary.TotalBuyPrice}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Active Positions</div>
+                        <div class="summary-value">{{.Summary.ActivePositions}}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Treasuries Table -->
+            <div class="content-section">
+                <div class="table-container">
+
+                    <div class="section-title">Bonds Held</div>
+
+                    <table class="financial-table">
+                        <thead>
+                            <tr>
+                                <th>CUSPID</th>
+                                <th>Purchased</th>
+                                <th>Maturity Date</th>
+                                <th class="text-right">Amount</th>
+                                <th class="text-right">Yield</th>
+                                <th class="text-right">Buy Price</th>
+                                <th class="text-right">Current Value</th>
+                                <th class="text-right">Exit Price</th>
+                                <th class="text-right">Profit/Loss</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{range .Treasuries}}
+                            <tr>
+                                <td><strong>{{.CUSPID}}</strong></td>
+                                <td>{{.Purchased.Format "1/2/2006"}}</td>
+                                <td>{{.Maturity.Format "1/2/2006"}}</td>
+                                <td class="text-right">${{printf "%.2f" .Amount}}</td>
+                                <td class="text-right">{{printf "%.3f" .Yield}}%</td>
+                                <td class="text-right">${{printf "%.2f" .BuyPrice}}</td>
+                                <td class="text-right">{{if .HasCurrentValue}}${{printf "%.2f" .GetCurrentValue}}{{else}}-{{end}}</td>
+                                <td class="text-right">{{if .HasExitPrice}}${{printf "%.2f" .GetExitPrice}}{{else}}-{{end}}</td>
+                                <td class="text-right">${{printf "%.2f" (.CalculateProfitLoss)}}</td>
+                                <td class="text-center">
+                                    <button class="edit-btn" onclick="editTreasury('{{.CUSPID}}')">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-danger" onclick="deleteTreasury('{{.CUSPID}}')" style="margin-left: 5px; padding: 6px 8px; font-size: 12px;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {{else}}
+                            <tr>
+                                <td colspan="10" style="text-align: center; color: #a0a0a0; padding: 40px;">
+                                    No treasuries found. <a href="#" onclick="openAddModal()" style="color: #4fc3f7;">Add your first treasury</a>
+                                </td>
+                            </tr>
+                            {{end}}
+                        </tbody>
+                        <tfoot>
+                            {{if .Treasuries}}
+                            <tr class="table-totals-row">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalAmount}}</strong></td>
+                                <td></td>
+                                <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalBuyPrice}}</strong></td>
+                                <td colspan="2"></td>
+                                <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalProfitLoss}}</strong></td>
+                                <td></td>
+                            </tr>
+                            {{end}}
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Treasury Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Add New Treasury</div>
+                <span class="close" onclick="closeAddModal()">&times;</span>
+            </div>
+            <form id="addForm">
+                <div class="form-group">
+                    <label class="form-label">CUSPID</label>
+                    <input type="text" id="addCuspid" class="form-input" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Purchased Date</label>
+                        <input type="date" id="addPurchased" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Maturity Date</label>
+                        <input type="date" id="addMaturity" class="form-input" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Amount ($)</label>
+                        <input type="number" id="addAmount" class="form-input" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Yield (%)</label>
+                        <input type="number" id="addYield" class="form-input" step="0.001" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Buy Price ($)</label>
+                        <input type="number" id="addBuyPrice" class="form-input" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current Value ($)</label>
+                        <input type="number" id="addCurrentValue" class="form-input" step="0.01" placeholder="Optional" onfocus="defaultCurrentValueToBuyPrice()">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Exit Price ($)</label>
+                    <input type="number" id="addExitPrice" class="form-input" step="0.01" placeholder="Optional">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Treasury</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Treasury Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Edit Treasury</div>
+                <span class="close">&times;</span>
+            </div>
+            <form id="editForm">
+                <div class="form-group">
+                    <label class="form-label">CUSPID</label>
+                    <input type="text" id="editCuspid" class="form-input" readonly>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Purchased Date</label>
+                        <input type="date" id="editPurchased" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Maturity Date</label>
+                        <input type="date" id="editMaturity" class="form-input">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Amount ($)</label>
+                        <input type="number" id="editAmount" class="form-input" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Yield (%)</label>
+                        <input type="number" id="editYield" class="form-input" step="0.001">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Buy Price ($)</label>
+                        <input type="number" id="editBuyPrice" class="form-input" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Current Value ($)</label>
+                        <input type="number" id="editCurrentValue" class="form-input" step="0.01">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Exit Price ($)</label>
+                    <input type="number" id="editExitPrice" class="form-input" step="0.01" placeholder="Optional">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Confirm Action</div>
+                <span class="close" onclick="closeConfirmModal()">&times;</span>
+            </div>
+            <div id="confirmMessage" style="padding: 20px; font-size: 16px;"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmButton">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Error</div>
+                <span class="close" onclick="closeErrorModal()">&times;</span>
+            </div>
+            <div id="errorMessage" style="padding: 20px; font-size: 16px; color: #ff6b6b;"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" onclick="closeErrorModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script>
+        // Treasury data for editing (generated from server data)
+        const treasuries = {
+            {{range $index, $treasury := .Treasuries}}
+            '{{$treasury.CUSPID}}': {
+                cuspid: '{{$treasury.CUSPID}}',
+                purchased: '{{$treasury.Purchased.Format "2006-01-02"}}',
+                maturity: '{{$treasury.Maturity.Format "2006-01-02"}}',
+                amount: {{$treasury.Amount}},
+                yield: {{$treasury.Yield}},
+                buyPrice: {{$treasury.BuyPrice}},
+                currentValue: {{if $treasury.HasCurrentValue}}{{$treasury.GetCurrentValue}}{{else}}null{{end}},
+                exitPrice: {{if $treasury.HasExitPrice}}{{$treasury.GetExitPrice}}{{else}}null{{end}}
+            },
+            {{end}}
+        };
+
+        function editTreasury(cuspid) {
+            const treasury = treasuries[cuspid];
+            if (!treasury) return;
+
+            // Populate form fields
+            document.getElementById('editCuspid').value = treasury.cuspid;
+            document.getElementById('editPurchased').value = treasury.purchased;
+            document.getElementById('editMaturity').value = treasury.maturity;
+            document.getElementById('editAmount').value = treasury.amount;
+            document.getElementById('editYield').value = treasury.yield;
+            document.getElementById('editBuyPrice').value = treasury.buyPrice;
+            document.getElementById('editCurrentValue').value = treasury.currentValue || '';
+            document.getElementById('editExitPrice').value = treasury.exitPrice || '';
+
+            // Show modal
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function deleteTreasury(cuspid) {
+            const treasury = treasuries[cuspid];
+            if (!treasury) return;
+
+            // Show confirmation modal
+            showConfirmModal(`Are you sure you want to delete treasury ${cuspid}?`, function() {
+                // Send DELETE request to server
+                performDelete(cuspid);
+            });
+        }
+        
+        function performDelete(cuspid) {
+            // Send DELETE request to server
+            fetch(`/api/treasuries/${cuspid}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to delete treasury');
+            })
+            .then(data => {
+                console.log('Treasury deleted successfully:', data);
+                
+                // Remove from local data
+                delete treasuries[cuspid];
+                
+                // Refresh the page to show updated data
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error deleting treasury:', error);
+                showErrorModal('Failed to delete treasury. Please try again.');
+            });
+        }
+
+        function openAddModal() {
+            // Clear form fields
+            document.getElementById('addForm').reset();
+            document.getElementById('addModal').style.display = 'block';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addModal');
+            const editModal = document.getElementById('editModal');
+            if (event.target === addModal) {
+                addModal.style.display = 'none';
+            }
+            if (event.target === editModal) {
+                editModal.style.display = 'none';
+            }
+        }
+
+        // Close modal with X buttons
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.onclick = function() {
+                closeAddModal();
+                closeModal();
+            };
+        });
+
+        // Handle add form submission
+        document.getElementById('addForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('cuspid', document.getElementById('addCuspid').value);
+            formData.append('purchased', document.getElementById('addPurchased').value);
+            formData.append('maturity', document.getElementById('addMaturity').value);
+            formData.append('amount', document.getElementById('addAmount').value);
+            formData.append('yield', document.getElementById('addYield').value);
+            formData.append('buyPrice', document.getElementById('addBuyPrice').value);
+            formData.append('currentValue', document.getElementById('addCurrentValue').value);
+            formData.append('exitPrice', document.getElementById('addExitPrice').value);
+
+            // Submit to backend
+            fetch('/add-treasury', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    closeAddModal();
+                    location.reload();
+                } else {
+                    showErrorModal('Error adding treasury. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showErrorModal('Error adding treasury. Please try again.');
+            });
+        });
+
+        // Handle edit form submission
+        document.getElementById('editForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const cuspid = document.getElementById('editCuspid').value;
+            const formData = {
+                purchased: document.getElementById('editPurchased').value,
+                maturity: document.getElementById('editMaturity').value,
+                amount: parseFloat(document.getElementById('editAmount').value),
+                yield: parseFloat(document.getElementById('editYield').value),
+                buyPrice: parseFloat(document.getElementById('editBuyPrice').value),
+                currentValue: parseFloat(document.getElementById('editCurrentValue').value) || null,
+                exitPrice: parseFloat(document.getElementById('editExitPrice').value) || null
+            };
+
+            // Send to server via PUT request
+            fetch(`/api/treasuries/${cuspid}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to update treasury');
+            })
+            .then(data => {
+                console.log('Treasury updated successfully:', data);
+                
+                // Update local data
+                treasuries[cuspid] = {
+                    cuspid: data.cuspid,
+                    purchased: data.purchased.split('T')[0], // Convert ISO date to YYYY-MM-DD
+                    maturity: data.maturity.split('T')[0],
+                    amount: data.amount,
+                    yield: data.yield,
+                    buyPrice: data.buy_price,
+                    currentValue: data.current_value,
+                    exitPrice: data.exit_price
+                };
+                
+                // Close modal
+                closeModal();
+                
+                // Refresh the page to show updated data
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error updating treasury:', error);
+                showErrorModal('Failed to update treasury. Please try again.');
+            });
+        });
+
+        console.log('Treasuries page loaded with edit functionality');
+        
+        // Symbol Modal functionality is handled by shared module
+        
+        // Default Current Value to Buy Price when focused and empty
+        function defaultCurrentValueToBuyPrice() {
+            const currentValueInput = document.getElementById('addCurrentValue');
+            const buyPriceInput = document.getElementById('addBuyPrice');
+            
+            if (!currentValueInput.value && buyPriceInput.value) {
+                currentValueInput.value = buyPriceInput.value;
+            }
+        }
+        
+        // Confirmation Modal Functions
+        function showConfirmModal(message, onConfirm) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmModal').style.display = 'block';
+            
+            // Set up confirm button click handler
+            const confirmButton = document.getElementById('confirmButton');
+            confirmButton.onclick = function() {
+                closeConfirmModal();
+                onConfirm();
+            };
+        }
+        
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+        }
+        
+        // Error Modal Functions
+        function showErrorModal(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorModal').style.display = 'block';
+        }
+        
+        function closeErrorModal() {
+            document.getElementById('errorModal').style.display = 'none';
+        }
+        
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            const confirmModal = document.getElementById('confirmModal');
+            const errorModal = document.getElementById('errorModal');
+            if (event.target === confirmModal) {
+                closeConfirmModal();
+            }
+            if (event.target === errorModal) {
+                closeErrorModal();
+            }
+        });
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>

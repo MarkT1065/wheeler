@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly View - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="monthly-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item active">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .Symbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Collapsible Admin Section -->
+            <div class="admin-section">
+                <button class="admin-toggle" id="adminToggle">
+                    <i class="fas fa-cog"></i>
+                    Admin
+                    <i class="fas fa-chevron-right chevron"></i>
+                </button>
+                <div class="admin-list" id="adminList">
+                    <a href="/import" class="nav-item admin-nav-item">
+                        <i class="fas fa-upload"></i>
+                        Import
+                    </a>
+                    <a href="/backup" class="nav-item admin-nav-item">
+                        <i class="fas fa-database"></i>
+                        Database
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <a href="/help" class="nav-item">
+            <i class="fas fa-question-circle"></i>
+            Help
+        </a>
+    </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Aggregated Totals Panel -->
+            <div class="content-section" style="margin-bottom: 20px;">
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; text-align: center; font-size: 20px;">
+                    <span style="color: #a0a0a0;">Total:</span> <span id="grandTotal" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Calls:</span> <span id="totalCalls" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Capital Gains:</span> <span id="totalCapGains" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Dividends:</span> <span id="totalDividends" style="color: #27ae60;">$0</span>
+                </div>
+            </div>
+            
+            <!-- Cumulative Gains Chart -->
+            <div class="content-section" style="margin-bottom: 30px;">
+                <div class="section-title">Cumulative Gains Over Time</div>
+                <div class="chart-container-large">
+                    <canvas id="cumulativeGainsChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Puts and Calls Sections -->
+            <div class="content-section" style="margin-bottom: 30px;">
+                <div class="options-section-row" style="margin-top: 0;">
+                <!-- Puts Section -->
+                <div class="content-section">
+                    <div class="section-title">Puts</div>
+                    <div class="charts-row">
+                        <div class="chart-column">
+                            <h4>By Month</h4>
+                            <div class="chart-container-small">
+                                <canvas id="putsMonthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-column">
+                            <h4>By Ticker</h4>
+                            <div class="chart-container-small">
+                                <canvas id="putsTickerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Calls Section -->
+                <div class="content-section">
+                    <div class="section-title">Calls</div>
+                    <div class="charts-row">
+                        <div class="chart-column">
+                            <h4>By Month</h4>
+                            <div class="chart-container-small">
+                                <canvas id="callsMonthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-column">
+                            <h4>By Ticker</h4>
+                            <div class="chart-container-small">
+                                <canvas id="callsTickerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            
+            <!-- Capital Gains and Dividends Sections -->
+            <div class="content-section" style="margin-bottom: 30px;">
+                <div class="options-section-row" style="margin-top: 0;">
+                <!-- Capital Gains Section -->
+                <div class="content-section">
+                    <div class="section-title">Capital Gains</div>
+                    <div class="charts-row">
+                        <div class="chart-column">
+                            <h4>By Month</h4>
+                            <div class="chart-container-small">
+                                <canvas id="capGainsMonthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-column">
+                            <h4>By Ticker</h4>
+                            <div class="chart-container-small">
+                                <canvas id="capGainsTickerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dividends Section -->
+                <div class="content-section">
+                    <div class="section-title">Dividends</div>
+                    <div class="charts-row">
+                        <div class="chart-column">
+                            <h4>By Month</h4>
+                            <div class="chart-container-small">
+                                <canvas id="dividendsMonthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-column">
+                            <h4>By Ticker</h4>
+                            <div class="chart-container-small">
+                                <canvas id="dividendsTickerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            
+            
+            <!-- Total Profit by Symbol Table -->
+            <div class="content-section">
+                <div class="section-title">Total Profit by Symbol</div>
+                <div class="table-container-scrollable">
+                    <table class="financial-table">
+                        <thead>
+                            <tr>
+                                <th>Ticker</th>
+                                <th>Total</th>
+                                <th>January</th>
+                                <th>February</th>
+                                <th>March</th>
+                                <th>April</th>
+                                <th>May</th>
+                                <th>June</th>
+                                <th>July</th>
+                                <th>August</th>
+                                <th>September</th>
+                                <th>October</th>
+                                <th>November</th>
+                                <th>December</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .TableData}}
+                                {{range .TableData}}
+                                <tr>
+                                    <td><strong><a href="/symbol/{{.Ticker}}" class="symbol-link">{{.Ticker}}</a></strong></td>
+                                    <td><span>${{printf "%.2f" .Total}}</span></td>
+                                    {{range .Months}}
+                                    <td>{{if eq . 0.0}}$0.00{{else}}<span>${{printf "%.2f" .}}</span>{{end}}</td>
+                                    {{end}}
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="14" style="text-align: center; color: #a0a0a0;">No profit data available</td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                        <tfoot>
+                            {{if .TotalsByMonth}}
+                            <tr class="table-totals-row">
+                                <td><strong>Total</strong></td>
+                                <td><span><strong>${{printf "%.2f" .GrandTotal}}</strong></span></td>
+                                {{range .TotalsByMonth}}
+                                <td><strong>{{if eq .Amount 0.0}}$0.00{{else}}<span>${{printf "%.2f" .Amount}}</span>{{end}}</strong></td>
+                                {{end}}
+                            </tr>
+                            {{end}}
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script>
+        // Register the datalabels plugin
+        Chart.register(ChartDataLabels);
+        
+        // Chart colors
+        const chartColors = [
+            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+        ];
+        
+        // Function to get consistent color for a symbol
+        function getSymbolColor(symbol, sortedSymbols) {
+            const index = sortedSymbols.indexOf(symbol);
+            return chartColors[index % chartColors.length];
+        }
+        
+        // Function to sort ticker data alphabetically
+        function sortTickerData(labels, data) {
+            const combined = labels.map((label, index) => ({
+                ticker: label,
+                amount: data[index]
+            }));
+            
+            combined.sort((a, b) => a.ticker.localeCompare(b.ticker));
+            
+            return {
+                labels: combined.map(item => item.ticker),
+                data: combined.map(item => item.amount)
+            };
+        }
+        
+        // Get current month index (0-11) to filter future data points
+        const currentMonth = new Date().getMonth();
+        const currentMonthIndex = currentMonth; // 0 = January, 11 = December
+        
+        // Month labels for charts
+        const fullMonthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonthLabels = fullMonthLabels.slice(0, currentMonthIndex + 1);
+
+        // Puts - By Month Chart (with cumulative line)
+        const putsMonthCtx = document.getElementById('putsMonthChart').getContext('2d');
+        const putsMonthDataFull = [
+            {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const putsMonthData = putsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        // Calculate cumulative puts data for individual chart
+        let putsIndividualCumulativeData = [];
+        let putsIndividualRunningTotal = 0;
+        for (let i = 0; i < putsMonthData.length; i++) {
+            putsIndividualRunningTotal += putsMonthData[i];
+            putsIndividualCumulativeData.push(putsIndividualRunningTotal);
+        }
+        
+        new Chart(putsMonthCtx, {
+            type: 'bar',
+            data: {
+                labels: currentMonthLabels,
+                datasets: [{
+                    type: 'line',
+                    label: 'Cumulative Puts',
+                    data: putsIndividualCumulativeData,
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.2,
+                    yAxisID: 'y1',
+                    order: 1
+                }, {
+                    type: 'bar',
+                    label: 'Monthly Puts',
+                    data: putsMonthData,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(214, 39, 40, 0.6)' : 'rgba(31, 119, 180, 0.6)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? '#d62728' : '#1f77b4';
+                    },
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    order: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                return label + ': $' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Monthly ($)',
+                            color: '#1f77b4'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Cumulative ($)',
+                            color: '#FFD700'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Get all ticker data for consistent coloring across both charts
+        const putsTickerLabelsUnsorted = [
+            {{range $index, $data := .PutsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        const putsTickerDataUnsorted = [
+            {{range $index, $data := .PutsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const callsTickerLabelsUnsorted = [
+            {{range $index, $data := .CallsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        const callsTickerDataUnsorted = [
+            {{range $index, $data := .CallsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        
+        // Create unified symbol list for consistent coloring
+        const allUniqueSymbols = [...new Set([...putsTickerLabelsUnsorted, ...callsTickerLabelsUnsorted])].sort();
+        
+        // Puts - By Ticker Chart
+        const putsTickerCtx = document.getElementById('putsTickerChart').getContext('2d');
+        
+        // Sort puts ticker data alphabetically
+        const putsSorted = sortTickerData(putsTickerLabelsUnsorted, putsTickerDataUnsorted);
+        const putsTickerLabels = putsSorted.labels;
+        const putsTickerData = putsSorted.data;
+        
+        // Get consistent colors for puts symbols
+        const putsColors = putsTickerLabels.map(symbol => getSymbolColor(symbol, allUniqueSymbols));
+        
+        new Chart(putsTickerCtx, {
+            type: 'pie',
+            data: {
+                labels: putsTickerLabels,
+                datasets: [{
+                    data: putsTickerData,
+                    backgroundColor: putsColors,
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { size: 14 },
+                            padding: 10,
+                            color: '#e0e0e0'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#e0e0e0',
+                        formatter: function(value) {
+                            if (value < 500) return '';
+                            return '$' + Math.round(value).toLocaleString();
+                        },
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Calls - By Month Chart (with cumulative line)
+        const callsMonthCtx = document.getElementById('callsMonthChart').getContext('2d');
+        const callsMonthDataFull = [
+            {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const callsMonthData = callsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        // Calculate cumulative calls data for individual chart
+        let callsIndividualCumulativeData = [];
+        let callsIndividualRunningTotal = 0;
+        for (let i = 0; i < callsMonthData.length; i++) {
+            callsIndividualRunningTotal += callsMonthData[i];
+            callsIndividualCumulativeData.push(callsIndividualRunningTotal);
+        }
+        
+        new Chart(callsMonthCtx, {
+            type: 'bar',
+            data: {
+                labels: currentMonthLabels,
+                datasets: [{
+                    type: 'line',
+                    label: 'Cumulative Calls',
+                    data: callsIndividualCumulativeData,
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.2,
+                    yAxisID: 'y1',
+                    order: 1
+                }, {
+                    type: 'bar',
+                    label: 'Monthly Calls',
+                    data: callsMonthData,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(214, 39, 40, 0.6)' : 'rgba(31, 119, 180, 0.6)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? '#d62728' : '#1f77b4';
+                    },
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    order: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                return label + ': $' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Monthly ($)',
+                            color: '#1f77b4'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Cumulative ($)',
+                            color: '#FFD700'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Calls - By Ticker Chart
+        const callsTickerCtx = document.getElementById('callsTickerChart').getContext('2d');
+        
+        // Sort calls ticker data alphabetically
+        const callsSorted = sortTickerData(callsTickerLabelsUnsorted, callsTickerDataUnsorted);
+        const callsTickerLabels = callsSorted.labels;
+        const callsTickerData = callsSorted.data;
+        
+        // Get consistent colors for calls symbols (using same unified list)
+        const callsColors = callsTickerLabels.map(symbol => getSymbolColor(symbol, allUniqueSymbols));
+        
+        new Chart(callsTickerCtx, {
+            type: 'pie',
+            data: {
+                labels: callsTickerLabels,
+                datasets: [{
+                    data: callsTickerData,
+                    backgroundColor: callsColors,
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { size: 14 },
+                            padding: 10,
+                            color: '#e0e0e0'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#e0e0e0',
+                        formatter: function(value) {
+                            if (value < 500) return '';
+                            return '$' + Math.round(value).toLocaleString();
+                        },
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Capital Gains - By Month Chart (with cumulative line)
+        const capGainsMonthCtx = document.getElementById('capGainsMonthChart').getContext('2d');
+        const capGainsMonthDataFull = [
+            {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const capGainsMonthData = capGainsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        // Calculate cumulative capital gains data
+        let capGainsIndividualCumulativeData = [];
+        let capGainsIndividualRunningTotal = 0;
+        for (let i = 0; i < capGainsMonthData.length; i++) {
+            capGainsIndividualRunningTotal += capGainsMonthData[i];
+            capGainsIndividualCumulativeData.push(capGainsIndividualRunningTotal);
+        }
+        
+        new Chart(capGainsMonthCtx, {
+            type: 'bar',
+            data: {
+                labels: currentMonthLabels,
+                datasets: [{
+                    type: 'line',
+                    label: 'Cumulative Cap Gains',
+                    data: capGainsIndividualCumulativeData,
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.2,
+                    yAxisID: 'y1',
+                    order: 1
+                }, {
+                    type: 'bar',
+                    label: 'Monthly Cap Gains',
+                    data: capGainsMonthData,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(214, 39, 40, 0.6)' : 'rgba(31, 119, 180, 0.6)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? '#d62728' : '#1f77b4';
+                    },
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    order: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                return label + ': $' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Monthly ($)',
+                            color: '#27ae60'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Cumulative ($)',
+                            color: '#FFD700'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Capital Gains - By Ticker Chart
+        const capGainsTickerCtx = document.getElementById('capGainsTickerChart').getContext('2d');
+        const capGainsTickerLabels = [
+            {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        const capGainsTickerData = [
+            {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        new Chart(capGainsTickerCtx, {
+            type: 'pie',
+            data: {
+                labels: capGainsTickerLabels,
+                datasets: [{
+                    data: capGainsTickerData,
+                    backgroundColor: chartColors,
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { size: 14 },
+                            padding: 10,
+                            color: '#e0e0e0'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#e0e0e0',
+                        formatter: function(value) {
+                            if (Math.abs(value) < 1000) return '';
+                            return '$' + Math.round(value).toLocaleString();
+                        },
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Dividends - By Month Chart (with cumulative line)
+        const dividendsMonthCtx = document.getElementById('dividendsMonthChart').getContext('2d');
+        const dividendsMonthDataFull = [
+            {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const dividendsMonthData = dividendsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        // Calculate cumulative dividends data
+        let dividendsIndividualCumulativeData = [];
+        let dividendsIndividualRunningTotal = 0;
+        for (let i = 0; i < dividendsMonthData.length; i++) {
+            dividendsIndividualRunningTotal += dividendsMonthData[i];
+            dividendsIndividualCumulativeData.push(dividendsIndividualRunningTotal);
+        }
+        
+        new Chart(dividendsMonthCtx, {
+            type: 'bar',
+            data: {
+                labels: currentMonthLabels,
+                datasets: [{
+                    type: 'line',
+                    label: 'Cumulative Dividends',
+                    data: dividendsIndividualCumulativeData,
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.2,
+                    yAxisID: 'y1',
+                    order: 1
+                }, {
+                    type: 'bar',
+                    label: 'Monthly Dividends',
+                    data: dividendsMonthData,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(214, 39, 40, 0.6)' : 'rgba(31, 119, 180, 0.6)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? '#d62728' : '#1f77b4';
+                    },
+                    borderWidth: 1,
+                    yAxisID: 'y',
+                    order: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                return label + ': $' + context.parsed.y.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'left',
+                        title: {
+                            display: true,
+                            text: 'Monthly ($)',
+                            color: '#4CAF50'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Cumulative ($)',
+                            color: '#FFD700'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // Dividends - By Ticker Chart
+        const dividendsTickerCtx = document.getElementById('dividendsTickerChart').getContext('2d');
+        const dividendsTickerLabels = [
+            {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        const dividendsTickerData = [
+            {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        new Chart(dividendsTickerCtx, {
+            type: 'pie',
+            data: {
+                labels: dividendsTickerLabels,
+                datasets: [{
+                    data: dividendsTickerData,
+                    backgroundColor: chartColors,
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: { size: 14 },
+                            padding: 10,
+                            color: '#e0e0e0'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#e0e0e0',
+                        formatter: function(value) {
+                            if (value < 100) return '';
+                            return '$' + Math.round(value).toLocaleString();
+                        },
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Cumulative Gains Stacked Chart
+        const cumulativeGainsCtx = document.getElementById('cumulativeGainsChart').getContext('2d');
+        const monthLabelsFull = [
+            {{range $index, $data := .TotalsByMonth}}{{if $index}}, {{end}}"{{$data.Month}}"{{end}}
+        ];
+        const monthLabels = monthLabelsFull.slice(0, currentMonthIndex + 1);
+        
+        // Get individual category data by month for cumulative chart
+        const cumulativePutsMonthDataFull = [
+            {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const cumulativePutsMonthData = cumulativePutsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        const cumulativeCallsMonthDataFull = [
+            {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const cumulativeCallsMonthData = cumulativeCallsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        const cumulativeCapGainsMonthDataFull = [
+            {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const cumulativeCapGainsMonthData = cumulativeCapGainsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        const cumulativeDividendsMonthDataFull = [
+            {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
+        ];
+        const cumulativeDividendsMonthData = cumulativeDividendsMonthDataFull.slice(0, currentMonthIndex + 1);
+        
+        // Calculate cumulative data for each category
+        let putsCumulativeData = [];
+        let callsCumulativeData = [];
+        let capGainsCumulativeData = [];
+        let dividendsCumulativeData = [];
+        
+        let putsRunningTotal = 0;
+        let callsRunningTotal = 0;
+        let capGainsRunningTotal = 0;
+        let dividendsRunningTotal = 0;
+        
+        for (let i = 0; i < monthLabels.length; i++) {
+            putsRunningTotal += cumulativePutsMonthData[i] || 0;
+            callsRunningTotal += cumulativeCallsMonthData[i] || 0;
+            capGainsRunningTotal += cumulativeCapGainsMonthData[i] || 0;
+            dividendsRunningTotal += cumulativeDividendsMonthData[i] || 0;
+            
+            putsCumulativeData.push(putsRunningTotal);
+            callsCumulativeData.push(callsRunningTotal);
+            capGainsCumulativeData.push(capGainsRunningTotal);
+            dividendsCumulativeData.push(dividendsRunningTotal);
+        }
+        
+        // Update the totals panel with year-to-date values
+        function updateTotalsPanel() {
+            const grandTotalElement = document.getElementById('grandTotal');
+            const totalPutsElement = document.getElementById('totalPuts');
+            const totalCallsElement = document.getElementById('totalCalls');
+            const totalCapGainsElement = document.getElementById('totalCapGains');
+            const totalDividendsElement = document.getElementById('totalDividends');
+            
+            // Format currency with consistent green coloring
+            function formatCurrency(value, element) {
+                const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                if (value < 0) {
+                    element.innerHTML = '-' + formattedValue;
+                } else {
+                    element.innerHTML = formattedValue;
+                }
+                // Always use green color regardless of positive/negative
+                element.style.color = '#27ae60';
+            }
+            
+            // Calculate grand total
+            const grandTotalValue = putsRunningTotal + callsRunningTotal + capGainsRunningTotal + dividendsRunningTotal;
+            
+            // Update each total with current year-to-date values
+            formatCurrency(grandTotalValue, grandTotalElement);
+            formatCurrency(putsRunningTotal, totalPutsElement);
+            formatCurrency(callsRunningTotal, totalCallsElement);
+            formatCurrency(capGainsRunningTotal, totalCapGainsElement);
+            formatCurrency(dividendsRunningTotal, totalDividendsElement);
+        }
+        
+        // Call the function to update totals
+        updateTotalsPanel();
+        
+        new Chart(cumulativeGainsCtx, {
+            type: 'bar',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'Puts',
+                    data: putsCumulativeData,
+                    backgroundColor: 'rgba(31, 119, 180, 0.8)',
+                    borderColor: '#1f77b4',
+                    borderWidth: 1
+                }, {
+                    label: 'Calls',
+                    data: callsCumulativeData,
+                    backgroundColor: 'rgba(255, 127, 14, 0.8)',
+                    borderColor: '#ff7f0e',
+                    borderWidth: 1
+                }, {
+                    label: 'Capital Gains',
+                    data: capGainsCumulativeData,
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(214, 39, 40, 0.8)' : 'rgba(39, 174, 96, 0.8)';
+                    },
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? '#d62728' : '#27ae60';
+                    },
+                    borderWidth: 1
+                }, {
+                    label: 'Dividends',
+                    data: dividendsCumulativeData,
+                    backgroundColor: 'rgba(255, 215, 0, 0.8)',
+                    borderColor: '#FFD700',
+                    borderWidth: 1
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Cumulative Gains ($)',
+                            color: '#e0e0e0'
+                        },
+                        ticks: {
+                            color: '#e0e0e0',
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#e0e0e0',
+                            usePointStyle: true,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                            },
+                            footer: function(tooltipItems) {
+                                let total = 0;
+                                tooltipItems.forEach(function(tooltipItem) {
+                                    total += tooltipItem.parsed.y;
+                                });
+                                return 'Total: $' + total.toLocaleString();
+                            }
+                        }
+                    },
+                    datalabels: {
+                        display: false // Disable for stacked chart to avoid clutter
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Symbol Modal functionality is handled by shared module
+        
+        // Apply profit/loss coloring to monthly table
+        function applyMonthlyTableColoring() {
+            const table = document.querySelector('.financial-table');
+            if (!table) return;
+            
+            // Color all cells with monetary values
+            const cells = table.querySelectorAll('td');
+            cells.forEach(cell => {
+                const text = cell.textContent.trim();
+                // Check if it's a monetary value starting with $ and containing a number
+                if (text.match(/^\$-?[\d,]+\.\d{2}$/)) {
+                    // Extract numeric value
+                    const value = parseFloat(text.replace(/[\$,]/g, ''));
+                    
+                    // Apply coloring: only losses are red, everything else is neutral
+                    if (value < 0) {
+                        cell.innerHTML = '<span class="negative">' + text + '</span>';
+                    } else {
+                        // Remove any existing positive class and make neutral
+                        cell.classList.remove('positive');
+                        if (!cell.innerHTML.includes('<span>') && text !== '$0.00') {
+                            cell.innerHTML = '<span>' + text + '</span>';
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Apply coloring when page loads
+        document.addEventListener('DOMContentLoaded', applyMonthlyTableColoring);
+        // Also apply coloring immediately in case DOMContentLoaded already fired
+        applyMonthlyTableColoring();
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script>
+        // Apply profit/loss coloring and currency formatting to monthly table
+        function applyMonthlyTableFormatting() {
+            const table = document.querySelector('.financial-table');
+            if (!table) return;
+            
+            // Process all rows in tbody and tfoot
+            const rows = table.querySelectorAll('tbody tr, tfoot tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach((cell, columnIndex) => {
+                    const text = cell.textContent.trim();
+                    
+                    // Skip the first column (Ticker/Symbol)
+                    if (columnIndex === 0) return;
+                    
+                    // Check if it's a monetary value (with or without decimal places)
+                    if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
+                        // Extract numeric value
+                        const value = parseFloat(text.replace(/[\$,]/g, ''));
+                        
+                        // Skip if it's not a valid number
+                        if (isNaN(value)) return;
+                        
+                        // Format as whole dollars with comma separators
+                        const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                        
+                        // Apply profit/loss coloring to all monetary values
+                        if (value < 0) {
+                            cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
+                        } else if (value > 0) {
+                            cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
+                        } else {
+                            cell.innerHTML = formattedValue;
+                        }
+                    }
+                });
+            });
+        }
+
+        // Apply table formatting when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applyMonthlyTableFormatting();
+        });
+    </script>
+    <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!-- Shared Symbol Modal Partial Template -->
+<!-- This partial consolidates the duplicated Symbol modal code across all templates -->
+
+<div id="symbolModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">New Symbol</h2>
+            <span class="close" id="closeModal">&times;</span>
+        </div>
+        <form id="symbolForm">
+            <div class="form-group">
+                <label for="symbolInput" class="form-label">Symbol *</label>
+                <input type="text" id="symbolInput" class="form-input" placeholder="e.g. AAPL, MSFT" required>
+            </div>
+            <div class="form-group">
+                <label for="priceInput" class="form-label">Current Price</label>
+                <input type="number" id="priceInput" class="form-input" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label for="dividendInput" class="form-label">Dividend</label>
+                <input type="number" id="dividendInput" class="form-input" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label for="exDividendDateInput" class="form-label">Ex-Dividend Date</label>
+                <input type="date" id="exDividendDateInput" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="peRatioInput" class="form-label">P/E Ratio</label>
+                <input type="number" id="peRatioInput" class="form-input" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-buttons">
+                <button type="submit" class="btn btn-primary" id="saveSymbol">Save Symbol</button>
+                <button type="button" class="btn btn-secondary" id="cancelModal">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>

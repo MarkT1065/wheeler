@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import Options - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="import-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .AllSymbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Collapsible Admin Section -->
+            <div class="admin-section">
+                <button class="admin-toggle expanded" id="adminToggle">
+                    <i class="fas fa-cog"></i>
+                    Admin
+                    <i class="fas fa-chevron-right chevron"></i>
+                </button>
+                <div class="admin-list expanded" id="adminList">
+                    <a href="/import" class="nav-item admin-nav-item active">
+                        <i class="fas fa-upload"></i>
+                        Import
+                    </a>
+                    <a href="/backup" class="nav-item admin-nav-item">
+                        <i class="fas fa-database"></i>
+                        Database
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <a href="/help" class="nav-item">
+            <i class="fas fa-question-circle"></i>
+            Help
+        </a>
+    </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-upload"></i> Import Trading Data</h2>
+                    <p>Upload CSV files to import your trading data into Wheeler.</p>
+                </div>
+
+                <!-- Tab Navigation -->
+                <div class="import-tabs">
+                    <button class="tab-button active" data-tab="options">
+                        <i class="fas fa-chart-line"></i>
+                        Options
+                    </button>
+                    <button class="tab-button" data-tab="stocks">
+                        <i class="fas fa-coins"></i>
+                        Stocks
+                    </button>
+                    <button class="tab-button" data-tab="dividends">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Dividends
+                    </button>
+                </div>
+
+                <!-- Options Tab Content -->
+                <div class="tab-content active" id="options-tab">
+                    <div class="import-form-container">
+                        <form id="optionsImportForm" enctype="multipart/form-data" method="POST" action="/import/upload">
+                            <div class="upload-area" id="optionsUploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #4ade80; margin-bottom: 15px;"></i>
+                                    <h3>Drop your options CSV file here or click to select</h3>
+                                    <p>Maximum file size: 10MB</p>
+                                    <input type="file" id="optionsCsvFile" name="csvFile" accept=".csv" style="display: none;">
+                                    <button type="button" id="optionsSelectFileBtn" class="btn btn-primary">
+                                        <i class="fas fa-folder-open"></i>
+                                        Select File
+                                    </button>
+                                </div>
+                                <div class="file-info" id="optionsFileInfo" style="display: none;">
+                                    <i class="fas fa-file-csv" style="color: #4ade80;"></i>
+                                    <span id="optionsFileName"></span>
+                                    <span id="optionsFileSize"></span>
+                                    <button type="button" id="optionsRemoveFileBtn" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" id="optionsUploadBtn" class="btn btn-primary" disabled>
+                                    <i class="fas fa-upload"></i>
+                                    Import Options
+                                </button>
+                            </div>
+                    </form>
+                    
+                        <!-- Progress and Results -->
+                        <div id="optionsImportProgress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="optionsProgressFill"></div>
+                            </div>
+                            <p id="optionsProgressText">Processing...</p>
+                        </div>
+                        
+                        <div id="optionsImportResults" style="display: none;">
+                            <div class="alert" id="optionsResultsAlert">
+                                <div id="optionsResultsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stocks Tab Content -->
+                <div class="tab-content" id="stocks-tab">
+                    <div class="import-form-container">
+                        <form id="stocksImportForm" enctype="multipart/form-data" method="POST" action="/import/upload/stocks">
+                            <div class="upload-area" id="stocksUploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #4ade80; margin-bottom: 15px;"></i>
+                                    <h3>Drop your stocks CSV file here or click to select</h3>
+                                    <p>Maximum file size: 10MB</p>
+                                    <input type="file" id="stocksCsvFile" name="csvFile" accept=".csv" style="display: none;">
+                                    <button type="button" id="stocksSelectFileBtn" class="btn btn-primary">
+                                        <i class="fas fa-folder-open"></i>
+                                        Select File
+                                    </button>
+                                </div>
+                                <div class="file-info" id="stocksFileInfo" style="display: none;">
+                                    <i class="fas fa-file-csv" style="color: #4ade80;"></i>
+                                    <span id="stocksFileName"></span>
+                                    <span id="stocksFileSize"></span>
+                                    <button type="button" id="stocksRemoveFileBtn" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" id="stocksUploadBtn" class="btn btn-primary" disabled>
+                                    <i class="fas fa-upload"></i>
+                                    Import Stocks
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Progress and Results -->
+                        <div id="stocksImportProgress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="stocksProgressFill"></div>
+                            </div>
+                            <p id="stocksProgressText">Processing...</p>
+                        </div>
+                        
+                        <div id="stocksImportResults" style="display: none;">
+                            <div class="alert" id="stocksResultsAlert">
+                                <div id="stocksResultsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dividends Tab Content -->
+                <div class="tab-content" id="dividends-tab">
+                    <div class="import-form-container">
+                        <form id="dividendsImportForm" enctype="multipart/form-data" method="POST" action="/import/upload/dividends">
+                            <div class="upload-area" id="dividendsUploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #4ade80; margin-bottom: 15px;"></i>
+                                    <h3>Drop your dividends CSV file here or click to select</h3>
+                                    <p>Maximum file size: 10MB</p>
+                                    <input type="file" id="dividendsCsvFile" name="csvFile" accept=".csv" style="display: none;">
+                                    <button type="button" id="dividendsSelectFileBtn" class="btn btn-primary">
+                                        <i class="fas fa-folder-open"></i>
+                                        Select File
+                                    </button>
+                                </div>
+                                <div class="file-info" id="dividendsFileInfo" style="display: none;">
+                                    <i class="fas fa-file-csv" style="color: #4ade80;"></i>
+                                    <span id="dividendsFileName"></span>
+                                    <span id="dividendsFileSize"></span>
+                                    <button type="button" id="dividendsRemoveFileBtn" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" id="dividendsUploadBtn" class="btn btn-primary" disabled>
+                                    <i class="fas fa-upload"></i>
+                                    Import Dividends
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Progress and Results -->
+                        <div id="dividendsImportProgress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="dividendsProgressFill"></div>
+                            </div>
+                            <p id="dividendsProgressText">Processing...</p>
+                        </div>
+                        
+                        <div id="dividendsImportResults" style="display: none;">
+                            <div class="alert" id="dividendsResultsAlert">
+                                <div id="dividendsResultsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CSV Format Documentation -->
+            <div class="format-documentation">
+                <div class="format-tabs-header">
+                    <h3><i class="fas fa-info-circle"></i> CSV Format Requirements</h3>
+                </div>
+                
+                <!-- Options Format Documentation -->
+                <div class="format-content active" id="options-format">
+                    <h4>Options CSV Format</h4>
+                    
+                    <div class="format-section">
+                        <h4>Required Columns</h4>
+                        <p>Your CSV file must include these columns in the exact order shown:</p>
+                        <div class="code-block">
+symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,commission
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Column Definitions</h4>
+                        <div class="format-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Format</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>symbol</code></td>
+                                        <td>Text</td>
+                                        <td>Yes</td>
+                                        <td>Stock ticker</td>
+                                        <td>AAPL</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>opened</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>YYYY-MM-DD</td>
+                                        <td>2025-01-15</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>closed</code></td>
+                                        <td>Date</td>
+                                        <td>No</td>
+                                        <td>YYYY-MM-DD or empty</td>
+                                        <td>2025-02-01</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>type</code></td>
+                                        <td>Text</td>
+                                        <td>Yes</td>
+                                        <td>"Put" or "Call"</td>
+                                        <td>Put</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>strike</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal</td>
+                                        <td>150.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>expiration</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>YYYY-MM-DD</td>
+                                        <td>2025-02-15</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>premium</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal per share</td>
+                                        <td>3.50</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>contracts</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Integer</td>
+                                        <td>2</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>exit_price</code></td>
+                                        <td>Number</td>
+                                        <td>No</td>
+                                        <td>Decimal or empty</td>
+                                        <td>1.25</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>commission</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal</td>
+                                        <td>1.30</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Sample CSV Content</h4>
+                        <div class="code-block">
+symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,commission
+AAPL,2025-01-15,2025-02-01,Put,150.00,2025-02-15,3.50,2,1.25,1.30
+MSFT,2025-01-20,,Call,400.00,2025-03-20,5.00,1,,1.30
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Important Notes</h4>
+                        <ul>
+                            <li><strong>Date Format:</strong> All dates must be in YYYY-MM-DD format</li>
+                            <li><strong>Option Types:</strong> Must be exactly "Put" or "Call" (case-sensitive)</li>
+                            <li><strong>Open Positions:</strong> Leave <code>closed</code> and <code>exit_price</code> empty for open positions</li>
+                            <li><strong>Decimal Precision:</strong> Use decimal format for all prices (e.g., 150.00, not 150)</li>
+                            <li><strong>No Headers Duplication:</strong> Include the header row only once at the top</li>
+                            <li><strong>Symbols:</strong> Stock symbols will be automatically created if they don't exist</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Stocks Format Documentation -->
+                <div class="format-content" id="stocks-format">
+                    <h4>Stocks CSV Format</h4>
+                    
+                    <div class="format-section">
+                        <h4>Required Columns</h4>
+                        <p>Your CSV file must include these columns in the exact order shown:</p>
+                        <div class="code-block">
+Symbol,Purchased,Closed Date,Shares (x100),Buy Price,Exit Price
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Column Definitions</h4>
+                        <div class="format-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Format</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Symbol</code></td>
+                                        <td>Text</td>
+                                        <td>Yes</td>
+                                        <td>Stock ticker</td>
+                                        <td>AAPL</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Purchased</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>MM/DD/YYYY</td>
+                                        <td>1/10/2025</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Closed Date</code></td>
+                                        <td>Date</td>
+                                        <td>No</td>
+                                        <td>MM/DD/YYYY or empty</td>
+                                        <td>3/31/2025</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Shares (x100)</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal (x100 shares)</td>
+                                        <td>1.5</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Buy Price</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal per share</td>
+                                        <td>150.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Exit Price</code></td>
+                                        <td>Number</td>
+                                        <td>No</td>
+                                        <td>Decimal or empty</td>
+                                        <td>169.67</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Sample CSV Content</h4>
+                        <div class="code-block">
+Symbol,Purchased,Closed Date,Shares (x100),Buy Price,Exit Price
+AAPL,1/10/2025,3/31/2025,1,150.00,169.67
+MSFT,5/15/2025,,0.5,400.00,
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Important Notes</h4>
+                        <ul>
+                            <li><strong>Date Format:</strong> Use MM/DD/YYYY format (e.g., 1/10/2025)</li>
+                            <li><strong>Shares Calculation:</strong> Value represents hundreds of shares (1 = 100 shares, 0.5 = 50 shares)</li>
+                            <li><strong>Open Positions:</strong> Leave <code>Closed Date</code> and <code>Exit Price</code> empty for open positions</li>
+                            <li><strong>Decimal Precision:</strong> Use decimal format for all prices and share quantities</li>
+                            <li><strong>No Headers Duplication:</strong> Include the header row only once at the top</li>
+                            <li><strong>Symbols:</strong> Stock symbols will be automatically created if they don't exist</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Dividends Format Documentation -->
+                <div class="format-content" id="dividends-format">
+                    <h4>Dividends CSV Format</h4>
+                    
+                    <div class="format-section">
+                        <h4>Required Columns</h4>
+                        <p>Your CSV file must include these columns in the exact order shown:</p>
+                        <div class="code-block">
+Symbol,Date Received,Amount
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Column Definitions</h4>
+                        <div class="format-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Format</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>Symbol</code></td>
+                                        <td>Text</td>
+                                        <td>Yes</td>
+                                        <td>Stock ticker</td>
+                                        <td>AAPL</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Date Received</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>MM/DD/YYYY</td>
+                                        <td>2/14/2025</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Amount</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal (with or without $)</td>
+                                        <td>$41.89 or 41.89</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Sample CSV Content</h4>
+                        <div class="code-block">
+Symbol,Date Received,Amount
+ABT,2/14/2025,$41.89
+KO,4/1/2025,$10.20
+VZ,2/3/2025,$241.64
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Important Notes</h4>
+                        <ul>
+                            <li><strong>Date Format:</strong> Use MM/DD/YYYY format (e.g., 2/14/2025)</li>
+                            <li><strong>Amount Format:</strong> Can include dollar sign ($) or be plain decimal (e.g., $41.89 or 41.89)</li>
+                            <li><strong>Symbols:</strong> Stock symbols will be automatically created if they don't exist</li>
+                            <li><strong>Duplicates:</strong> Existing dividend records with same symbol, date, and amount will be skipped</li>
+                            <li><strong>No Headers Duplication:</strong> Include the header row only once at the top</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+    <script>
+        // Tab functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const formatContents = document.querySelectorAll('.format-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                
+                // Update tab buttons
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update tab content
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                // Update format documentation
+                formatContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabName}-format`).classList.add('active');
+            });
+        });
+
+        // Options upload functionality
+        const optionsUploadArea = document.getElementById('optionsUploadArea');
+        const optionsCsvFile = document.getElementById('optionsCsvFile');
+        const optionsSelectFileBtn = document.getElementById('optionsSelectFileBtn');
+        const optionsFileInfo = document.getElementById('optionsFileInfo');
+        const optionsFileName = document.getElementById('optionsFileName');
+        const optionsFileSize = document.getElementById('optionsFileSize');
+        const optionsRemoveFileBtn = document.getElementById('optionsRemoveFileBtn');
+        const optionsUploadBtn = document.getElementById('optionsUploadBtn');
+        const optionsImportForm = document.getElementById('optionsImportForm');
+        const optionsImportProgress = document.getElementById('optionsImportProgress');
+        const optionsProgressFill = document.getElementById('optionsProgressFill');
+        const optionsProgressText = document.getElementById('optionsProgressText');
+        const optionsImportResults = document.getElementById('optionsImportResults');
+        const optionsResultsAlert = document.getElementById('optionsResultsAlert');
+        const optionsResultsContent = document.getElementById('optionsResultsContent');
+        
+        // Stocks upload functionality
+        const stocksUploadArea = document.getElementById('stocksUploadArea');
+        const stocksCsvFile = document.getElementById('stocksCsvFile');
+        const stocksSelectFileBtn = document.getElementById('stocksSelectFileBtn');
+        const stocksFileInfo = document.getElementById('stocksFileInfo');
+        const stocksFileName = document.getElementById('stocksFileName');
+        const stocksFileSize = document.getElementById('stocksFileSize');
+        const stocksRemoveFileBtn = document.getElementById('stocksRemoveFileBtn');
+        const stocksUploadBtn = document.getElementById('stocksUploadBtn');
+        const stocksImportForm = document.getElementById('stocksImportForm');
+        const stocksImportProgress = document.getElementById('stocksImportProgress');
+        const stocksProgressFill = document.getElementById('stocksProgressFill');
+        const stocksProgressText = document.getElementById('stocksProgressText');
+        const stocksImportResults = document.getElementById('stocksImportResults');
+        const stocksResultsAlert = document.getElementById('stocksResultsAlert');
+        const stocksResultsContent = document.getElementById('stocksResultsContent');
+
+        // Dividends upload functionality
+        const dividendsUploadArea = document.getElementById('dividendsUploadArea');
+        const dividendsCsvFile = document.getElementById('dividendsCsvFile');
+        const dividendsSelectFileBtn = document.getElementById('dividendsSelectFileBtn');
+        const dividendsFileInfo = document.getElementById('dividendsFileInfo');
+        const dividendsFileName = document.getElementById('dividendsFileName');
+        const dividendsFileSize = document.getElementById('dividendsFileSize');
+        const dividendsRemoveFileBtn = document.getElementById('dividendsRemoveFileBtn');
+        const dividendsUploadBtn = document.getElementById('dividendsUploadBtn');
+        const dividendsImportForm = document.getElementById('dividendsImportForm');
+        const dividendsImportProgress = document.getElementById('dividendsImportProgress');
+        const dividendsProgressFill = document.getElementById('dividendsProgressFill');
+        const dividendsProgressText = document.getElementById('dividendsProgressText');
+        const dividendsImportResults = document.getElementById('dividendsImportResults');
+        const dividendsResultsAlert = document.getElementById('dividendsResultsAlert');
+        const dividendsResultsContent = document.getElementById('dividendsResultsContent');
+
+        // Options file selection
+        optionsSelectFileBtn.addEventListener('click', () => optionsCsvFile.click());
+        optionsCsvFile.addEventListener('change', () => handleFileSelection('options'));
+        
+        // Stocks file selection  
+        stocksSelectFileBtn.addEventListener('click', () => stocksCsvFile.click());
+        stocksCsvFile.addEventListener('change', () => handleFileSelection('stocks'));
+        
+        // Dividends file selection
+        dividendsSelectFileBtn.addEventListener('click', () => dividendsCsvFile.click());
+        dividendsCsvFile.addEventListener('change', () => handleFileSelection('dividends'));
+
+        // Options drag and drop
+        optionsUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            optionsUploadArea.classList.add('drag-over');
+        });
+        optionsUploadArea.addEventListener('dragleave', () => {
+            optionsUploadArea.classList.remove('drag-over');
+        });
+        optionsUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            optionsUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                optionsCsvFile.files = files;
+                handleFileSelection('options');
+            }
+        });
+
+        // Stocks drag and drop
+        stocksUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            stocksUploadArea.classList.add('drag-over');
+        });
+        stocksUploadArea.addEventListener('dragleave', () => {
+            stocksUploadArea.classList.remove('drag-over');
+        });
+        stocksUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            stocksUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                stocksCsvFile.files = files;
+                handleFileSelection('stocks');
+            }
+        });
+
+        // Dividends drag and drop
+        dividendsUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dividendsUploadArea.classList.add('drag-over');
+        });
+        dividendsUploadArea.addEventListener('dragleave', () => {
+            dividendsUploadArea.classList.remove('drag-over');
+        });
+        dividendsUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dividendsUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                dividendsCsvFile.files = files;
+                handleFileSelection('dividends');
+            }
+        });
+
+        function handleFileSelection(type) {
+            const csvFile = type === 'options' ? optionsCsvFile : type === 'stocks' ? stocksCsvFile : dividendsCsvFile;
+            const fileName = type === 'options' ? optionsFileName : type === 'stocks' ? stocksFileName : dividendsFileName;
+            const fileSize = type === 'options' ? optionsFileSize : type === 'stocks' ? stocksFileSize : dividendsFileSize;
+            const fileInfo = type === 'options' ? optionsFileInfo : type === 'stocks' ? stocksFileInfo : dividendsFileInfo;
+            const uploadArea = type === 'options' ? optionsUploadArea : type === 'stocks' ? stocksUploadArea : dividendsUploadArea;
+            const uploadBtn = type === 'options' ? optionsUploadBtn : type === 'stocks' ? stocksUploadBtn : dividendsUploadBtn;
+            
+            const file = csvFile.files[0];
+            if (file) {
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    alert('Please select a CSV file.');
+                    csvFile.value = '';
+                    return;
+                }
+                
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size must be less than 10MB.');
+                    csvFile.value = '';
+                    return;
+                }
+
+                fileName.textContent = file.name;
+                fileSize.textContent = `(${sizeMB} MB)`;
+                fileInfo.style.display = 'flex';
+                uploadArea.querySelector('.upload-content').style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        // Options remove file
+        optionsRemoveFileBtn.addEventListener('click', () => {
+            optionsCsvFile.value = '';
+            optionsFileInfo.style.display = 'none';
+            optionsUploadArea.querySelector('.upload-content').style.display = 'block';
+            optionsUploadBtn.disabled = true;
+            hideResults('options');
+        });
+        
+        // Stocks remove file
+        stocksRemoveFileBtn.addEventListener('click', () => {
+            stocksCsvFile.value = '';
+            stocksFileInfo.style.display = 'none';
+            stocksUploadArea.querySelector('.upload-content').style.display = 'block';
+            stocksUploadBtn.disabled = true;
+            hideResults('stocks');
+        });
+        
+        // Dividends remove file
+        dividendsRemoveFileBtn.addEventListener('click', () => {
+            dividendsCsvFile.value = '';
+            dividendsFileInfo.style.display = 'none';
+            dividendsUploadArea.querySelector('.upload-content').style.display = 'block';
+            dividendsUploadBtn.disabled = true;
+            hideResults('dividends');
+        });
+
+        // Options form submission
+        optionsImportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!optionsCsvFile.files[0]) {
+                alert('Please select a CSV file to upload.');
+                return;
+            }
+
+            showProgress('options');
+            hideResults('options');
+
+            const formData = new FormData();
+            formData.append('csvFile', optionsCsvFile.files[0]);
+
+            try {
+                const response = await fetch('/import/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                hideProgress('options');
+                showResults('options', result, response.ok);
+
+            } catch (error) {
+                hideProgress('options');
+                showResults('options', {
+                    success: false,
+                    error: 'Upload failed: ' + error.message
+                }, false);
+            }
+        });
+        
+        // Stocks form submission
+        stocksImportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!stocksCsvFile.files[0]) {
+                alert('Please select a CSV file to upload.');
+                return;
+            }
+
+            showProgress('stocks');
+            hideResults('stocks');
+
+            const formData = new FormData();
+            formData.append('csvFile', stocksCsvFile.files[0]);
+
+            try {
+                const response = await fetch('/import/upload/stocks', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                hideProgress('stocks');
+                showResults('stocks', result, response.ok);
+
+            } catch (error) {
+                hideProgress('stocks');
+                showResults('stocks', {
+                    success: false,
+                    error: 'Upload failed: ' + error.message
+                }, false);
+            }
+        });
+        
+        // Dividends form submission
+        dividendsImportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!dividendsCsvFile.files[0]) {
+                alert('Please select a CSV file to upload.');
+                return;
+            }
+
+            showProgress('dividends');
+            hideResults('dividends');
+
+            const formData = new FormData();
+            formData.append('csvFile', dividendsCsvFile.files[0]);
+
+            try {
+                const response = await fetch('/import/upload/dividends', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                hideProgress('dividends');
+                showResults('dividends', result, response.ok);
+
+            } catch (error) {
+                hideProgress('dividends');
+                showResults('dividends', {
+                    success: false,
+                    error: 'Upload failed: ' + error.message
+                }, false);
+            }
+        });
+
+        function showProgress(type) {
+            const importProgress = type === 'options' ? optionsImportProgress : type === 'stocks' ? stocksImportProgress : dividendsImportProgress;
+            const progressFill = type === 'options' ? optionsProgressFill : type === 'stocks' ? stocksProgressFill : dividendsProgressFill;
+            const progressText = type === 'options' ? optionsProgressText : type === 'stocks' ? stocksProgressText : dividendsProgressText;
+            
+            importProgress.style.display = 'block';
+            progressFill.style.width = '100%';
+            progressText.textContent = `Processing ${type} CSV file...`;
+        }
+
+        function hideProgress(type) {
+            const importProgress = type === 'options' ? optionsImportProgress : type === 'stocks' ? stocksImportProgress : dividendsImportProgress;
+            importProgress.style.display = 'none';
+        }
+
+        function showResults(type, result, success) {
+            const importResults = type === 'options' ? optionsImportResults : type === 'stocks' ? stocksImportResults : dividendsImportResults;
+            const resultsAlert = type === 'options' ? optionsResultsAlert : type === 'stocks' ? stocksResultsAlert : dividendsResultsAlert;
+            const resultsContent = type === 'options' ? optionsResultsContent : type === 'stocks' ? stocksResultsContent : dividendsResultsContent;
+            const dataType = type === 'options' ? 'options' : type === 'stocks' ? 'stock positions' : 'dividend records';
+            
+            importResults.style.display = 'block';
+            resultsAlert.className = success ? 'alert alert-success' : 'alert alert-error';
+            
+            if (success && result.success) {
+                resultsContent.innerHTML = `
+                    <h4><i class="fas fa-check-circle"></i> Import Successful</h4>
+                    <p><strong>${result.imported_count}</strong> ${dataType} imported successfully.</p>
+                    ${result.skipped_count > 0 ? `<p><strong>${result.skipped_count}</strong> records skipped (duplicates).</p>` : ''}
+                    <p>You can now view your imported data on the <a href="/">Dashboard</a> or <a href="/monthly">Monthly</a> pages.</p>
+                `;
+            } else {
+                resultsContent.innerHTML = `
+                    <h4><i class="fas fa-exclamation-circle"></i> Import Failed</h4>
+                    <p>${result.error || 'An error occurred during import.'}</p>
+                    ${result.details ? `<div class="error-details"><pre>${result.details}</pre></div>` : ''}
+                `;
+            }
+        }
+
+        function hideResults(type) {
+            const importResults = type === 'options' ? optionsImportResults : type === 'stocks' ? stocksImportResults : dividendsImportResults;
+            importResults.style.display = 'none';
+        }
+    </script>
+
+    <style>
+        .import-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2a2a2a;
+        }
+
+        .tab-button {
+            background: transparent;
+            border: none;
+            padding: 15px 25px;
+            color: #a0a0a0;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-button:hover {
+            color: #e0e0e0;
+            background: #2a2a2a;
+        }
+
+        .tab-button.active {
+            color: #4ade80;
+            border-bottom-color: #4ade80;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .format-content {
+            display: none;
+        }
+
+        .format-content.active {
+            display: block;
+        }
+
+        .import-form-container {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }
+
+        .upload-area {
+            border: 2px dashed #666666;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .upload-area.drag-over {
+            border-color: #4ade80;
+            background-color: rgba(74, 222, 128, 0.1);
+        }
+
+        .upload-content h3 {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+        }
+
+        .upload-content p {
+            color: #a0a0a0;
+            margin: 0;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            color: #ffffff;
+        }
+
+        .form-actions {
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #2a2a2a;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4ade80;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #progressText {
+            color: #a0a0a0;
+            text-align: center;
+            margin: 0;
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .alert-success {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid #4ade80;
+            color: #ffffff;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ffffff;
+        }
+
+        .format-documentation {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 30px;
+        }
+
+        .format-documentation h3 {
+            color: #4ade80;
+            margin-top: 0;
+        }
+
+        .format-section {
+            margin-bottom: 30px;
+        }
+
+        .format-section h4 {
+            color: #ffffff;
+            margin-bottom: 15px;
+        }
+
+        .code-block {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #4ade80;
+            overflow-x: auto;
+        }
+
+        .format-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        .format-table th,
+        .format-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #333;
+        }
+
+        .format-table th {
+            background: #2a2a2a;
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .format-table td {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+
+        .format-table code {
+            background: #0a0a0a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #4ade80;
+        }
+
+        .format-section ul {
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+
+        .format-section li {
+            margin-bottom: 8px;
+        }
+
+        .error-details {
+            margin-top: 15px;
+            background: #0a0a0a;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .error-details pre {
+            margin: 0;
+            white-space: pre-wrap;
+            font-size: 12px;
+            color: #ef4444;
+        }
+    </style>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>

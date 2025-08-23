@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Management - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css?v=3">
+</head>
+<body class="backup-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .AllSymbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle expanded" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list expanded" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item active">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section">
+                <div class="section-title">Database Management</div>
+                <div class="section-subtitle">Backup and database management tools</div>
+                
+                <!-- Create Database Section -->
+                <div class="create-database-section">
+                    <div class="subsection-title">
+                        <i class="fas fa-plus-circle"></i>
+                        Create New Database
+                    </div>
+                    <div class="create-form">
+                        <form id="createDatabaseForm" onsubmit="createNewDatabase(event)">
+                            <div class="form-group">
+                                <input type="text" id="newDatabaseName" name="name" placeholder="Enter database name (e.g., production, testing)" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i>
+                                    Create Database
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Available Databases Section -->
+                <div class="databases-section">
+                    <div class="subsection-title">
+                        <i class="fas fa-server"></i>
+                        Available Databases
+                        <div class="current-indicator">Current: <strong>{{.CurrentDB}}</strong></div>
+                    </div>
+                    <div class="database-files">
+                        {{if .DbFiles}}
+                            <div class="file-list">
+                                {{range .DbFiles}}
+                                <div class="database-file-item {{if eq . $.CurrentDB}}current-database{{end}}">
+                                    <div class="file-info">
+                                        <div class="file-icon">
+                                            <i class="fas fa-database {{if eq . $.CurrentDB}}current{{end}}"></i>
+                                        </div>
+                                        <div class="file-details">
+                                            <div class="file-name">
+                                                {{.}}
+                                                {{if eq . $.CurrentDB}}<span class="current-badge">CURRENT</span>{{end}}
+                                            </div>
+                                            <div class="file-type">SQLite Database</div>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions">
+                                        {{if ne . $.CurrentDB}}
+                                        <button class="switch-btn" onclick="switchDatabase('{{.}}', event)">
+                                            <i class="fas fa-exchange-alt"></i>
+                                            Switch To
+                                        </button>
+                                        {{end}}
+                                        <button class="backup-btn" onclick="createBackup('{{.}}', event)">
+                                            <i class="fas fa-save"></i>
+                                            Backup
+                                        </button>
+                                        {{if ne . $.CurrentDB}}
+                                        <button class="delete-db-btn" onclick="deleteDatabase('{{.}}', event)">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                        {{end}}
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                        {{else}}
+                            <div class="no-files">
+                                <div class="no-files-icon">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <div class="no-files-title">No Databases Found</div>
+                                <div class="no-files-subtitle">No .db files were found in the data directory</div>
+                            </div>
+                        {{end}}
+                    </div>
+                </div>
+
+                <!-- Backup Files Section -->
+                <div class="backups-section">
+                    <div class="subsection-title">
+                        <i class="fas fa-archive"></i>
+                        Backup Files
+                        <span class="backup-location">./backups/</span>
+                    </div>
+                    <div class="backup-files">
+                        {{if .BackupFiles}}
+                            <div class="backup-list">
+                                {{range .BackupFiles}}
+                                <div class="backup-file-item">
+                                    <div class="backup-info">
+                                        <div class="backup-icon">
+                                            <i class="fas fa-file-archive"></i>
+                                        </div>
+                                        <div class="backup-details">
+                                            <div class="backup-name">{{.}}</div>
+                                            <div class="backup-type">Database Backup</div>
+                                        </div>
+                                    </div>
+                                    <div class="backup-actions">
+                                        <a href="/backups/{{.}}" download="{{.}}" class="download-btn">
+                                            <i class="fas fa-download"></i>
+                                            Download
+                                        </a>
+                                        <button class="delete-btn" onclick="deleteBackup('{{.}}', event)">
+                                            <i class="fas fa-trash"></i>
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                        {{else}}
+                            <div class="no-backups">
+                                <div class="no-backups-icon">
+                                    <i class="fas fa-archive"></i>
+                                </div>
+                                <div class="no-backups-title">No Backup Files</div>
+                                <div class="no-backups-subtitle">Create backups using the buttons above</div>
+                            </div>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <div class="backup-info">
+                    <div class="info-section">
+                        <h3><i class="fas fa-info-circle"></i> Database Management</h3>
+                        <p>Wheeler uses SQLite databases for data storage, providing you with complete control over your financial data:</p>
+                        
+                        <h4><i class="fas fa-database"></i> Database Storage & Location</h4>
+                        <ul>
+                            <li><strong>Database Files</strong> - All databases are stored as <code>.db</code> files in the <code>./data/</code> directory</li>
+                            <li><strong>SQLite Format</strong> - Industry-standard SQLite database format, compatible with any SQLite browser</li>
+                            <li><strong>Current Database</strong> - The active database is tracked in <code>./data/currentdb</code> file</li>
+                            <li><strong>Portable Files</strong> - Database files can be copied, moved, or shared like any other file</li>
+                        </ul>
+                        
+                        <h4><i class="fas fa-cog"></i> Database Operations</h4>
+                        <ul>
+                            <li><strong>Create Database</strong> - Creates a new empty database with Wheeler's schema</li>
+                            <li><strong>Switch Database</strong> - Change which database Wheeler is currently using</li>
+                            <li><strong>Delete Database</strong> - Permanently remove a database (current database is protected)</li>
+                            <li><strong>Create Backup</strong> - Creates a timestamped copy in the <code>./data/backups/</code> directory</li>
+                        </ul>
+                        
+                        <h4><i class="fas fa-shield-alt"></i> Backup Strategy</h4>
+                        <ul>
+                            <li><strong>Easy File Backups</strong> - Since databases are SQLite files, backing up is as simple as copying the <code>.db</code> file</li>
+                            <li><strong>Manual Backups</strong> - You can manually copy database files to any location (cloud storage, USB drive, etc.)</li>
+                            <li><strong>Automated Backups</strong> - Use the built-in backup feature for timestamped copies</li>
+                            <li><strong>Version Control</strong> - Database files can even be stored in Git repositories if desired</li>
+                            <li><strong>Your Choice</strong> - Wheeler doesn't dictate your backup strategy - use what works best for you</li>
+                        </ul>
+                        
+                        <h4><i class="fas fa-tools"></i> Advanced Usage</h4>
+                        <ul>
+                            <li><strong>External Tools</strong> - Use any SQLite browser (DB Browser for SQLite, DBeaver, etc.) to examine your data</li>
+                            <li><strong>Multiple Environments</strong> - Create separate databases for testing, production, or different portfolios</li>
+                            <li><strong>Data Migration</strong> - Easily move between systems by copying database files</li>
+                            <li><strong>Custom Scripts</strong> - Write your own scripts to query or modify the SQLite database</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal jquery-modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalTitle">Confirm Action</h5>
+                    <button type="button" class="modal-close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalConfirm">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal jquery-modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="errorModalTitle">Error</h5>
+                    <button type="button" class="modal-close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="errorModalMessage">An error occurred.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Modal helper functions
+        function showConfirmModal(title, message, onConfirm) {
+            $('#confirmModalTitle').text(title);
+            $('#confirmModalMessage').html(message);
+            $('#confirmModal').show();
+            
+            // Remove any existing event handlers
+            $('#confirmModalConfirm').off('click');
+            
+            // Add new event handler
+            $('#confirmModalConfirm').on('click', function() {
+                $('#confirmModal').hide();
+                if (onConfirm) onConfirm();
+            });
+        }
+        
+        function showErrorModal(title, message) {
+            $('#errorModalTitle').text(title);
+            $('#errorModalMessage').text(message);
+            $('#errorModal').show();
+        }
+        
+        // Modal dismiss handlers
+        $(document).ready(function() {
+            $('[data-dismiss="modal"]').on('click', function() {
+                $(this).closest('.modal').hide();
+            });
+            
+            $('.modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+        });
+
+        window.createBackup = function(filename, event) {
+            // Prevent default behavior and get the button
+            if (event) {
+                event.preventDefault();
+            }
+            
+            const button = event ? event.target.closest('.backup-btn') : document.querySelector(`button[onclick*="${filename}"]`);
+            if (!button) {
+                console.error('Could not find backup button');
+                return;
+            }
+            
+            const originalText = button.innerHTML;
+            
+            // Validate filename
+            if (!filename || filename.trim() === '') {
+                console.error('No filename provided');
+                alert('Error: No filename provided');
+                return;
+            }
+            
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('filename', filename.trim());
+            
+            console.log('Creating backup for:', filename);
+            
+            // Send POST request to create backup
+            fetch('/backup', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Backup response:', data);
+                if (data.success) {
+                    // Show success message
+                    button.innerHTML = '<i class="fas fa-check"></i> Created!';
+                    button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                    
+                    // Reload page after short delay to show new backup
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    // Show error
+                    button.innerHTML = '<i class="fas fa-times"></i> Error';
+                    button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                    console.error('Backup failed:', data.error);
+                    
+                    // Reset button after delay
+                    setTimeout(() => {
+                        button.disabled = false;
+                        button.innerHTML = originalText;
+                        button.style.background = '';
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                // Show error
+                button.innerHTML = '<i class="fas fa-times"></i> Error';
+                button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                console.error('Backup request failed:', error);
+                
+                // Reset button after delay
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                    button.style.background = '';
+                }, 3000);
+            });
+        };
+        
+        window.deleteBackup = function(filename, event) {
+            // Prevent default behavior and get the button
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Show jQuery confirmation modal
+            showConfirmModal(
+                'Delete Backup',
+                `Are you sure you want to delete the backup file "${filename}"?<br><br>This action cannot be undone.`,
+                () => {
+                    // User confirmed - proceed with deletion
+                    const button = event ? event.target.closest('.delete-btn') : document.querySelector(`button[onclick*="${filename}"]`);
+                    if (!button) {
+                        console.error('Could not find delete button');
+                        return;
+                    }
+                    
+                    const originalText = button.innerHTML;
+                    
+                    // Validate filename
+                    if (!filename || filename.trim() === '') {
+                        console.error('No filename provided');
+                        showErrorModal('Delete Error', 'No filename provided');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+                    
+                    console.log('Deleting backup:', filename);
+                    
+                    // Send DELETE request
+                    fetch(`/backup/${encodeURIComponent(filename)}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => {
+                        console.log('Delete response status:', response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Delete response:', data);
+                        if (data.success) {
+                            // Show success message
+                            button.innerHTML = '<i class="fas fa-check"></i> Deleted!';
+                            button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            
+                            // Remove the backup item from the list
+                            const backupItem = button.closest('.backup-file-item');
+                            if (backupItem) {
+                                backupItem.style.opacity = '0.5';
+                                backupItem.style.transform = 'translateX(-20px)';
+                                
+                                setTimeout(() => {
+                                    backupItem.remove();
+                                    
+                                    // Check if there are any backup items left
+                                    const backupList = document.querySelector('.backup-list');
+                                    const remainingItems = document.querySelectorAll('.backup-file-item');
+                                    
+                                    if (remainingItems.length === 0) {
+                                        // Show "no backups" message
+                                        const backupFiles = document.querySelector('.backup-files');
+                                        backupFiles.innerHTML = `
+                                            <div class="no-backups">
+                                                <div class="no-backups-icon">
+                                                    <i class="fas fa-archive"></i>
+                                                </div>
+                                                <div class="no-backups-title">No Backup Files</div>
+                                                <div class="no-backups-subtitle">Create backups using the buttons above</div>
+                                            </div>
+                                        `;
+                                    }
+                                }, 500);
+                            }
+                        } else {
+                            // Show error
+                            button.innerHTML = '<i class="fas fa-times"></i> Error';
+                            button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                            console.error('Delete failed:', data.error);
+                            showErrorModal('Delete Failed', data.error || 'Unknown error');
+                            
+                            // Reset button after delay
+                            setTimeout(() => {
+                                button.disabled = false;
+                                button.innerHTML = originalText;
+                                button.style.background = '';
+                            }, 3000);
+                        }
+                    })
+                    .catch(error => {
+                        // Show error
+                        button.innerHTML = '<i class="fas fa-times"></i> Error';
+                        button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                        console.error('Delete request failed:', error);
+                        showErrorModal('Delete Failed', error.message);
+                        
+                        // Reset button after delay
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.innerHTML = originalText;
+                            button.style.background = '';
+                        }, 3000);
+                    });
+                }
+            );
+        };
+        
+        window.createNewDatabase = function(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            const form = document.getElementById('createDatabaseForm');
+            const nameInput = document.getElementById('newDatabaseName');
+            const dbName = nameInput.value.trim();
+            
+            if (!dbName) {
+                alert('Please enter a database name');
+                return;
+            }
+            
+            // Show loading
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+            
+            // Send create request
+            const formData = new FormData();
+            formData.append('name', dbName);
+            
+            fetch('/database/create', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Success
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Created!';
+                    submitBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                    nameInput.value = '';
+                    
+                    // Reload page to show new database
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // Error
+                    submitBtn.innerHTML = '<i class="fas fa-times"></i> Error';
+                    submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                    alert(`Failed to create database: ${data.error}`);
+                    
+                    // Reset button
+                    setTimeout(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.style.background = '';
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                submitBtn.innerHTML = '<i class="fas fa-times"></i> Error';
+                submitBtn.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                alert(`Failed to create database: ${error.message}`);
+                
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.style.background = '';
+                }, 3000);
+            });
+        };
+        
+        window.switchDatabase = function(dbName, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Show jQuery confirmation modal
+            showConfirmModal(
+                'Switch Database',
+                `Switch to database "${dbName}"?<br><br>This will reload the application with the new database.`,
+                () => {
+                    // User confirmed - proceed with switch
+                    const button = event ? event.target.closest('.switch-btn') : null;
+                    if (button) {
+                        const originalText = button.innerHTML;
+                        button.disabled = true;
+                        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Switching...';
+                    }
+                    
+                    // Send switch request
+                    const formData = new FormData();
+                    formData.append('database', dbName);
+                    
+                    fetch('/database/set-current', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Success - redirect to dashboard to reload with new database
+                            if (button) {
+                                button.innerHTML = '<i class="fas fa-check"></i> Switching...';
+                                button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            }
+                            
+                            // Reload the page to pick up the new database
+                            setTimeout(() => {
+                                window.location.href = '/';
+                            }, 500);
+                        } else {
+                            // Error
+                            if (button) {
+                                button.innerHTML = '<i class="fas fa-times"></i> Error';
+                                button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                                
+                                setTimeout(() => {
+                                    button.disabled = false;
+                                    button.innerHTML = originalText;
+                                    button.style.background = '';
+                                }, 3000);
+                            }
+                            showErrorModal('Database Switch Failed', data.error);
+                        }
+                    })
+                    .catch(error => {
+                        if (button) {
+                            button.innerHTML = '<i class="fas fa-times"></i> Error';
+                            button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                            
+                            setTimeout(() => {
+                                button.disabled = false;
+                                button.innerHTML = originalText;
+                                button.style.background = '';
+                            }, 3000);
+                        }
+                        showErrorModal('Database Switch Failed', error.message);
+                    });
+                }
+            );
+        };
+        
+        window.deleteDatabase = function(dbName, event) {
+            if (event) {
+                event.preventDefault();
+            }
+            
+            // Show jQuery confirmation modal with strong warning
+            showConfirmModal(
+                'Delete Database',
+                `<div style="color: #e74c3c; font-weight: bold;">⚠️ DANGER: Permanent Deletion</div>
+                <br>Are you sure you want to permanently delete the database "${dbName}"?
+                <br><br><strong>This action cannot be undone!</strong>
+                <br><br>All data in this database will be permanently lost. Consider creating a backup first if you need to preserve any data.`,
+                () => {
+                    // User confirmed - proceed with deletion
+                    const button = event ? event.target.closest('.delete-db-btn') : null;
+                    if (!button) {
+                        console.error('Could not find delete database button');
+                        return;
+                    }
+                    
+                    const originalText = button.innerHTML;
+                    
+                    // Show loading state
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+                    
+                    console.log('Deleting database:', dbName);
+                    
+                    // Send DELETE request
+                    fetch(`/database/delete/${encodeURIComponent(dbName)}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => {
+                        console.log('Delete database response status:', response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Delete database response:', data);
+                        if (data.success) {
+                            // Show success message
+                            button.innerHTML = '<i class="fas fa-check"></i> Deleted!';
+                            button.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
+                            
+                            // Remove the database item from the list
+                            const dbItem = button.closest('.database-file-item');
+                            if (dbItem) {
+                                dbItem.style.opacity = '0.5';
+                                dbItem.style.transform = 'translateX(-20px)';
+                                
+                                setTimeout(() => {
+                                    dbItem.remove();
+                                    
+                                    // Check if there are any database items left
+                                    const remainingItems = document.querySelectorAll('.database-file-item');
+                                    
+                                    if (remainingItems.length === 0) {
+                                        // Show "no databases" message
+                                        const databaseFiles = document.querySelector('.database-files');
+                                        databaseFiles.innerHTML = `
+                                            <div class="no-files">
+                                                <div class="no-files-icon">
+                                                    <i class="fas fa-database"></i>
+                                                </div>
+                                                <div class="no-files-title">No Databases Found</div>
+                                                <div class="no-files-subtitle">No .db files were found in the data directory</div>
+                                            </div>
+                                        `;
+                                    }
+                                }, 500);
+                            }
+                        } else {
+                            // Show error
+                            button.innerHTML = '<i class="fas fa-times"></i> Error';
+                            button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                            console.error('Database delete failed:', data.error);
+                            showErrorModal('Database Delete Failed', data.error || 'Unknown error');
+                            
+                            // Reset button after delay
+                            setTimeout(() => {
+                                button.disabled = false;
+                                button.innerHTML = originalText;
+                                button.style.background = '';
+                            }, 3000);
+                        }
+                    })
+                    .catch(error => {
+                        // Show error
+                        button.innerHTML = '<i class="fas fa-times"></i> Error';
+                        button.style.background = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                        console.error('Database delete request failed:', error);
+                        showErrorModal('Database Delete Failed', error.message);
+                        
+                        // Reset button after delay
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.innerHTML = originalText;
+                            button.style.background = '';
+                        }, 3000);
+                    });
+                }
+            );
+        };
+    </script>
+
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>

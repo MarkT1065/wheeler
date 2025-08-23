@@ -1,0 +1,450 @@
+package models
+
+import (
+	"database/sql"
+	"fmt"
+	"math"
+	"strings"
+	"time"
+)
+
+type Symbol struct {
+	Symbol         string     `json:"symbol"`
+	Price          float64    `json:"price"`
+	Dividend       float64    `json:"dividend"`
+	ExDividendDate *time.Time `json:"ex_dividend_date"`
+	PERatio        *float64   `json:"pe_ratio"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+// CalculateYield calculates the annualized dividend yield percentage
+func (s *Symbol) CalculateYield() float64 {
+	if s.Price == 0 {
+		return 0
+	}
+	return (s.Dividend * 4) / s.Price * 100 // Convert to percentage
+}
+
+type LongPosition struct {
+	ID        int        `json:"id"`
+	Symbol    string     `json:"symbol"`
+	Opened    time.Time  `json:"opened"`
+	Closed    *time.Time `json:"closed"`
+	Shares    int        `json:"shares"`
+	BuyPrice  float64    `json:"buy_price"`
+	ExitPrice *float64   `json:"exit_price"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+func (lp *LongPosition) CalculateYield(dividendPercent float64) float64 {
+	if lp.BuyPrice == 0 {
+		return 0
+	}
+	return dividendPercent
+}
+
+func (lp *LongPosition) CalculateProfitLoss(currentPrice float64) float64 {
+	exitPrice := currentPrice
+	if lp.ExitPrice != nil {
+		exitPrice = *lp.ExitPrice
+	}
+	return (exitPrice - lp.BuyPrice) * float64(lp.Shares)
+}
+
+func (lp *LongPosition) CalculateROI(currentPrice float64) float64 {
+	if lp.BuyPrice == 0 {
+		return 0
+	}
+	exitPrice := currentPrice
+	if lp.ExitPrice != nil {
+		exitPrice = *lp.ExitPrice
+	}
+	return ((exitPrice - lp.BuyPrice) / lp.BuyPrice) * 100
+}
+
+func (lp *LongPosition) CalculateAmount() float64 {
+	return lp.BuyPrice * float64(lp.Shares)
+}
+
+func (lp *LongPosition) CalculateTotalInvested() float64 {
+	// For now, same as amount (but could include fees, etc. in future)
+	return lp.BuyPrice * float64(lp.Shares)
+}
+
+func (lp *LongPosition) GetExitPriceValue() float64 {
+	if lp.ExitPrice == nil {
+		return 0.0
+	}
+	return *lp.ExitPrice
+}
+
+type Option struct {
+	ID         int        `json:"id"`
+	Symbol     string     `json:"symbol"`
+	Type       string     `json:"type"`
+	Opened     time.Time  `json:"opened"`
+	Closed     *time.Time `json:"closed"`
+	Strike     float64    `json:"strike"`
+	Expiration time.Time  `json:"expiration"`
+	Premium    float64    `json:"premium"`
+	Contracts  int        `json:"contracts"`
+	ExitPrice  *float64   `json:"exit_price"`
+	Commission float64    `json:"commission"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
+func (o *Option) CalculatePercentOTM(currentPrice float64) float64 {
+	if currentPrice <= 0 {
+		return 0
+	}
+	if o.Type == "Put" {
+		if currentPrice >= o.Strike {
+			return math.Abs((currentPrice - o.Strike) / currentPrice * 100)
+		}
+	} else if o.Type == "Call" {
+		if currentPrice <= o.Strike {
+			return math.Abs((o.Strike - currentPrice) / currentPrice * 100)
+		}
+	}
+	return 0
+}
+
+func (o *Option) CalculateDTE() int {
+	if o.Expiration.Before(o.Opened) {
+		return 0
+	}
+	return int(o.Expiration.Sub(o.Opened).Hours() / 24)
+}
+
+func (o *Option) CalculateDTC() int {
+	if o.Closed == nil {
+		return 0
+	}
+	return int(o.Closed.Sub(o.Opened).Hours() / 24)
+}
+
+func (o *Option) CalculateDaysRemaining() int {
+	now := time.Now()
+	return int(o.Expiration.Sub(now).Hours() / 24)
+}
+
+func (o *Option) CalculateTotalProfit() float64 {
+	exitPrice := 0.0
+	if o.ExitPrice != nil {
+		exitPrice = *o.ExitPrice
+	}
+	return (o.Premium - exitPrice) * float64(o.Contracts) * 100
+}
+
+// CalculateTotalProfitWithCurrentPrice calculates profit/loss including open options using current market price
+func (o *Option) CalculateTotalProfitWithCurrentPrice(currentPrice float64) float64 {
+	exitPrice := 0.0
+	
+	// For closed options, use actual exit price
+	if o.ExitPrice != nil {
+		exitPrice = *o.ExitPrice
+	} else if o.IsOpen() && currentPrice > 0 {
+		// For open options, estimate current value based on intrinsic value
+		exitPrice = o.estimateCurrentOptionValue(currentPrice)
+	}
+	
+	return (o.Premium - exitPrice) * float64(o.Contracts) * 100
+}
+
+// estimateCurrentOptionValue estimates the current value of an open option based on intrinsic value
+func (o *Option) estimateCurrentOptionValue(currentPrice float64) float64 {
+	if currentPrice <= 0 {
+		return 0.0
+	}
+	
+	// Calculate intrinsic value (minimum option value at expiration)
+	intrinsicValue := 0.0
+	
+	if o.Type == "Put" {
+		// Put option: max(Strike - Current Price, 0)
+		if o.Strike > currentPrice {
+			intrinsicValue = o.Strike - currentPrice
+		}
+	} else if o.Type == "Call" {
+		// Call option: max(Current Price - Strike, 0)
+		if currentPrice > o.Strike {
+			intrinsicValue = currentPrice - o.Strike
+		}
+	}
+	
+	// For short options (sold), we want the intrinsic value
+	// For long options, we'd need more complex pricing, but for now use intrinsic as minimum
+	return intrinsicValue
+}
+
+func (o *Option) CalculatePercentOfProfit() float64 {
+	if o.Premium == 0 {
+		return 0
+	}
+	maxProfit := o.Premium * float64(o.Contracts) * 100
+	actualProfit := o.CalculateTotalProfit()
+	return (actualProfit / maxProfit) * 100
+}
+
+// CalculatePercentOfProfitWithCurrentPrice calculates percentage of profit including open options
+func (o *Option) CalculatePercentOfProfitWithCurrentPrice(currentPrice float64) float64 {
+	if o.Premium == 0 {
+		return 0
+	}
+	maxProfit := o.Premium * float64(o.Contracts) * 100
+	actualProfit := o.CalculateTotalProfitWithCurrentPrice(currentPrice)
+	return (actualProfit / maxProfit) * 100
+}
+
+func (o *Option) CalculatePercentOfTime() float64 {
+	totalDays := o.Expiration.Sub(o.Opened).Hours() / 24
+	if totalDays <= 0 {
+		return 0
+	}
+	
+	// Use today's date for open positions, actual closed date for closed positions
+	var endDate time.Time
+	if o.Closed == nil {
+		endDate = time.Now()
+	} else {
+		endDate = *o.Closed
+	}
+	
+	usedDays := endDate.Sub(o.Opened).Hours() / 24
+	
+	// If 0 days used, assume 1 minimum
+	if usedDays < 1 {
+		usedDays = 1
+	}
+	
+	// Don't allow percentage to exceed 100% even if we're past expiration
+	percentOfTime := (usedDays / totalDays) * 100
+	if percentOfTime > 100 {
+		return 100
+	}
+	if percentOfTime < 0 {
+		return 0
+	}
+	
+	return percentOfTime
+}
+
+func (o *Option) CalculateMultiplier() float64 {
+	percentTime := o.CalculatePercentOfTime()
+	if percentTime == 0 {
+		return 0
+	}
+	return o.CalculatePercentOfProfit() / percentTime
+}
+
+// CalculateMultiplierWithCurrentPrice calculates multiplier for open positions using current market price
+func (o *Option) CalculateMultiplierWithCurrentPrice(currentPrice float64) float64 {
+	percentTime := o.CalculatePercentOfTime()
+	if percentTime == 0 {
+		return 0
+	}
+	return o.CalculatePercentOfProfitWithCurrentPrice(currentPrice) / percentTime
+}
+
+func (o *Option) GetExitPriceValue() float64 {
+	if o.ExitPrice != nil {
+		return *o.ExitPrice
+	}
+	return 0.0
+}
+
+// IsProfit returns true if the option generated a profit
+func (o *Option) IsProfit() bool {
+	return o.CalculateTotalProfit() > 0
+}
+
+// IsLoss returns true if the option generated a loss
+func (o *Option) IsLoss() bool {
+	return o.CalculateTotalProfit() < 0
+}
+
+// IsOpen returns true if the option position is still open
+func (o *Option) IsOpen() bool {
+	return o.Closed == nil
+}
+
+// IsClosed returns true if the option position is closed
+func (o *Option) IsClosed() bool {
+	return o.Closed != nil
+}
+
+// GetProfitLossClass returns CSS class for profit/loss styling
+func (o *Option) GetProfitLossClass() string {
+	if o.IsLoss() {
+		return "negative"
+	} else if o.IsProfit() {
+		return "positive"
+	}
+	return ""
+}
+
+// GetFormattedTotalProfit returns formatted total profit with appropriate styling class
+func (o *Option) GetFormattedTotalProfit() string {
+	profit := o.CalculateTotalProfit()
+	if profit < 0 {
+		return fmt.Sprintf("<span class=\"negative\">$%.2f</span>", profit)
+	}
+	return fmt.Sprintf("$%.2f", profit)
+}
+
+// GetFormattedPercentOfProfit returns formatted percent of profit with appropriate styling
+func (o *Option) GetFormattedPercentOfProfit() string {
+	percent := o.CalculatePercentOfProfit()
+	if percent < 0 {
+		return fmt.Sprintf("<span class=\"negative\">%.0f%%</span>", percent)
+	}
+	return fmt.Sprintf("%.0f%%", percent)
+}
+
+type Dividend struct {
+	ID        int       `json:"id"`
+	Symbol    string    `json:"symbol"`
+	Received  time.Time `json:"received"`
+	Amount    float64   `json:"amount"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+
+type SymbolService struct {
+	db *sql.DB
+}
+
+func NewSymbolService(db *sql.DB) *SymbolService {
+	return &SymbolService{db: db}
+}
+
+func (s *SymbolService) Create(symbol string) (*Symbol, error) {
+	symbol = strings.TrimSpace(strings.ToUpper(symbol))
+	if symbol == "" {
+		return nil, fmt.Errorf("symbol cannot be empty")
+	}
+
+	query := `INSERT INTO symbols (symbol) VALUES (?) RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at`
+	var sym Symbol
+	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create symbol: %w", err)
+	}
+
+	return &sym, nil
+}
+
+func (s *SymbolService) GetBySymbol(symbol string) (*Symbol, error) {
+	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at FROM symbols WHERE symbol = ?`
+	var sym Symbol
+	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("symbol not found")
+		}
+		return nil, fmt.Errorf("failed to get symbol: %w", err)
+	}
+
+	return &sym, nil
+}
+
+func (s *SymbolService) GetAll() ([]*Symbol, error) {
+	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at FROM symbols ORDER BY symbol`
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get symbols: %w", err)
+	}
+	defer rows.Close()
+
+	var symbols []*Symbol
+	for rows.Next() {
+		var symbol Symbol
+		if err := rows.Scan(&symbol.Symbol, &symbol.Price, &symbol.Dividend, &symbol.ExDividendDate, &symbol.PERatio, &symbol.CreatedAt, &symbol.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan symbol: %w", err)
+		}
+		symbols = append(symbols, &symbol)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating symbols: %w", err)
+	}
+
+	return symbols, nil
+}
+
+func (s *SymbolService) Update(symbol string, price float64, dividend float64, exDividendDate *time.Time, peRatio *float64) (*Symbol, error) {
+	symbol = strings.TrimSpace(strings.ToUpper(symbol))
+	if symbol == "" {
+		return nil, fmt.Errorf("symbol cannot be empty")
+	}
+
+	query := `UPDATE symbols SET price = ?, dividend = ?, ex_dividend_date = ?, pe_ratio = ?, updated_at = CURRENT_TIMESTAMP WHERE symbol = ? RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at`
+	var sym Symbol
+	err := s.db.QueryRow(query, price, dividend, exDividendDate, peRatio, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("symbol not found")
+		}
+		return nil, fmt.Errorf("failed to update symbol: %w", err)
+	}
+
+	return &sym, nil
+}
+
+func (s *SymbolService) Delete(symbol string) error {
+	query := `DELETE FROM symbols WHERE symbol = ?`
+	result, err := s.db.Exec(query, symbol)
+	if err != nil {
+		return fmt.Errorf("failed to delete symbol: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("symbol not found")
+	}
+
+	return nil
+}
+
+func (s *SymbolService) GetDistinctSymbols() ([]string, error) {
+	query := `
+		SELECT DISTINCT symbol FROM (
+			SELECT symbol FROM symbols
+			UNION
+			SELECT symbol FROM options
+			UNION
+			SELECT symbol FROM long_positions
+			UNION
+			SELECT symbol FROM dividends
+		) ORDER BY symbol
+	`
+	
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get distinct symbols: %w", err)
+	}
+	defer rows.Close()
+
+	var symbols []string
+	for rows.Next() {
+		var symbol string
+		if err := rows.Scan(&symbol); err != nil {
+			return nil, fmt.Errorf("failed to scan symbol: %w", err)
+		}
+		symbols = append(symbols, symbol)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating symbols: %w", err)
+	}
+
+	return symbols, nil
+}
+

@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="help-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .AllSymbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item active">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section">
+                <div class="section-title">Wheeler Help</div>
+                <div class="section-subtitle">Portfolio tracking and management guide</div>
+                
+                <!-- Tab Navigation -->
+                <div class="tab-nav">
+                    <button class="tab-button active" data-tab="wheeler-help">
+                        <i class="fas fa-question-circle"></i>
+                        Wheeler Help
+                    </button>
+                    <button class="tab-button" data-tab="tutorial">
+                        <i class="fas fa-graduation-cap"></i>
+                        Tutorial
+                    </button>
+                </div>
+                
+                <!-- Wheeler Help Tab Content -->
+                <div class="tab-content active" id="wheeler-help">
+                    <div class="help-overview">
+                        <h3><i class="fas fa-info-circle"></i> About Wheeler</h3>
+                        <p>Wheeler is a comprehensive financial portfolio tracking system for managing stocks, options, long positions, dividend payments, and Treasury securities with modern web interfaces and interactive Chart.js visualizations.</p>
+                    </div>
+                
+                <!-- Main Navigation Pages -->
+                <div class="help-section">
+                    <h3><i class="fas fa-sitemap"></i> Main Navigation</h3>
+                    <div class="help-panels-grid">
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <h4><a href="/">Dashboard</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Main portfolio overview with allocation charts, watchlist summary, and performance metrics.</p>
+                                <ul class="panel-features">
+                                    <li>Long by Symbol pie chart</li>
+                                    <li>Put Exposure visualization</li>
+                                    <li>Total Allocation with Treasuries</li>
+                                    <li>Comprehensive watchlist table</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-calendar-alt"></i>
+                                <h4><a href="/monthly">Monthly</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Monthly performance breakdown showing Put and Call options earnings by month and ticker.</p>
+                                <ul class="panel-features">
+                                    <li>Monthly gains tracking</li>
+                                    <li>Put vs Call performance</li>
+                                    <li>Cumulative profit analysis</li>
+                                    <li>Symbol-specific breakdowns</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-chart-bar"></i>
+                                <h4><a href="/options">Options</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Complete options trading interface with position management and analysis tools.</p>
+                                <ul class="panel-features">
+                                    <li>Put/Call position tracking</li>
+                                    <li>Expiration scatter plots</li>
+                                    <li>Strike prices & premiums</li>
+                                    <li>Days to expiration (DTE)</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-university"></i>
+                                <h4><a href="/treasuries">Treasuries</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Treasury securities management with yield tracking and maturity monitoring.</p>
+                                <ul class="panel-features">
+                                    <li>Yield calculations</li>
+                                    <li>Maturity date tracking</li>
+                                    <li>Performance summaries</li>
+                                    <li>CRUD operations</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Symbols Navigation -->
+                <div class="help-section">
+                    <h3><i class="fas fa-chart-line"></i> Symbols Navigation</h3>
+                    <div class="help-panels-grid">
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-plus"></i>
+                                <h4>New Symbol</h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Add new stock symbols to track in your portfolio with initial price and dividend data.</p>
+                                <ul class="panel-features">
+                                    <li>Quick symbol creation</li>
+                                    <li>Initial price setting</li>
+                                    <li>Dividend configuration</li>
+                                    <li>P/E ratio tracking</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-chart-line"></i>
+                                <h4>Individual Symbols</h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Detailed analysis pages for each stock symbol with comprehensive trading history.</p>
+                                <ul class="panel-features">
+                                    <li>Current prices & yields</li>
+                                    <li>Options positions</li>
+                                    <li>Long stock holdings</li>
+                                    <li>Dividend payment history</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Admin Navigation -->
+                <div class="help-section">
+                    <h3><i class="fas fa-cog"></i> Admin Tools</h3>
+                    <div class="help-panels-grid">
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-upload"></i>
+                                <h4><a href="/import">Import</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>CSV data import functionality for bulk loading of portfolio data.</p>
+                                <ul class="panel-features">
+                                    <li>Options CSV import</li>
+                                    <li>Stocks data upload</li>
+                                    <li>Dividends bulk load</li>
+                                    <li>Validation & error handling</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="help-panel">
+                            <div class="panel-header">
+                                <i class="fas fa-database"></i>
+                                <h4><a href="/backup">Database</a></h4>
+                            </div>
+                            <div class="panel-content">
+                                <p>Database management tools for backup, restoration, and data safety.</p>
+                                <ul class="panel-features">
+                                    <li>Timestamped backups</li>
+                                    <li>Database switching</li>
+                                    <li>Download backup files</li>
+                                    <li>Data restoration</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Navigation Tips -->
+                <div class="help-section">
+                    <h3><i class="fas fa-compass"></i> Navigation Tips</h3>
+                    <div class="help-tips">
+                        <div class="tip-card">
+                            <i class="fas fa-mouse-pointer"></i>
+                            <p><strong>Interactive Charts:</strong> Hover over charts for detailed information and click legends to filter data</p>
+                        </div>
+                        <div class="tip-card">
+                            <i class="fas fa-sort"></i>
+                            <p><strong>Sortable Tables:</strong> Click column headers to sort data in ascending or descending order</p>
+                        </div>
+                        <div class="tip-card">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                            <p><strong>Expandable Sections:</strong> Use the Symbols and Admin toggles to expand/collapse navigation sections</p>
+                        </div>
+                        <div class="tip-card">
+                            <i class="fas fa-database"></i>
+                            <p><strong>Database Switching:</strong> Current database name is shown in the sidebar for multi-portfolio management</p>
+                        </div>
+                    </div>
+                </div>
+                </div>
+                
+                <!-- Tutorial Tab Content -->
+                <div class="tab-content" id="tutorial">
+                    <div class="tutorial-header">
+                        <h3><i class="fas fa-chart-line"></i> The Professional Wheel Strategy</h3>
+                        <p class="tutorial-subtitle">A detailed chronicle of implementing covered calls, cash-secured puts, and systematic position scaling</p>
+                        
+                        <!-- Generate Test Data Button (Top) -->
+                        <div class="test-data-section">
+                            <button class="generate-data-btn" id="generateDataTop">
+                                <i class="fas fa-database"></i>
+                                Generate Test Data
+                            </button>
+                            <p class="test-data-info">Click to load a complete year of professional wheel strategy trading data</p>
+                        </div>
+                    </div>
+                    
+                    <div class="tutorial-content">
+                        <div class="tutorial-section">
+                            <h4>Executive Summary</h4>
+                            <p>This case study documents a professional implementation of the "wheel strategy" combined with systematic position scaling across four dividend aristocrats: Verizon (VZ), Chevron (CVX), Coca-Cola (KO), and 3M (MMM). The strategy demonstrates how to generate consistent income through options premiums while building long-term equity positions through disciplined compounding.</p>
+                            
+                            <div class="key-metrics">
+                                <div class="metric-card">
+                                    <div class="metric-value">$36,000</div>
+                                    <div class="metric-label">Initial Capital (Stock)</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">$50,000</div>
+                                    <div class="metric-label">Treasury Collateral</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">~$89,000</div>
+                                    <div class="metric-label">Final Portfolio Value</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">73%</div>
+                                    <div class="metric-label">Annual Return</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tutorial-section">
+                            <h4>Strategy Framework</h4>
+                            <div class="strategy-components">
+                                <div class="component-card">
+                                    <h5><i class="fas fa-sync-alt"></i> The Wheel Mechanism</h5>
+                                    <ul>
+                                        <li>Sell cash-secured puts to generate income and acquire shares at favorable prices</li>
+                                        <li>Hold shares and collect dividends</li>
+                                        <li>Sell covered calls above cost basis for additional income</li>
+                                        <li>When called away, restart the cycle (the "wheel")</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="component-card">
+                                    <h5><i class="fas fa-chart-line"></i> Systematic Scaling</h5>
+                                    <ul>
+                                        <li>Use premium and dividend income to purchase additional shares</li>
+                                        <li>Scale in 100-share increments to enable additional covered call contracts</li>
+                                        <li>Compound returns through position size increases</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="component-card">
+                                    <h5><i class="fas fa-shield-alt"></i> Risk Management</h5>
+                                    <ul>
+                                        <li>Roll threatened positions to later expirations with adjusted strikes</li>
+                                        <li>Use Treasury securities as margin collateral</li>
+                                        <li>Maintain diversification across sectors (telecom, energy, consumer, industrial)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tutorial-section">
+                            <h4>Month-by-Month Journey</h4>
+                            <div class="timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">Jan</div>
+                                    <div class="timeline-content">
+                                        <h5>Foundation Building</h5>
+                                        <p><strong>Initial Positions:</strong> 100 shares each of VZ ($40), CVX ($160), KO ($60), MMM ($100)</p>
+                                        <p><strong>First Strangle Setup:</strong> Covered calls and cash-secured puts generating $1,040 in premium</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">Feb</div>
+                                    <div class="timeline-content">
+                                        <h5>First Assignment</h5>
+                                        <p><strong>MMM Put Assigned:</strong> Acquired 100 additional shares at $95 strike</p>
+                                        <p><strong>Key Insight:</strong> Assignment was favorable - MMM traded to $97, so $95 strike provided better entry</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">Mar</div>
+                                    <div class="timeline-content">
+                                        <h5>Dividend Collection & Calls</h5>
+                                        <p><strong>Q1 Dividends:</strong> $554.50 total across all positions</p>
+                                        <p><strong>Assignments:</strong> VZ and MMM called away, generating substantial profits</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">Apr-Jun</div>
+                                    <div class="timeline-content">
+                                        <h5>Strategic Scaling</h5>
+                                        <p><strong>Capital Redeployment:</strong> Used profits to rebuild positions at better prices</p>
+                                        <p><strong>KO Scaling:</strong> Built position from 100 to 200 shares systematically</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="timeline-item">
+                                    <div class="timeline-marker">Jul-Dec</div>
+                                    <div class="timeline-content">
+                                        <h5>Compounding Acceleration</h5>
+                                        <p><strong>Position Growth:</strong> Scaled all positions using accumulated profits</p>
+                                        <p><strong>Final Result:</strong> 900 total shares (vs 400 initial), generating 9 covered calls monthly</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tutorial-section">
+                            <h4>Financial Analysis</h4>
+                            <div class="income-breakdown">
+                                <div class="income-chart">
+                                    <div class="income-item" style="width: 70%">
+                                        <span class="income-label">Options Premiums</span>
+                                        <span class="income-value">$18,400 (70%)</span>
+                                    </div>
+                                    <div class="income-item" style="width: 12%">
+                                        <span class="income-label">Assignment Profits</span>
+                                        <span class="income-value">$3,200 (12%)</span>
+                                    </div>
+                                    <div class="income-item" style="width: 10%">
+                                        <span class="income-label">Treasury Interest</span>
+                                        <span class="income-value">$2,625 (10%)</span>
+                                    </div>
+                                    <div class="income-item" style="width: 8%">
+                                        <span class="income-label">Dividends</span>
+                                        <span class="income-value">$2,100 (8%)</span>
+                                    </div>
+                                </div>
+                                <div class="total-income">
+                                    <strong>Total Income: $26,325</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tutorial-section">
+                            <h4>Key Success Factors</h4>
+                            <div class="success-factors">
+                                <div class="factor-card">
+                                    <i class="fas fa-clock"></i>
+                                    <h5>Discipline</h5>
+                                    <p>Mechanical execution without emotional interference</p>
+                                </div>
+                                <div class="factor-card">
+                                    <i class="fas fa-hourglass-half"></i>
+                                    <h5>Patience</h5>
+                                    <p>Allowing assignments and compounding to work</p>
+                                </div>
+                                <div class="factor-card">
+                                    <i class="fas fa-star"></i>
+                                    <h5>Quality</h5>
+                                    <p>Focusing on dividend aristocrats with strong fundamentals</p>
+                                </div>
+                                <div class="factor-card">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <h5>Risk Management</h5>
+                                    <p>Rolling positions rather than taking losses</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tutorial-section">
+                            <h4>Conclusion</h4>
+                            <p>This year-long implementation demonstrates the wheel strategy's effectiveness for systematic wealth building. By combining income generation with strategic position scaling, the approach delivered exceptional risk-adjusted returns while building substantial equity positions.</p>
+                            <p>The strategy's true power lies not in any single trade, but in the systematic application of proven principles over time. Each monthly cycle builds upon the previous, creating a compounding effect that accelerates wealth accumulation while providing steady income.</p>
+                            
+                            <div class="conclusion-stats">
+                                <div class="stat-highlight">
+                                    <span class="stat-number">73%</span>
+                                    <span class="stat-text">Annual Return</span>
+                                </div>
+                                <div class="stat-highlight">
+                                    <span class="stat-number">2.8x</span>
+                                    <span class="stat-text">Max Leverage</span>
+                                </div>
+                                <div class="stat-highlight">
+                                    <span class="stat-number">&lt;5%</span>
+                                    <span class="stat-text">Max Drawdown</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Generate Test Data Button (Bottom) -->
+                    <div class="test-data-section bottom">
+                        <button class="generate-data-btn" id="generateDataBottom">
+                            <i class="fas fa-database"></i>
+                            Generate Test Data
+                        </button>
+                        <p class="test-data-info">Load this complete wheel strategy example into your Wheeler database</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    
+    <script>
+        // Tab functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all tabs and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                });
+            });
+            
+            // Generate test data functionality
+            const generateButtons = document.querySelectorAll('.generate-data-btn');
+            
+            generateButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    if (this.classList.contains('loading')) {
+                        return; // Prevent multiple clicks
+                    }
+                    
+                    this.classList.add('loading');
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating Test Data...';
+                    
+                    fetch('/api/generate-test-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.innerHTML = '<i class="fas fa-check"></i> Test Data Generated!';
+                            this.classList.remove('loading');
+                            this.classList.add('success');
+                            
+                            // Show success message
+                            showNotification('Test data generated successfully! Navigate to Dashboard to see the wheel strategy data.', 'success');
+                            
+                            // Reset button after 3 seconds
+                            setTimeout(() => {
+                                this.innerHTML = '<i class="fas fa-database"></i> Generate Test Data';
+                                this.classList.remove('success');
+                            }, 3000);
+                        } else {
+                            throw new Error(data.error || 'Failed to generate test data');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error generating test data:', error);
+                        this.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error - Try Again';
+                        this.classList.remove('loading');
+                        this.classList.add('error');
+                        
+                        showNotification('Failed to generate test data: ' + error.message, 'error');
+                        
+                        // Reset button after 3 seconds
+                        setTimeout(() => {
+                            this.innerHTML = '<i class="fas fa-database"></i> Generate Test Data';
+                            this.classList.remove('error');
+                        }, 3000);
+                    });
+                });
+            });
+            
+            // Notification system
+            function showNotification(message, type) {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                    <span>${message}</span>
+                    <button class="notification-close">&times;</button>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Show notification
+                setTimeout(() => notification.classList.add('show'), 100);
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }, 5000);
+                
+                // Manual close
+                notification.querySelector('.notification-close').addEventListener('click', () => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

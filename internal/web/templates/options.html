@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
+</head>
+<body class="options-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item active">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .Symbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Expiration Distribution Chart -->
+            <div class="content-section">
+                <div class="section-title">Position Distribution by Expiration</div>
+                <div class="chart-container">
+                    <canvas id="expirationScatterChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Open Positions Panel -->
+            <div class="content-section options-fullscreen-panel">
+                <div class="section-title">Open Positions</div>
+                <div class="accordion-container">
+                    {{if .OpenPositions}}
+                        {{$groupedPositions := (.OpenPositions | groupByExpiration)}}
+                        {{range $groupedPositions}}
+                        <div class="accordion-group">
+                            <div class="accordion-header" data-target="exp-{{.DateStr | replace "/" "-"}}">
+                                <div class="accordion-title">
+                                    <span class="expiration-section">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        Expiration: {{.DateStr}}
+                                    </span>
+                                    {{if .Positions}}
+                                        {{$firstPosition := index .Positions 0}}
+                                        <span class="dte-section">
+                                            DTE: <span class="{{if le $firstPosition.DaysToExpiration 0}}dte-expired{{else if le $firstPosition.DaysToExpiration 3}}dte-critical{{else if le $firstPosition.DaysToExpiration 6}}dte-warning{{else if le $firstPosition.DaysToExpiration 9}}dte-caution{{else if le $firstPosition.DaysToExpiration 15}}dte-neutral{{else if le $firstPosition.DaysToExpiration 21}}dte-safe{{else}}dte-healthy{{end}}">{{$firstPosition.DaysToExpiration}} days</span>
+                                        </span>
+                                        {{$callCount := 0}}
+                                        {{$putCount := 0}}
+                                        {{$callNominal := 0.0}}
+                                        {{$putExposed := 0.0}}
+                                        {{range .Positions}}
+                                            {{if eq .Type "Call"}}
+                                                {{$callCount = add $callCount 1}}
+                                                {{$callNominal = add $callNominal (mul (mul .Strike .Contracts) 100)}}
+                                            {{else}}
+                                                {{$putCount = add $putCount 1}}
+                                                {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
+                                            {{end}}
+                                        {{end}}
+                                        <div class="position-breakdown">
+                                            <span class="positions-count">{{len .Positions}} Position{{if ne (len .Positions) 1}}s{{end}}</span>
+                                            {{if gt $callCount 0}}<span class="calls-info">{{$callCount}} Call{{if ne $callCount 1}}s{{end}} - {{formatCurrency $callNominal}}</span>{{end}}
+                                            {{if gt $putCount 0}}<span class="puts-info">{{$putCount}} Put{{if ne $putCount 1}}s{{end}} - {{formatCurrency $putExposed}}</span>{{end}}
+                                        </div>
+                                    {{end}}
+                                </div>
+                                <div class="accordion-toggle">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <div class="accordion-content" id="exp-{{.DateStr | replace "/" "-"}}">
+                                <div class="table-container-scrollable">
+                                    <table class="financial-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Symbol</th>
+                                                <th>Type</th>
+                                                <th>Strike</th>
+                                                <th>Quantity</th>
+                                                <th>Nominal</th>
+                                                <th>Premium</th>
+                                                <th>Entry Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {{range .Positions}}
+                                            <tr>
+                                                <td class="ticker-col"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
+                                                <td>
+                                                    <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
+                                                        <i class="fas fa-caret-up"></i>
+                                                        {{.Type}}
+                                                    </span>
+                                                </td>
+                                                <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
+                                                <td>{{.Contracts}}</td>
+                                                <td class="neutral-currency">{{formatCurrency (mul (mul .Strike .Contracts) 100)}}</td>
+                                                <td class="premium-column {{if lt .Premium 0.0}}negative{{else if gt .Premium 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .Premium}}</td>
+                                                <td>{{.EntryDate.Format "01/02/2006"}}</td>
+                                            </tr>
+                                            {{end}}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {{end}}
+                    {{else}}
+                        <div style="text-align: center; color: #a0a0a0; padding: 40px;">
+                            <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
+                            <div style="font-size: 18px; margin-bottom: 10px;">No Open Option Positions</div>
+                            <div style="font-size: 14px;">All your option positions have been closed.</div>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script>
+        // Apply profit/loss coloring and formatting to options tables
+        function applyOptionsTableColoring() {
+            const tables = document.querySelectorAll('.financial-table');
+            tables.forEach(table => {
+                // Process all rows in tbody and tfoot
+                const rows = table.querySelectorAll('tbody tr, tfoot tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((cell, columnIndex) => {
+                        const text = cell.textContent.trim();
+                        
+                        // Skip cells with neutral-currency or premium-column class
+                        if (cell.classList.contains('neutral-currency') || cell.classList.contains('premium-column')) {
+                            return;
+                        }
+                        
+                        // Check if it's a monetary value (with or without decimal places)
+                        if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
+                            // Extract numeric value
+                            const value = parseFloat(text.replace(/[\$,]/g, ''));
+                            
+                            // Skip if it's not a valid number
+                            if (isNaN(value)) return;
+                            
+                            // Format as currency with comma separators
+                            const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                            
+                            if (value < 0) {
+                                cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
+                            } else if (value > 0) {
+                                cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
+                            } else {
+                                cell.innerHTML = '$0';
+                            }
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Accordion functionality
+        function initializeAccordions() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const target = this.getAttribute('data-target');
+                    const content = document.getElementById(target);
+                    const isActive = this.classList.contains('active');
+                    
+                    // Close all accordions first
+                    accordionHeaders.forEach(h => {
+                        h.classList.remove('active');
+                        const targetId = h.getAttribute('data-target');
+                        const targetContent = document.getElementById(targetId);
+                        if (targetContent) {
+                            targetContent.classList.remove('expanded');
+                        }
+                    });
+                    
+                    // Open clicked accordion (unless it was already active)
+                    if (!isActive) {
+                        this.classList.add('active');
+                        if (content) {
+                            content.classList.add('expanded');
+                        }
+                    }
+                });
+            });
+            
+            // Open only the first accordion by default
+            if (accordionHeaders.length > 0) {
+                accordionHeaders[0].classList.add('active');
+                const firstTarget = accordionHeaders[0].getAttribute('data-target');
+                const firstContent = document.getElementById(firstTarget);
+                if (firstContent) {
+                    firstContent.classList.add('expanded');
+                }
+                
+                // Ensure all other accordions are closed
+                for (let i = 1; i < accordionHeaders.length; i++) {
+                    accordionHeaders[i].classList.remove('active');
+                    const targetId = accordionHeaders[i].getAttribute('data-target');
+                    const targetContent = document.getElementById(targetId);
+                    if (targetContent) {
+                        targetContent.classList.remove('expanded');
+                    }
+                }
+            }
+        }
+        
+        // Create scatter plot for expiration distribution
+        function createExpirationScatterChart() {
+            const ctx = document.getElementById('expirationScatterChart').getContext('2d');
+            
+            // Prepare data from accordion groups
+            const scatterData = [];
+            const accordionGroups = document.querySelectorAll('.accordion-group');
+            
+            accordionGroups.forEach(group => {
+                const header = group.querySelector('.accordion-header');
+                const expirationText = header.querySelector('.expiration-section').textContent;
+                const positionBreakdown = header.querySelector('.position-breakdown');
+                
+                // Extract expiration date
+                const expirationMatch = expirationText.match(/Expiration: (\d{2}\/\d{2}\/\d{4})/);
+                if (expirationMatch) {
+                    const expirationDate = new Date(expirationMatch[1]);
+                    
+                    // Extract position count
+                    const positionText = positionBreakdown.querySelector('.positions-count').textContent;
+                    const positionCount = parseInt(positionText.match(/(\d+) Position/)[1]);
+                    
+                    scatterData.push({
+                        x: expirationDate,
+                        y: positionCount
+                    });
+                }
+            });
+            
+            // Sort by date
+            scatterData.sort((a, b) => a.x - b.x);
+            
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Positions by Expiration',
+                        data: scatterData,
+                        backgroundColor: '#27ae60',
+                        borderColor: '#27ae60',
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM dd'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Expiration Date',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#a0a0a0'
+                            },
+                            grid: {
+                                color: '#3a3a3a'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Positions',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#a0a0a0',
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: '#3a3a3a'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'point'
+                    }
+                }
+            });
+        }
+        
+        // Apply coloring and initialize accordions when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applyOptionsTableColoring();
+            initializeAccordions();
+            
+            // Create scatter chart after accordions are initialized
+            setTimeout(() => {
+                createExpirationScatterChart();
+            }, 100);
+        });
+        
+        // Also apply immediately in case DOMContentLoaded already fired
+        applyOptionsTableColoring();
+
+        console.log('Options page loaded');
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>

@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{.Symbol}} - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
+</head>
+<body class="symbol-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .AllSymbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item {{if eq . $.Symbol}}active{{end}}">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Stock Header Info -->
+            <div class="stock-header">
+                <div class="stock-info">
+                    <div>
+                        <div class="stock-title">{{.Symbol}} - {{.CompanyName}}</div>
+                        <div style="font-size: 14px; color: #a0a0a0; margin-top: 5px;">Last updated: {{.LastUpdate}}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 20px;">
+                                <div class="stock-price">${{printf "%.2f" .Price}}</div>
+                                <div style="font-size: 20px; color: #a0a0a0;">
+                                    <span style="color: #4ade80;">Div:</span> ${{printf "%.2f" .Dividend}}
+                                </div>
+                                <div style="font-size: 20px; color: #a0a0a0;">
+                                    <span style="color: #4ade80;">Yield:</span> {{printf "%.2f" .Yield}}%
+                                </div>
+                                {{if .ExDividendDate}}
+                                <div style="font-size: 20px; color: #a0a0a0;">
+                                    <span style="color: #4ade80;">Ex-Div:</span> {{.ExDividendDate.Format "01/02/2006"}}
+                                </div>
+                                {{end}}
+                                {{if .HasPERatio}}
+                                <div style="font-size: 20px; color: #a0a0a0;">
+                                    <span style="color: #4ade80;">P/E:</span> {{printf "%.2f" .PERatioValue}}
+                                </div>
+                                {{end}}
+                            </div>
+                        </div>
+                        <button id="editSymbolBtn" class="edit-btn">
+                            <i class="fas fa-edit"></i>
+                            Edit
+                        </button>
+                        <button id="deleteSymbolBtn" class="btn btn-danger" style="margin-left: 10px;">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Options Gains</div>
+                        <div class="summary-value positive">${{.OptionsGains}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Cap Gains</div>
+                        <div class="summary-value positive">${{.CapGains}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Dividends</div>
+                        <div class="summary-value positive">${{.Dividends}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Profits</div>
+                        <div class="summary-value positive">${{.TotalProfits}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Cash on Cash</div>
+                        <div class="summary-value positive">{{.CashOnCash}}%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Options Trading - Full Width -->
+            <div class="content-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="section-title">Options{{if .OptionsList}} ({{len .OptionsList}} trades){{end}}</div>
+                    <button id="addOptionBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Add
+                    </button>
+                </div>
+                <div class="table-container-scrollable">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date Sold</th>
+                                <th>Closed Date</th>
+                                <th>Strike</th>
+                                <th>OTM</th>
+                                <th>Expiration</th>
+                                <th>Remaining</th>
+                                <th>DTE</th>
+                                <th>DTC</th>
+                                <th>Premium</th>
+                                <th>Contracts</th>
+                                <th>Exit Price</th>
+                                <th>Commission</th>
+                                <th>Call/Put</th>
+                                <th>% of Profit</th>
+                                <th>% of Time</th>
+                                <th>Multiplier</th>
+                                <th>Total</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .OptionsList}}
+                                {{range .OptionsList}}
+                                <tr>
+                                    <td>{{.Opened.Format "1/2/2006"}}</td>
+                                    <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
+                                    <td>{{printf "%.0f" .Strike}}</td>
+                                    <td>{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
+                                    <td>{{.Expiration.Format "1/2/2006"}}</td>
+                                    <td>
+                                        {{if not .Closed}}
+                                            <span class="{{if le .CalculateDaysRemaining 0}}dte-expired{{else if le .CalculateDaysRemaining 3}}dte-critical{{else if le .CalculateDaysRemaining 6}}dte-warning{{else if le .CalculateDaysRemaining 9}}dte-caution{{else if le .CalculateDaysRemaining 15}}dte-neutral{{else if le .CalculateDaysRemaining 21}}dte-safe{{else}}dte-healthy{{end}}">{{.CalculateDaysRemaining}} days</span>
+                                        {{else}}
+                                            - 
+                                        {{end}}
+                                    </td>
+                                    <td>{{.CalculateDTE}}</td>
+                                    <td>{{.CalculateDTC}}</td>
+                                    <td>{{printf "%.2f" .Premium}}</td>
+                                    <td>{{.Contracts}}</td>
+                                    <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
+                                    <td>{{printf "%.2f" .Commission}}</td>
+                                    <td>
+                                        <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
+                                            <i class="fas fa-caret-up"></i>
+                                            {{.Type}}
+                                        </span>
+                                    </td>
+                                    <td><span>{{printf "%.0f" (.CalculatePercentOfProfit)}}%</span></td>
+                                    <td>{{printf "%.2f" (.CalculatePercentOfTime)}}</td>
+                                    <td>{{printf "%.2f" (.CalculateMultiplier)}}</td>
+                                    <td><span>${{printf "%.2f" (.CalculateTotalProfit)}}</span></td>
+                                    <td>
+                                        <button class="btn btn-secondary edit-option-btn" 
+                                                data-id="{{.ID}}"
+                                                data-symbol="{{.Symbol | html}}" 
+                                                data-type="{{.Type}}"
+                                                data-opened="{{.Opened.Format "2006-01-02"}}"
+                                                data-strike="{{.Strike}}"
+                                                data-expiration="{{.Expiration.Format "2006-01-02"}}"
+                                                data-premium="{{.Premium}}"
+                                                data-contracts="{{.Contracts}}"
+                                                data-closed="{{if .Closed}}{{.Closed.Format "2006-01-02"}}{{end}}"
+                                                data-exit-price="{{if .ExitPrice}}{{.GetExitPriceValue}}{{end}}"
+                                                data-commission="{{.Commission}}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-danger delete-option-btn"
+                                                data-id="{{.ID}}"
+                                                data-symbol="{{.Symbol | html}}" 
+                                                data-type="{{.Type}}"
+                                                data-opened="{{.Opened.Format "2006-01-02"}}"
+                                                data-strike="{{.Strike}}"
+                                                data-expiration="{{.Expiration.Format "2006-01-02"}}"
+                                                data-premium="{{.Premium}}"
+                                                data-contracts="{{.Contracts}}"
+                                                style="margin-left: 5px;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="16" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                        No options trades recorded for {{.Symbol}}
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Stock Positions & Dividends - Side by Side -->
+            <div class="section-row">
+                <!-- Stock Positions -->
+                <div class="content-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-title">Stock Positions</div>
+                        <button id="addLongPositionBtn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="table-medium">
+                            <thead>
+                                <tr>
+                                    <th>Purchased</th>
+                                    <th>Closed Date</th>
+                                    <th>Yield</th>
+                                    <th>Shares</th>
+                                    <th>Buy Price</th>
+                                    <th>Exit Price</th>
+                                    <th>Profit/Loss</th>
+                                    <th>ROI</th>
+                                    <th>Amount</th>
+                                    <th>Total Invested</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{if .LongPositionsList}}
+                                    {{range .LongPositionsList}}
+                                    <tr>
+                                        <td>{{.Opened.Format "1/2/2006"}}</td>
+                                        <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
+                                        <td>{{printf "%.2f" (.CalculateYield $.Yield)}}%</td>
+                                        <td>{{.Shares}}</td>
+                                        <td>${{printf "%.2f" .BuyPrice}}</td>
+                                        <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
+                                        <td><span>${{printf "%.2f" (.CalculateProfitLoss $.Price)}}</span></td>
+                                        <td><span>{{printf "%.2f" (.CalculateROI $.Price)}}%</span></td>
+                                        <td>${{printf "%.2f" (.CalculateAmount)}}</td>
+                                        <td>${{printf "%.2f" (.CalculateTotalInvested)}}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-secondary edit-long-position-btn" data-id="{{.ID}}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger delete-long-position-btn" data-id="{{.ID}}" style="margin-left: 5px;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                {{else}}
+                                    <tr>
+                                        <td colspan="11" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                            No stock positions recorded for {{.Symbol}}
+                                        </td>
+                                    </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Dividends -->
+                <div class="content-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-title">Dividends</div>
+                        <button id="addDividendBtn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Add
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Received</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{if .DividendsList}}
+                                    {{range .DividendsList}}
+                                    <tr>
+                                        <td>{{.Received.Format "01/02/2006"}}</td>
+                                        <td class="positive">${{printf "%.2f" .Amount}}</td>
+                                        <td>
+                                            <button class="btn btn-secondary edit-dividend-btn" 
+                                                    data-id="{{.ID}}"
+                                                    data-symbol="{{.Symbol | html}}" 
+                                                    data-received="{{.Received.Format "2006-01-02"}}"
+                                                    data-amount="{{.Amount}}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-danger delete-dividend-btn"
+                                                    data-id="{{.ID}}"
+                                                    data-symbol="{{.Symbol | html}}" 
+                                                    data-received="{{.Received.Format "2006-01-02"}}"
+                                                    data-amount="{{.Amount}}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {{end}}
+                                {{else}}
+                                    <tr>
+                                        <td colspan="3" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                            No dividends recorded for {{.Symbol}}
+                                        </td>
+                                    </tr>
+                                {{end}}
+                            </tbody>
+                            {{if .DividendsList}}
+                            <tfoot>
+                                <tr class="table-totals-row">
+                                    <td>Total</td>
+                                    <td class="positive">${{printf "%.2f" .DividendsTotal}}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                            {{end}}
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Monthly Results - Full Width at Bottom -->
+            <div class="content-section">
+                <div class="section-title">Monthly Results</div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Month</th>
+                                <th>Puts</th>
+                                <th>Calls</th>
+                                <th>Puts Total</th>
+                                <th>Calls Total</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .MonthlyResults}}
+                                {{range .MonthlyResults}}
+                                {{if or (gt .PutsCount 0) (gt .CallsCount 0) (ne .Total 0.0)}}
+                                <tr>
+                                    <td>{{.Month}}</td>
+                                    <td>{{.PutsCount}}</td>
+                                    <td>{{.CallsCount}}</td>
+                                    <td>${{printf "%.2f" .PutsTotal}}</td>
+                                    <td>${{printf "%.2f" .CallsTotal}}</td>
+                                    <td>${{printf "%.2f" .Total}}</td>
+                                </tr>
+                                {{end}}
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                        No options activity recorded for {{.Symbol}}
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <!-- Dividend Modal -->
+    <div id="dividendModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="dividendModalTitle">Add Dividend</h2>
+                <span class="close" id="closeDividendModal">&times;</span>
+            </div>
+            <form id="dividendForm">
+                <div class="form-group">
+                    <label for="dividendSymbolInput" class="form-label">Symbol</label>
+                    <input type="text" id="dividendSymbolInput" class="form-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="dividendReceivedInput" class="form-label">Received Date *</label>
+                    <input type="date" id="dividendReceivedInput" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="dividendAmountInput" class="form-label">Amount *</label>
+                    <input type="number" id="dividendAmountInput" class="form-input" step="0.01" placeholder="0.00" required>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-primary" id="saveDividend">Save Dividend</button>
+                    <button type="button" class="btn btn-secondary" id="cancelDividendModal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Option Modal -->
+    <div id="optionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="optionModalTitle">Add Option</h2>
+                <span class="close" id="closeOptionModal">&times;</span>
+            </div>
+            <form id="optionForm">
+                <div class="form-group">
+                    <label for="optionSymbolInput" class="form-label">Symbol</label>
+                    <input type="text" id="optionSymbolInput" class="form-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="optionTypeInput" class="form-label">Type *</label>
+                    <select id="optionTypeInput" class="form-input" required>
+                        <option value="">Select Option Type</option>
+                        <option value="Put">Put</option>
+                        <option value="Call">Call</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="optionOpenedInput" class="form-label">Date Sold *</label>
+                        <input type="date" id="optionOpenedInput" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="optionStrikeInput" class="form-label">Strike Price *</label>
+                        <input type="number" id="optionStrikeInput" class="form-input" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="optionExpirationInput" class="form-label">Expiration Date *</label>
+                        <input type="date" id="optionExpirationInput" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="optionPremiumInput" class="form-label">Premium *</label>
+                        <input type="number" id="optionPremiumInput" class="form-input" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="optionContractsInput" class="form-label">Contracts *</label>
+                        <input type="number" id="optionContractsInput" class="form-input" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="optionCommissionInput" class="form-label">Commission</label>
+                        <input type="number" id="optionCommissionInput" class="form-input" step="0.01" value="0.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="optionClosedInput" class="form-label">Closed Date</label>
+                        <input type="date" id="optionClosedInput" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="optionExitPriceInput" class="form-label">Exit Price</label>
+                        <input type="number" id="optionExitPriceInput" class="form-input" step="0.0001">
+                    </div>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-primary" id="saveOption">Save Option</button>
+                    <button type="button" class="btn btn-secondary" id="cancelOptionModal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Long Position Modal -->
+    <div id="longPositionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="longPositionModalTitle">Add Long Position</h2>
+                <span class="close" id="closeLongPositionModal">&times;</span>
+            </div>
+            <form id="longPositionForm">
+                <div class="form-group">
+                    <label for="longPositionSymbolInput" class="form-label">Symbol</label>
+                    <input type="text" id="longPositionSymbolInput" class="form-input" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="longPositionOpenedInput" class="form-label">Purchase Date *</label>
+                    <input type="date" id="longPositionOpenedInput" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="longPositionSharesInput" class="form-label">Shares *</label>
+                    <input type="number" id="longPositionSharesInput" class="form-input" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="longPositionBuyPriceInput" class="form-label">Buy Price *</label>
+                    <input type="number" id="longPositionBuyPriceInput" class="form-input" step="0.01" placeholder="0.00" required>
+                </div>
+                <div class="form-group">
+                    <label for="longPositionClosedInput" class="form-label">Closed Date</label>
+                    <input type="date" id="longPositionClosedInput" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="longPositionExitPriceInput" class="form-label">Exit Price</label>
+                    <input type="number" id="longPositionExitPriceInput" class="form-input" step="0.01" placeholder="0.00">
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="btn btn-primary" id="saveLongPosition">Save Position</button>
+                    <button type="button" class="btn btn-secondary" id="cancelLongPositionModal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal jquery-modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmModalTitle">Confirm Action</h5>
+                    <button type="button" class="modal-close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmModalMessage">Are you sure you want to proceed?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalConfirm">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Symbol view loaded for: {{.Symbol}}');
+        
+        // Modal helper functions
+        function showConfirmModal(title, message, onConfirm) {
+            $('#confirmModalTitle').text(title);
+            $('#confirmModalMessage').html(message);
+            $('#confirmModal').show();
+            
+            // Remove any existing event handlers
+            $('#confirmModalConfirm').off('click');
+            
+            // Add new event handler
+            $('#confirmModalConfirm').on('click', function() {
+                $('#confirmModal').hide();
+                if (onConfirm) onConfirm();
+            });
+        }
+        
+        // Modal dismiss handlers
+        $(document).ready(function() {
+            $('[data-dismiss="modal"]').on('click', function() {
+                $(this).closest('.modal').hide();
+            });
+            
+            $('.modal').on('click', function(e) {
+                if (e.target === this) {
+                    $(this).hide();
+                }
+            });
+        });
+        
+        // Check if template rendering breaks here
+        console.log('About to enter DOMContentLoaded...');
+        
+        console.log('Before DOMContentLoaded setup');
+        
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('INSIDE DOMContentLoaded - this should appear!');
+            console.log('DOM is ready, initializing JavaScript...');
+            
+            // Get symbol safely from page title or data attribute
+            const currentSymbol = document.title.split(' - ')[0];
+            console.log('Current symbol:', currentSymbol);
+            
+            // Symbol Modal functionality (custom implementation for this page)
+            // Mark that custom modal implementation is present
+            window.symbolModalInitialized = true;
+            
+            const modal = document.getElementById('symbolModal');
+        const editSymbolBtn = document.getElementById('editSymbolBtn');
+        const newSymbolBtn = document.getElementById('newSymbolBtn');
+        const closeModal = document.getElementById('closeModal');
+        const cancelModal = document.getElementById('cancelModal');
+        const symbolForm = document.getElementById('symbolForm');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        // Open modal for editing current symbol
+        console.log('About to set up editSymbolBtn listener...');
+        editSymbolBtn.addEventListener('click', function() {
+            openModal(true, {
+                symbol: currentSymbol,
+                price: '{{printf "%.2f" .Price}}',
+                dividend: '{{printf "%.2f" .Dividend}}',
+                exDividendDate: {{if .ExDividendDate}}'{{.ExDividendDate.Format "2006-01-02"}}'{{else}}null{{end}},
+                pe_ratio: {{if .PERatio}}'{{printf "%.2f" .PERatioValue}}'{{else}}null{{end}}
+            });
+        });
+        console.log('EditSymbolBtn setup completed');
+        
+        // Open modal for new symbol
+        newSymbolBtn.addEventListener('click', function() {
+            openModal(false);
+        });
+        
+        // Delete symbol button
+        const deleteSymbolBtn = document.getElementById('deleteSymbolBtn');
+        deleteSymbolBtn.addEventListener('click', function() {
+            showConfirmModal(
+                'Delete Symbol',
+                `Are you sure you want to delete symbol <strong>${currentSymbol}</strong>?<br><br>This will remove all associated options, positions, and dividends.`,
+                () => {
+                    deleteSymbol(currentSymbol);
+                }
+            );
+        });
+        
+        // Close modal
+        closeModal.addEventListener('click', closeModalFunc);
+        cancelModal.addEventListener('click', closeModalFunc);
+        
+        // Close modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeModalFunc();
+            }
+        });
+        
+        function openModal(editMode = false, symbolData = null) {
+            modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
+            
+            if (editMode && symbolData) {
+                document.getElementById('symbolInput').value = symbolData.symbol;
+                document.getElementById('priceInput').value = symbolData.price || '';
+                document.getElementById('dividendInput').value = symbolData.dividend || '';
+                document.getElementById('exDividendDateInput').value = symbolData.exDividendDate || '';
+                document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
+                document.getElementById('symbolInput').disabled = true;
+            } else {
+                symbolForm.reset();
+                document.getElementById('symbolInput').disabled = false;
+            }
+            
+            modal.style.display = 'block';
+        }
+        
+        function closeModalFunc() {
+            modal.style.display = 'none';
+            symbolForm.reset();
+        }
+        
+        // Handle form submission
+        symbolForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const exDivDateValue = document.getElementById('exDividendDateInput').value;
+            const symbolData = {
+                symbol: document.getElementById('symbolInput').value.toUpperCase(),
+                price: parseFloat(document.getElementById('priceInput').value) || 0,
+                dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
+                ex_dividend_date: exDivDateValue || null,
+                pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
+            };
+            
+            const url = `/api/symbols/${symbolData.symbol}`;
+            
+            fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    price: symbolData.price,
+                    dividend: symbolData.dividend,
+                    ex_dividend_date: symbolData.ex_dividend_date,
+                    pe_ratio: symbolData.pe_ratio
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to save symbol');
+            })
+            .then(data => {
+                console.log('Symbol saved successfully:', data);
+                closeModalFunc();
+                
+                // Check if we're creating a new symbol or editing current one
+                if (data.symbol === currentSymbol) {
+                    // Editing current symbol - update display
+                    document.querySelector('.stock-price').textContent = `$${data.price.toFixed(2)}`;
+                } else {
+                    // Creating new symbol - redirect to its page
+                    window.location.href = `/symbol/${data.symbol}`;
+                }
+            })
+            .catch(error => {
+                console.error('Error saving symbol:', error);
+                alert('Failed to save symbol. Please try again.');
+            });
+        });
+        
+        // Dividend Modal functionality
+        const dividendModal = document.getElementById('dividendModal');
+        const addDividendBtn = document.getElementById('addDividendBtn');
+        const closeDividendModal = document.getElementById('closeDividendModal');
+        const cancelDividendModal = document.getElementById('cancelDividendModal');
+        const dividendForm = document.getElementById('dividendForm');
+        const dividendModalTitle = document.getElementById('dividendModalTitle');
+        
+        let isEditingDividend = false;
+        let originalDividendData = null;
+        
+        // Add dividend button
+        addDividendBtn.addEventListener('click', function() {
+            openDividendModal(false);
+        });
+        
+        // Edit dividend buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.edit-dividend-btn')) {
+                const btn = event.target.closest('.edit-dividend-btn');
+                const dividendData = {
+                    symbol: btn.dataset.symbol,
+                    received: btn.dataset.received,
+                    amount: parseFloat(btn.dataset.amount)
+                };
+                openDividendModal(true, dividendData);
+            }
+        });
+        
+        // Delete dividend buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.delete-dividend-btn')) {
+                const btn = event.target.closest('.delete-dividend-btn');
+                showConfirmModal(
+                    'Delete Dividend',
+                    `Are you sure you want to delete this dividend record?<br><br><strong>$${btn.dataset.amount}</strong> received on <strong>${btn.dataset.received}</strong>`,
+                    () => {
+                        deleteDividend(btn.dataset.id, btn.dataset.symbol, btn.dataset.received, btn.dataset.amount);
+                    }
+                );
+            }
+        });
+        
+        // Close dividend modal
+        closeDividendModal.addEventListener('click', closeDividendModalFunc);
+        cancelDividendModal.addEventListener('click', closeDividendModalFunc);
+        
+        // Close dividend modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === dividendModal) {
+                closeDividendModalFunc();
+            }
+        });
+        
+        function openDividendModal(editMode = false, dividendData = null) {
+            isEditingDividend = editMode;
+            dividendModalTitle.textContent = editMode ? 'Edit Dividend' : 'Add Dividend';
+            
+            document.getElementById('dividendSymbolInput').value = currentSymbol;
+            
+            if (editMode && dividendData) {
+                originalDividendData = dividendData;
+                document.getElementById('dividendReceivedInput').value = dividendData.received;
+                document.getElementById('dividendAmountInput').value = dividendData.amount;
+            } else {
+                dividendForm.reset();
+                document.getElementById('dividendSymbolInput').value = currentSymbol;
+                originalDividendData = null;
+            }
+            
+            dividendModal.style.display = 'block';
+        }
+        
+        function closeDividendModalFunc() {
+            dividendModal.style.display = 'none';
+            dividendForm.reset();
+            isEditingDividend = false;
+            originalDividendData = null;
+        }
+        
+        // Handle dividend form submission
+        dividendForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dividendData = {
+                symbol: document.getElementById('dividendSymbolInput').value,
+                received: document.getElementById('dividendReceivedInput').value,
+                amount: parseFloat(document.getElementById('dividendAmountInput').value)
+            };
+            
+            if (isEditingDividend) {
+                updateDividend(originalDividendData, dividendData);
+            } else {
+                createDividend(dividendData);
+            }
+        });
+        
+        function createDividend(dividendData) {
+            fetch('/api/dividends', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dividendData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to create dividend');
+            })
+            .then(data => {
+                console.log('Dividend created successfully:', data);
+                closeDividendModalFunc();
+                window.location.reload(); // Refresh to show new dividend
+            })
+            .catch(error => {
+                console.error('Error creating dividend:', error);
+                alert('Failed to create dividend. Please try again.');
+            });
+        }
+        
+        function updateDividend(originalData, newData) {
+            // For update, we need to delete the old one and create a new one
+            // since dividends use compound primary key (symbol + received + amount)
+            fetch('/api/dividends', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    symbol: originalData.symbol,
+                    received: originalData.received,
+                    amount: originalData.amount
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    return createDividend(newData);
+                }
+                throw new Error('Failed to update dividend');
+            })
+            .catch(error => {
+                console.error('Error updating dividend:', error);
+                alert('Failed to update dividend. Please try again.');
+            });
+        }
+        
+        function deleteDividend(id, symbol, received, amount) {
+            const deleteData = {
+                id: parseInt(id),
+                symbol: symbol,
+                received: received,
+                amount: parseFloat(amount)
+            };
+            console.log('Deleting dividend with data:', deleteData);
+            
+            fetch('/api/dividends', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(deleteData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Dividend deleted successfully');
+                    window.location.reload(); // Refresh to show updated table
+                } else {
+                    throw new Error('Failed to delete dividend');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting dividend:', error);
+                alert('Failed to delete dividend. Please try again.');
+            });
+        }
+
+        // Apply dynamic color coding based on values
+        function applyDynamicColors() {
+            // Handle summary values
+            const summaryValues = document.querySelectorAll('.summary-value');
+            
+            summaryValues.forEach(valueElement => {
+                const text = valueElement.textContent.trim();
+                
+                // Extract numeric value from text (remove $, %, commas)
+                let numericValue = parseFloat(text.replace(/[$,%]/g, '').replace(/,/g, ''));
+                
+                // Skip if we can't parse a number
+                if (isNaN(numericValue)) {
+                    return;
+                }
+                
+                // Remove existing color classes
+                valueElement.classList.remove('positive', 'negative');
+                
+                // Apply conservative coloring: only losses are red, profits are neutral
+                if (numericValue < 0) {
+                    valueElement.classList.add('negative');
+                }
+                // Note: Removed positive class application - profits stay neutral
+            });
+            
+            // Handle Options table profit/loss coloring
+            const optionsTableRows = document.querySelectorAll('.table-container-scrollable tbody tr');
+            optionsTableRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                
+                // Percent of Profit column (index 12, 0-based)
+                if (cells[12]) {
+                    const percentText = cells[12].textContent.trim();
+                    const percentMatch = percentText.match(/^(-?\d+(?:\.\d+)?)%$/);
+                    if (percentMatch) {
+                        const percentValue = parseFloat(percentMatch[1]);
+                        if (percentValue < 0) {
+                            cells[12].innerHTML = '<span class="negative">' + percentText + '</span>';
+                        } else {
+                            cells[12].innerHTML = '<span>' + percentText + '</span>';
+                        }
+                    }
+                }
+                
+                // Total Profit column (index 15, 0-based)
+                if (cells[15]) {
+                    const totalText = cells[15].textContent.trim();
+                    const totalMatch = totalText.match(/^\$(-?\d+(?:\.\d+)?)$/);
+                    if (totalMatch) {
+                        const totalValue = parseFloat(totalMatch[1]);
+                        if (totalValue < 0) {
+                            cells[15].innerHTML = '<span class="negative">' + totalText + '</span>';
+                        } else {
+                            cells[15].innerHTML = '<span>' + totalText + '</span>';
+                        }
+                    }
+                }
+            });
+            
+            // Handle Stock Positions table profit/loss coloring
+            const stockPositionsRows = document.querySelectorAll('.section-row .content-section:first-child table tbody tr');
+            stockPositionsRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                
+                // Profit/Loss column (index 6, 0-based)
+                if (cells[6]) {
+                    const profitText = cells[6].textContent.trim();
+                    const profitMatch = profitText.match(/^\$(-?\d+(?:\.\d+)?)$/);
+                    if (profitMatch) {
+                        const profitValue = parseFloat(profitMatch[1]);
+                        if (profitValue < 0) {
+                            cells[6].innerHTML = '<span class="negative">' + profitText + '</span>';
+                        } else {
+                            cells[6].innerHTML = '<span>' + profitText + '</span>';
+                        }
+                    }
+                }
+                
+                // ROI column (index 7, 0-based)
+                if (cells[7]) {
+                    const roiText = cells[7].textContent.trim();
+                    const roiMatch = roiText.match(/^(-?\d+(?:\.\d+)?)%$/);
+                    if (roiMatch) {
+                        const roiValue = parseFloat(roiMatch[1]);
+                        if (roiValue < 0) {
+                            cells[7].innerHTML = '<span class="negative">' + roiText + '</span>';
+                        } else {
+                            cells[7].innerHTML = '<span>' + roiText + '</span>';
+                        }
+                    }
+                }
+            });
+        }
+
+        // Long Position Modal functionality
+        const longPositionModal = document.getElementById('longPositionModal');
+        const addLongPositionBtn = document.getElementById('addLongPositionBtn');
+        const closeLongPositionModal = document.getElementById('closeLongPositionModal');
+        const cancelLongPositionModal = document.getElementById('cancelLongPositionModal');
+        const longPositionForm = document.getElementById('longPositionForm');
+        const longPositionModalTitle = document.getElementById('longPositionModalTitle');
+        
+        let isEditingLongPosition = false;
+        let originalLongPositionData = null;
+        
+        // Open long position modal for new position
+        addLongPositionBtn.addEventListener('click', function() {
+            console.log('Add Long Position button clicked');
+            openLongPositionModal(false);
+        });
+        
+        // Close long position modal
+        closeLongPositionModal.addEventListener('click', closeLongPositionModalFunc);
+        cancelLongPositionModal.addEventListener('click', closeLongPositionModalFunc);
+        
+        // Close long position modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === longPositionModal) {
+                closeLongPositionModalFunc();
+            }
+        });
+        
+        function openLongPositionModal(editMode = false, positionData = null) {
+            console.log('openLongPositionModal called with editMode:', editMode, 'positionData:', positionData);
+            isEditingLongPosition = editMode;
+            longPositionModalTitle.textContent = editMode ? 'Edit Long Position' : 'Add Long Position';
+            
+            document.getElementById('longPositionSymbolInput').value = currentSymbol;
+            
+            if (editMode && positionData) {
+                originalLongPositionData = positionData;
+                document.getElementById('longPositionOpenedInput').value = positionData.opened;
+                document.getElementById('longPositionSharesInput').value = positionData.shares;
+                document.getElementById('longPositionBuyPriceInput').value = positionData.buy_price;
+                document.getElementById('longPositionClosedInput').value = positionData.closed || '';
+                document.getElementById('longPositionExitPriceInput').value = positionData.exit_price || '';
+            } else {
+                longPositionForm.reset();
+                document.getElementById('longPositionSymbolInput').value = currentSymbol;
+                // Set Purchase Date to today's date
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('longPositionOpenedInput').value = today;
+                originalLongPositionData = null;
+            }
+            
+            longPositionModal.style.display = 'block';
+            console.log('Modal should now be visible');
+        }
+        
+        function closeLongPositionModalFunc() {
+            longPositionModal.style.display = 'none';
+            longPositionForm.reset();
+            isEditingLongPosition = false;
+            originalLongPositionData = null;
+        }
+        
+        // Handle long position form submission
+        longPositionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const positionData = {
+                symbol: document.getElementById('longPositionSymbolInput').value,
+                opened: document.getElementById('longPositionOpenedInput').value,
+                shares: parseInt(document.getElementById('longPositionSharesInput').value),
+                buy_price: parseFloat(document.getElementById('longPositionBuyPriceInput').value),
+                closed: document.getElementById('longPositionClosedInput').value || null,
+                exit_price: document.getElementById('longPositionExitPriceInput').value ? parseFloat(document.getElementById('longPositionExitPriceInput').value) : null
+            };
+            
+            // Include ID for edit operations
+            if (isEditingLongPosition && originalLongPositionData) {
+                positionData.id = originalLongPositionData.id;
+            }
+            
+            if (isEditingLongPosition) {
+                updateLongPosition(originalLongPositionData, positionData);
+            } else {
+                createLongPosition(positionData);
+            }
+        });
+        
+        function createLongPosition(positionData) {
+            fetch('/api/long-positions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(positionData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to create long position');
+            })
+            .then(data => {
+                console.log('Long position created successfully:', data);
+                closeLongPositionModalFunc();
+                window.location.reload(); // Refresh to show new position
+            })
+            .catch(error => {
+                console.error('Error creating long position:', error);
+                alert('Failed to create long position. Please try again.');
+            });
+        }
+        
+        function updateLongPosition(originalData, newData) {
+            fetch('/api/long-positions', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to update long position');
+            })
+            .then(data => {
+                console.log('Long position updated successfully:', data);
+                closeLongPositionModalFunc();
+                window.location.reload(); // Refresh to show updated position
+            })
+            .catch(error => {
+                console.error('Error updating long position:', error);
+                alert('Failed to update long position. Please try again.');
+            });
+        }
+        
+        function deleteLongPosition(positionData) {
+            fetch('/api/long-positions', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(positionData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to delete long position');
+            })
+            .then(data => {
+                console.log('Long position deleted successfully:', data);
+                window.location.reload(); // Refresh to remove deleted position
+            })
+            .catch(error => {
+                console.error('Error deleting long position:', error);
+                alert('Failed to delete long position. Please try again.');
+            });
+        }
+        
+        // Edit long position buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.edit-long-position-btn')) {
+                console.log('Edit button clicked');
+                const btn = event.target.closest('.edit-long-position-btn');
+                const row = btn.closest('tr');
+                const cells = row.querySelectorAll('td');
+                
+                const positionData = {
+                    id: parseInt(btn.dataset.id),
+                    symbol: currentSymbol,
+                    opened: cells[0].textContent.trim(),
+                    closed: cells[1].textContent.trim() === '-' ? null : cells[1].textContent.trim(),
+                    shares: parseInt(cells[3].textContent.trim()),
+                    buy_price: parseFloat(cells[4].textContent.replace('$', '')),
+                    exit_price: cells[5].textContent.trim() === '-' ? null : parseFloat(cells[5].textContent.replace('$', ''))
+                };
+                
+                // Convert date format from MM/DD/YYYY to YYYY-MM-DD for input fields
+                const convertDateFormat = (dateStr) => {
+                    if (!dateStr || dateStr === '-') return '';
+                    const [month, day, year] = dateStr.split('/');
+                    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                };
+                
+                positionData.opened = convertDateFormat(positionData.opened);
+                positionData.closed = convertDateFormat(positionData.closed);
+                
+                openLongPositionModal(true, positionData);
+            }
+        });
+        
+        // Delete long position buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.delete-long-position-btn')) {
+                console.log('Delete button clicked');
+                const btn = event.target.closest('.delete-long-position-btn');
+                showConfirmModal(
+                    'Delete Stock Position',
+                    `Are you sure you want to delete this stock position?<br><br>This action cannot be undone.`,
+                    () => {
+                        deleteLongPosition({
+                            id: parseInt(btn.dataset.id)
+                        });
+                    }
+                );
+            }
+        });
+
+        // Option Modal functionality
+        const optionModal = document.getElementById('optionModal');
+        const addOptionBtn = document.getElementById('addOptionBtn');
+        const closeOptionModal = document.getElementById('closeOptionModal');
+        const cancelOptionModal = document.getElementById('cancelOptionModal');
+        const optionForm = document.getElementById('optionForm');
+        const optionModalTitle = document.getElementById('optionModalTitle');
+        
+        let isEditingOption = false;
+        let originalOptionData = null;
+        
+        // Add option button
+        addOptionBtn.addEventListener('click', function() {
+            openOptionModal(false);
+        });
+        
+        // Edit option buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.edit-option-btn')) {
+                const btn = event.target.closest('.edit-option-btn');
+                const optionData = {
+                    id: parseInt(btn.dataset.id),
+                    symbol: btn.dataset.symbol,
+                    type: btn.dataset.type,
+                    opened: btn.dataset.opened,
+                    strike: parseFloat(btn.dataset.strike),
+                    expiration: btn.dataset.expiration,
+                    premium: parseFloat(btn.dataset.premium),
+                    contracts: parseInt(btn.dataset.contracts),
+                    closed: btn.dataset.closed || null,
+                    exit_price: btn.dataset.exitPrice ? parseFloat(btn.dataset.exitPrice) : null,
+                    commission: parseFloat(btn.dataset.commission) || 0.0
+                };
+                openOptionModal(true, optionData);
+            }
+        });
+        
+        // Delete option buttons
+        document.addEventListener('click', function(event) {
+            if (event.target.closest('.delete-option-btn')) {
+                const btn = event.target.closest('.delete-option-btn');
+                showConfirmModal(
+                    'Delete Option Trade',
+                    `Are you sure you want to delete this option trade?<br><br><strong>${btn.dataset.type}</strong> - Strike $${btn.dataset.strike} - ${btn.dataset.expiration}`,
+                    () => {
+                        deleteOption({
+                            id: parseInt(btn.dataset.id),
+                            symbol: btn.dataset.symbol,
+                            type: btn.dataset.type,
+                            opened: btn.dataset.opened,
+                            strike: parseFloat(btn.dataset.strike),
+                            expiration: btn.dataset.expiration,
+                            premium: parseFloat(btn.dataset.premium),
+                            contracts: parseInt(btn.dataset.contracts)
+                        });
+                    }
+                );
+            }
+        });
+        
+        // Close option modal
+        closeOptionModal.addEventListener('click', closeOptionModalFunc);
+        cancelOptionModal.addEventListener('click', closeOptionModalFunc);
+        
+        // Close option modal when clicking outside
+        window.addEventListener('click', function(event) {
+            if (event.target === optionModal) {
+                closeOptionModalFunc();
+            }
+        });
+        
+        function openOptionModal(editMode = false, optionData = null) {
+            isEditingOption = editMode;
+            optionModalTitle.textContent = editMode ? 'Edit Option' : 'Add Option';
+            
+            document.getElementById('optionSymbolInput').value = currentSymbol;
+            
+            if (editMode && optionData) {
+                originalOptionData = optionData;
+                document.getElementById('optionTypeInput').value = optionData.type;
+                document.getElementById('optionOpenedInput').value = optionData.opened;
+                document.getElementById('optionClosedInput').value = optionData.closed || '';
+                document.getElementById('optionStrikeInput').value = optionData.strike;
+                document.getElementById('optionExpirationInput').value = optionData.expiration;
+                document.getElementById('optionPremiumInput').value = optionData.premium;
+                document.getElementById('optionContractsInput').value = optionData.contracts;
+                document.getElementById('optionExitPriceInput').value = optionData.exit_price || '';
+                document.getElementById('optionCommissionInput').value = optionData.commission;
+            } else {
+                optionForm.reset();
+                document.getElementById('optionSymbolInput').value = currentSymbol;
+                // Set Date Sold to today's date
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('optionOpenedInput').value = today;
+                document.getElementById('optionCommissionInput').value = '0.65';
+                originalOptionData = null;
+            }
+            
+            optionModal.style.display = 'block';
+        }
+        
+        function closeOptionModalFunc() {
+            optionModal.style.display = 'none';
+            optionForm.reset();
+            isEditingOption = false;
+            originalOptionData = null;
+        }
+        
+        // Handle option form submission
+        optionForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const optionData = {
+                symbol: document.getElementById('optionSymbolInput').value,
+                type: document.getElementById('optionTypeInput').value,
+                opened: document.getElementById('optionOpenedInput').value,
+                closed: document.getElementById('optionClosedInput').value || null,
+                strike: parseFloat(document.getElementById('optionStrikeInput').value),
+                expiration: document.getElementById('optionExpirationInput').value,
+                premium: parseFloat(document.getElementById('optionPremiumInput').value),
+                contracts: parseInt(document.getElementById('optionContractsInput').value),
+                exit_price: parseFloat(document.getElementById('optionExitPriceInput').value) || null,
+                commission: parseFloat(document.getElementById('optionCommissionInput').value) || 0.0
+            };
+            
+            if (isEditingOption) {
+                updateOption(originalOptionData, optionData);
+            } else {
+                createOption(optionData);
+            }
+        });
+        
+        function createOption(optionData) {
+            fetch('/api/options', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(optionData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Failed to create option');
+            })
+            .then(data => {
+                console.log('Option created successfully:', data);
+                closeOptionModalFunc();
+                window.location.reload(); // Refresh to show new option
+            })
+            .catch(error => {
+                console.error('Error creating option:', error);
+                alert('Failed to create option. Please try again.');
+            });
+        }
+        
+        function updateOption(originalData, newData) {
+            // Use PUT request with ID-based update system
+            fetch('/api/options', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: originalData.id,
+                    symbol: newData.symbol,
+                    type: newData.type,
+                    opened: newData.opened,
+                    closed: newData.closed || null,
+                    strike: newData.strike,
+                    expiration: newData.expiration,
+                    premium: newData.premium,
+                    contracts: newData.contracts,
+                    exit_price: newData.exit_price || null,
+                    commission: newData.commission
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Option updated successfully');
+                    window.location.reload(); // Refresh to show updated table
+                } else {
+                    throw new Error('Failed to update option');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating option:', error);
+                alert('Failed to update option. Please try again.');
+            });
+        }
+        
+        function deleteOption(optionData) {
+            fetch('/api/options', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(optionData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Option deleted successfully');
+                    window.location.reload(); // Refresh to show updated table
+                } else {
+                    throw new Error('Failed to delete option');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting option:', error);
+                alert('Failed to delete option. Please try again.');
+            });
+        }
+
+        function deleteSymbol(symbol) {
+            fetch(`/api/symbols/${symbol}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Symbol deleted successfully');
+                    // Redirect to dashboard since symbol page will no longer exist
+                    window.location.href = '/';
+                } else {
+                    throw new Error('Failed to delete symbol');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting symbol:', error);
+                alert('Failed to delete symbol. Please try again.');
+            });
+        }
+
+        // Apply colors when page loads
+        applyDynamicColors();
+        
+        // Test if we reach the end of JavaScript execution
+        console.log('JavaScript fully loaded and executed');
+        
+        // Test if buttons exist and can be found
+        const testAddBtn = document.getElementById('addLongPositionBtn');
+        console.log('Add Long Position button found:', testAddBtn);
+        if (testAddBtn) {
+            console.log('Add button click listener attached');
+        }
+        
+        // Test if edit buttons exist
+        const editBtns = document.querySelectorAll('.edit-long-position-btn');
+        console.log('Edit buttons found:', editBtns.length);
+        
+        // Test if delete buttons exist  
+        const deleteBtns = document.querySelectorAll('.delete-long-position-btn');
+        console.log('Delete buttons found:', deleteBtns.length);
+        
+        // Check for edit_option query parameter to auto-open option edit modal
+        const urlParams = new URLSearchParams(window.location.search);
+        const editOptionId = urlParams.get('edit_option');
+        if (editOptionId) {
+            console.log('Auto-opening option edit modal for ID:', editOptionId);
+            // Wait for the page to fully load, then open the option modal
+            setTimeout(() => {
+                openOptionModalForEdit(editOptionId);
+            }, 500);
+        }
+        
+        // Function to open option modal for editing by option ID
+        function openOptionModalForEdit(optionId) {
+            console.log('Looking for option with ID:', optionId);
+            
+            // Find the edit button for this option ID
+            const editBtn = document.querySelector(`[data-id="${optionId}"].edit-option-btn`);
+            if (editBtn) {
+                console.log('Found edit button, extracting option data');
+                
+                const optionData = {
+                    id: parseInt(editBtn.dataset.id),
+                    symbol: editBtn.dataset.symbol,
+                    type: editBtn.dataset.type,
+                    opened: editBtn.dataset.opened,
+                    strike: parseFloat(editBtn.dataset.strike),
+                    expiration: editBtn.dataset.expiration,
+                    premium: parseFloat(editBtn.dataset.premium),
+                    contracts: parseInt(editBtn.dataset.contracts),
+                    closed: editBtn.dataset.closed || null,
+                    exit_price: editBtn.dataset.exitPrice ? parseFloat(editBtn.dataset.exitPrice) : null,
+                    commission: parseFloat(editBtn.dataset.commission) || 0.0
+                };
+                
+                console.log('Opening option modal with data:', optionData);
+                openOptionModal(true, optionData);
+                
+                // Clean up URL by removing the query parameter
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            } else {
+                console.warn('Could not find option with ID:', optionId);
+                // The option might not be visible in the current view, so let's try a different approach
+                // by calling the API to fetch the option data directly
+                fetchOptionAndOpenModal(optionId);
+            }
+        }
+        
+        // Helper function to format date strings for input fields
+        function formatDateForInput(dateString) {
+            if (!dateString) return null;
+            
+            try {
+                // Parse the ISO date string and format it for input fields (YYYY-MM-DD)
+                const date = new Date(dateString);
+                return date.toISOString().split('T')[0];
+            } catch (error) {
+                console.error('Error formatting date:', dateString, error);
+                return dateString; // Return original if parsing fails
+            }
+        }
+        
+        // Function to fetch option data via API and open modal
+        function fetchOptionAndOpenModal(optionId) {
+            console.log('Fetching option data via API for ID:', optionId);
+            
+            fetch(`/api/options/${optionId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(optionData => {
+                    console.log('Fetched option data:', optionData);
+                    
+                    // Format the API response to match the format expected by openOptionModal
+                    const formattedOptionData = {
+                        id: optionData.id,
+                        symbol: optionData.symbol,
+                        type: optionData.type,
+                        opened: formatDateForInput(optionData.opened),
+                        strike: optionData.strike,
+                        expiration: formatDateForInput(optionData.expiration),
+                        premium: optionData.premium,
+                        contracts: optionData.contracts,
+                        closed: optionData.closed ? formatDateForInput(optionData.closed) : null,
+                        exit_price: optionData.exit_price || null,
+                        commission: optionData.commission || 0.0
+                    };
+                    
+                    console.log('Formatted option data:', formattedOptionData);
+                    openOptionModal(true, formattedOptionData);
+                    
+                    // Clean up URL by removing the query parameter
+                    const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                })
+                .catch(error => {
+                    console.error('Failed to fetch option data:', error);
+                    alert('Could not load the option for editing. The option may have been deleted or you may not have permission to view it.');
+                    
+                    // Clean up URL even if there was an error
+                    const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                });
+        }
+        
+        }); // End of DOMContentLoaded
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        /* Dashboard-specific layout overrides */
+        .dashboard-page .main-content {
+            overflow-y: hidden !important; /* Prevent double scrolling */
+        }
+        
+        .dashboard-page .content-section:last-child {
+            flex: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+        }
+        
+        .dashboard-page .content-section:last-child .section-title {
+            flex-shrink: 0 !important;
+        }
+        
+        .dashboard-page .table-container-scrollable {
+            flex: 1 !important;
+            min-height: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow-y: auto !important;
+            overflow-x: auto !important;
+            border: 1px solid #404040 !important;
+            background-color: #2d2d2d !important;
+        }
+        
+        .dashboard-page .table-container-scrollable table {
+            min-width: 1000px;
+            background-color: transparent !important;
+        }
+    </style>
+</head>
+<body class="dashboard-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item active">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .Symbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content" style="display: flex; flex-direction: column; height: calc(100vh - 40px);">
+            
+            <!-- Dashboard Totals Panel -->
+            <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; text-align: center; font-size: 20px;">
+                    <span style="color: #a0a0a0;">Nominal Total:</span> <span id="nominalTotal" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Long:</span> <span id="totalLong" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #a0a0a0;">Treasuries:</span> <span id="totalTreasuries" style="color: #27ae60;">$0</span>
+                </div>
+            </div>
+            
+            <!-- Charts Container -->
+            <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
+                <div class="charts-section">
+                    <!-- Long Stock by Symbol -->
+                    <div class="chart-container">
+                        <div class="chart-title">Long by Symbol</div>
+                        <canvas id="longByTickerChart" class="chart-canvas"></canvas>
+                    </div>
+                    
+                    <!-- Put Exposure by Symbol -->
+                    <div class="chart-container">
+                        <div class="chart-title">Put Exposure by Symbol</div>
+                        <canvas id="putsByTickerChart" class="chart-canvas"></canvas>
+                    </div>
+                    
+                    <!-- Total Allocation -->
+                    <div class="chart-container">
+                        <div class="chart-title">Total Allocation</div>
+                        <canvas id="totalAllocationChart" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Watchlist Summary Table -->
+            <div class="content-section">
+                <div class="section-title">Watchlist Summary</div>
+                <div class="table-container-scrollable">
+                    <table class="financial-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Long</th>
+                                <th>Put Exposed</th>
+                                <th>Puts</th>
+                                <th>Calls</th>
+                                <th>Cap Gains</th>
+                                <th>Dividends</th>
+                                <th>Net</th>
+                                <th>CoC%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .SymbolSummaries}}
+                                {{range .SymbolSummaries}}
+                                <tr>
+                                    <td class="ticker-col"><a href="/symbol/{{.Ticker}}" class="symbol-link">{{.Ticker}}</a></td>
+                                    <td>${{printf "%.0f" .LongAmount}}</td>
+                                    <td>${{printf "%.0f" .PutExposed}}</td>
+                                    <td class="{{if lt .Puts 0.0}}negative{{else if gt .Puts 0.0}}positive{{end}}">${{printf "%.2f" .Puts}}</td>
+                                    <td class="{{if lt .Calls 0.0}}negative{{else if gt .Calls 0.0}}positive{{end}}">${{printf "%.2f" .Calls}}</td>
+                                    <td class="{{if lt .CapGains 0.0}}negative{{else if gt .CapGains 0.0}}positive{{end}}">${{printf "%.2f" .CapGains}}</td>
+                                    <td class="{{if lt .Dividends 0.0}}negative{{else if gt .Dividends 0.0}}positive{{end}}">${{printf "%.2f" .Dividends}}</td>
+                                    <td class="{{if lt .Net 0.0}}negative{{else if gt .Net 0.0}}positive{{end}}">${{printf "%.2f" .Net}}</td>
+                                    <td class="{{if lt .CashOnCash 0.0}}negative{{else if gt .CashOnCash 0.0}}positive{{end}}">{{printf "%.2f" .CashOnCash}}%</td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="9" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                        No portfolio data available
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-totals-row">
+                                <td class="ticker-col">Total</td>
+                                <td>${{printf "%.0f" .Totals.TotalLong}}</td>
+                                <td>${{printf "%.0f" .Totals.TotalPuts}}</td>
+                                <td class="{{if lt .Totals.TotalPutPremiums 0.0}}negative{{else if gt .Totals.TotalPutPremiums 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalPutPremiums}}</td>
+                                <td class="{{if lt .Totals.TotalCallPremiums 0.0}}negative{{else if gt .Totals.TotalCallPremiums 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalCallPremiums}}</td>
+                                <td class="{{if lt .Totals.TotalCapGains 0.0}}negative{{else if gt .Totals.TotalCapGains 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalCapGains}}</td>
+                                <td class="{{if lt .Totals.TotalDividends 0.0}}negative{{else if gt .Totals.TotalDividends 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalDividends}}</td>
+                                <td class="{{if lt .Totals.OverallCashOnCash 0.0}}negative{{else if gt .Totals.OverallCashOnCash 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalNet}}</td>
+                                <td class="{{if lt .Totals.OverallCashOnCash 0.0}}negative{{else if gt .Totals.OverallCashOnCash 0.0}}positive{{end}}">{{printf "%.2f" .Totals.OverallCashOnCash}}%</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script>
+        // Register the datalabels plugin
+        Chart.register(ChartDataLabels);
+        
+        // Dynamic chart data from backend
+        const longByTickerData = [
+            {{range $index, $data := .LongByTicker}}
+            {{if $index}},{{end}}
+            {label: '{{$data.Label}}', value: {{$data.Value}}, color: '{{$data.Color}}'}
+            {{end}}
+        ];
+        
+        const putsByTickerData = [
+            {{range $index, $data := .PutsByTicker}}
+            {{if $index}},{{end}}
+            {label: '{{$data.Label}}', value: {{$data.Value}}, color: '{{$data.Color}}'}
+            {{end}}
+        ];
+
+        // This will be populated with real data from the API
+        let totalAllocationData = [
+            {label: 'Long Stock', value: 0, color: '#36A2EB'},
+            {label: 'Put Exposure', value: 0, color: '#FF6384'},
+            {label: 'Treasuries', value: 0, color: '#FFCE56'}
+        ];
+
+        // Chart configuration
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1.2,
+            interaction: {
+                intersect: false
+            },
+            animation: {
+                duration: 750
+            },
+            plugins: {
+                legend: {
+                    position: 'right',
+                    align: 'start',
+                    maxWidth: 200,
+                    labels: {
+                        boxWidth: 12,
+                        font: {
+                            size: 14
+                        },
+                        padding: 10,
+                        color: '#e0e0e0',
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'nearest',
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': $' + context.parsed.toLocaleString();
+                        }
+                    }
+                },
+                datalabels: {
+                    display: true,
+                    color: '#e0e0e0',
+                    font: {
+                        size: 12,
+                        weight: 'bold'
+                    },
+                    formatter: function(value, context) {
+                        if (value < 1000) return '';
+                        return '$' + Math.round(value).toLocaleString();
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    bottom: 10,
+                    left: 10,
+                    right: 120
+                }
+            }
+        };
+
+        // Long by Ticker Chart
+        new Chart(document.getElementById('longByTickerChart'), {
+            type: 'pie',
+            data: {
+                labels: longByTickerData.map(item => item.label),
+                datasets: [{
+                    data: longByTickerData.map(item => item.value),
+                    backgroundColor: longByTickerData.map(item => item.color),
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: chartOptions
+        });
+
+        // Puts by Ticker Chart
+        new Chart(document.getElementById('putsByTickerChart'), {
+            type: 'pie',
+            data: {
+                labels: putsByTickerData.map(item => item.label),
+                datasets: [{
+                    data: putsByTickerData.map(item => item.value),
+                    backgroundColor: putsByTickerData.map(item => item.color),
+                    borderWidth: 0.7,
+                    borderColor: '#ccc'
+                }]
+            },
+            plugins: [ChartDataLabels],
+            options: chartOptions
+        });
+
+        // Total Allocation Chart - will be created after data is loaded
+        let totalAllocationChart;
+
+        // Function to update Dashboard totals header
+        function updateDashboardTotals(data) {
+            const nominalTotalElement = document.getElementById('nominalTotal');
+            const totalLongElement = document.getElementById('totalLong');
+            const totalPutsElement = document.getElementById('totalPuts');
+            const totalTreasuriesElement = document.getElementById('totalTreasuries');
+            
+            // Format currency with consistent green coloring
+            function formatCurrency(value, element) {
+                const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                if (value < 0) {
+                    element.innerHTML = '-' + formattedValue;
+                } else {
+                    element.innerHTML = formattedValue;
+                }
+                // Always use green color
+                element.style.color = '#27ae60';
+            }
+            
+            // Extract values from API response or fallback properties
+            let totalLong = 0, totalPutExposed = 0, totalTreasuries = 0;
+            
+            if (data.totalAllocation && Array.isArray(data.totalAllocation)) {
+                // Extract values from totalAllocation array
+                data.totalAllocation.forEach(item => {
+                    if (item.label === 'Long Stock') {
+                        totalLong = item.value || 0;
+                    } else if (item.label === 'Put Exposure') {
+                        totalPutExposed = item.value || 0;
+                    } else if (item.label === 'Treasuries') {
+                        totalTreasuries = item.value || 0;
+                    }
+                });
+            } else {
+                // Fallback for individual properties
+                totalLong = data.totalLong || 0;
+                totalPutExposed = data.totalPutExposed || 0;
+                totalTreasuries = data.totalTreasuries || 0;
+            }
+            
+            // Calculate nominal total (sum of all categories)
+            const nominalTotalValue = totalLong + totalPutExposed + totalTreasuries;
+            
+            // Update each total
+            formatCurrency(nominalTotalValue, nominalTotalElement);
+            formatCurrency(totalLong, totalLongElement);
+            formatCurrency(totalPutExposed, totalPutsElement);
+            formatCurrency(totalTreasuries, totalTreasuriesElement);
+        }
+
+        // Function to create Total Allocation Chart with data
+        function createTotalAllocationChart(data) {
+            // Check if data has totalAllocation array (from API) or individual properties (fallback)
+            if (data.totalAllocation && Array.isArray(data.totalAllocation)) {
+                totalAllocationData = data.totalAllocation;
+            } else {
+                // Fallback for when called with individual properties
+                totalAllocationData = [
+                    {label: 'Long Stock', value: data.totalLong || 0, color: '#36A2EB'},
+                    {label: 'Put Exposure', value: data.totalPutExposed || 0, color: '#FF6384'},
+                    {label: 'Treasuries', value: data.totalTreasuries || 0, color: '#FFCE56'}
+                ];
+            }
+            
+            totalAllocationChart = new Chart(document.getElementById('totalAllocationChart'), {
+                type: 'pie',
+                data: {
+                    labels: totalAllocationData.map(item => item.label),
+                    datasets: [{
+                        data: totalAllocationData.map(item => item.value),
+                        backgroundColor: totalAllocationData.map(item => item.color),
+                        borderWidth: 0.7,
+                        borderColor: '#ccc'
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: chartOptions
+            });
+        }
+
+        // Fetch allocation data and create chart
+        fetch('/api/allocation-data')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch allocation data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Allocation data received:', data);
+                createTotalAllocationChart(data);
+                updateDashboardTotals(data);
+            })
+            .catch(error => {
+                console.error('Error fetching allocation data:', error);
+                // Create chart with zero values if API fails
+                const zeroData = {
+                    totalLong: 0,
+                    totalPutExposed: 0,
+                    totalTreasuries: 0
+                };
+                createTotalAllocationChart(zeroData);
+                updateDashboardTotals(zeroData);
+            });
+
+        // Symbol Modal functionality is handled by shared module
+
+        // Apply profit/loss coloring and currency formatting to watchlist table
+        function applyWatchlistTableColoring() {
+            const table = document.querySelector('.financial-table');
+            if (!table) return;
+            
+            // Process all rows in tbody and tfoot
+            const rows = table.querySelectorAll('tbody tr, tfoot tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach((cell, columnIndex) => {
+                    const text = cell.textContent.trim();
+                    
+                    // Check if it's a monetary value (with or without decimal places)
+                    if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
+                        // Extract numeric value
+                        const value = parseFloat(text.replace(/[\$,]/g, ''));
+                        
+                        // Skip if it's not a valid number
+                        if (isNaN(value)) return;
+                        
+                        // Format as whole dollars with comma separators
+                        const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                        
+                        // Long (column 1) and Put Exposed (column 2) are absolute values - no profit/loss coloring
+                        if (columnIndex === 1 || columnIndex === 2) {
+                            cell.innerHTML = formattedValue;
+                        }
+                        // Other monetary columns get profit/loss coloring
+                        else {
+                            if (value < 0) {
+                                cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
+                            } else if (value > 0) {
+                                cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
+                            } else {
+                                cell.innerHTML = formattedValue;
+                            }
+                        }
+                    }
+                    
+                    // Check if it's a percentage value
+                    else if (text.match(/^-?[\d,]+\.\d{2}%$/)) {
+                        // Extract numeric value
+                        const value = parseFloat(text.replace(/[%,]/g, ''));
+                        
+                        // Apply coloring: negative percentages are red, positive are green
+                        if (value < 0) {
+                            cell.innerHTML = '<span class="negative">' + text + '</span>';
+                        } else if (value > 0) {
+                            cell.innerHTML = '<span class="positive">' + text + '</span>';
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Apply coloring when page loads
+        document.addEventListener('DOMContentLoaded', applyWatchlistTableColoring);
+        // Also apply coloring immediately in case DOMContentLoaded already fired
+        applyWatchlistTableColoring();
+
+        console.log('Static dashboard loaded with matching spreadsheet data');
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/tutorial.js"></script>
+</body>
+</html>
