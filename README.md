@@ -1,32 +1,69 @@
-# Wheeler - Advanced Options Trading Portfolio System
+# Wheeler - It's better than a spreadsheet! 
 
-A sophisticated web-based portfolio tracking system built with Go, specializing in options trading strategies (particularly the "wheel strategy"), Treasury collateral management, and comprehensive portfolio analytics with interactive Chart.js visualizations.
+A web-based portfolio tracking system built with Go, specializing in options trading strategies (particularly the "wheel strategy"), Treasury collateral management, and comprehensive portfolio analytics with fancy visualizations.
 
 ⚠️ Disclaimer
 
 This tool is for educational and research purposes only. Wheeler does not provide investment advice, recommendations, or financial guidance. All information provided is for informational purposes only and should not be considered as investment advice. Always consult with a qualified financial advisor before making any investment decisions. Past performance does not guarantee future results. Trading and investing involve risk of loss.
 
-## Features
+You shouldn't really use Wheeler for anything at any time.
 
-### Core Portfolio Management
-- **Modern Web Dashboard**: Responsive interface with real-time charts and metrics
-- **Wheel Strategy Support**: Complete lifecycle tracking for cash-secured puts and covered calls
-- **Treasury Collateral Management**: Automatic adjustment of Treasury positions based on option assignments
-- **Multiple Database Support**: Create separate databases for different portfolios or testing environments
-- **Test Data Generation**: One-click import of realistic trading scenarios
+## The Wheel
 
-### Trading and Analytics
-- **Comprehensive Options Tracking**: Put/Call options with full lifecycle management (opening → assignment/expiration)
-- **Long Stock Positions**: Entry/exit tracking with cost basis and P&L calculations
-- **Dividend Management**: Payment recording and yield analysis
-- **Treasury Securities**: Bond management with yields, maturity tracking, and interest payments
-- **Performance Analytics**: Monthly breakdowns, allocation analysis, and risk metrics
+The Wheel is the "triple income" strategy: option premiums, capital gains, and dividends.
 
-### User Experience
-- **Interactive Charts**: Real-time pie charts for positions, allocations, and risk exposure
-- **Tabbed Help System**: Wheeler Help and Tutorial with realistic trading examples
-- **CSV Import Tools**: Bulk import for options, stocks, and dividends
-- **Database Management**: Create, switch, backup, and delete databases via web interface
+Wheeler helps track options and trades. Once tracked in a database, it's easy to present that data in many meaningful ways.
+
+### Dashboard
+
+The Dashboard shows overall progress and total Longs, Put Exposure, and Treasuries for visually measuring risk.
+
+![Dashboard](./screenshots/dashboard.png)
+
+### Monthly
+
+The Montly view shows gains over time by income type by month with the goal of doing more of what works well.
+
+![Monthly](./screenshots/monthly.png)
+
+### Options
+
+The Options view shows what trades are nearing expiration.
+
+![Options](./screenshots/options.png)
+
+### Treasuries
+
+The Treasuries view manages any bonds and bills used for collateral.
+
+![Treasuries](./screenshots/treasuries.png)
+
+### Symbols
+
+The Symbols view is a total return view of one symbol, including Options, Stock, and Dividends.
+
+![Symbol](./screenshots/symbol.png)
+
+## Managing Wheeler
+
+### Import
+
+Wheeler's simple data model allows CSV import of Options, Stocks, and Dividends.
+ 
+![Import](./screenshots/import.png)
+
+### Database
+
+The Database view manages the Wheeler datastore. SQLite is used and it's a single file.
+
+![Database](./screenshots/database.png)
+
+### Polygon
+
+The Polygon view allows configuration of Polygon.io API and sync'ing of data. The free tier is used to get current price and other data.
+
+![Polygon](./screenshots/polygon.png)
+
 
 ## Quick Start
 
@@ -48,44 +85,8 @@ go run main.go
 3. Explore the dashboard to see realistic portfolio tracking in action
 4. View the tutorial content to understand the trading strategy
 
-## Prerequisites
-
-- Go 1.19 or later
-- SQLite3 (automatically included via Go driver)
-- Modern web browser
 
 ## Application Overview
-
-### Main Pages
-
-- **Dashboard** (`/`) - Portfolio overview with charts and performance metrics
-- **Monthly** (`/monthly`) - Month-by-month performance analysis
-- **Options** (`/options`) - Detailed options positions and trading history
-- **Treasuries** (`/treasuries`) - Treasury securities collateral management
-- **Symbol Pages** (`/symbol/{SYMBOL}`) - Individual stock analysis and history
-- **Import** (`/import`) - CSV data import tools
-- **Admin** (`/backup`) - Database management and backups
-- **Help** (`/help`) - Wheeler Help and Tutorial system
-
-### Wheel Strategy Implementation
-
-Wheeler specializes in tracking sophisticated options strategies:
-
-- **Cash-Secured Puts**: Sell puts with Treasury collateral, track assignments
-- **Covered Calls**: Sell calls against stock positions, track exercises  
-- **Stock Assignments**: Automatic conversion of expired puts to stock positions
-- **Premium Collection**: Track income from option premiums across all strategies
-- **Position Scaling**: Support for increasing position sizes over time
-- **Treasury Integration**: Automatic collateral adjustment based on option assignments
-
-### Key Features
-
-1. **Real-time Calculations**: Automatic P&L, allocation, and risk metrics
-2. **Portfolio Allocation Charts**: Visual representation of stocks vs. treasuries vs. cash
-3. **Options Risk Visualization**: Put exposure and covered call tracking
-4. **Treasury Collateral Management**: Dynamic balance adjustment based on option activity
-5. **Multiple Portfolio Support**: Separate databases for different trading accounts
-6. **Historical Analysis**: Monthly performance breakdowns and trend analysis
 
 ## Database Management
 
@@ -103,7 +104,6 @@ Wheeler supports multiple SQLite databases:
 - **Long Positions Table**: Stock holdings with entry/exit tracking (`long_positions.id` PK)
 - **Dividends Table**: Payment records (`dividends.id` PK)
 - **Treasuries Table**: Securities with CUSPID, yields, maturity (`treasuries.cuspid` PK)
-- **Foreign Key Relationships**: All tables reference `symbols.symbol` for data integrity
 
 ## API Endpoints
 
@@ -122,15 +122,28 @@ Wheeler provides comprehensive RESTful APIs:
 ```
 wheeler/
 ├── main.go                           # Web application entry point
-├── ofx_parser.go                     # OFX financial data parser utility
 ├── model.md                          # Data model specification
 ├── CLAUDE.md                         # Development guidance
 ├── README.md                         # This documentation
+├── LICENSE                          # MIT License
+├── Makefile                         # Build automation
 ├── go.mod                           # Go module dependencies
+├── go.sum                           # Go module checksums
+├── wheeler                          # Compiled binary
+├── bin/                             # Binary output directory
 ├── data/                            # Database storage directory
 │   ├── currentdb                    # Current database tracker
 │   ├── *.db                         # SQLite database files
 │   └── backups/                     # Database backup directory
+├── screenshots/                     # Application screenshots
+│   ├── dashboard.png                # Dashboard interface
+│   ├── monthly.png                  # Monthly analysis view
+│   ├── options.png                  # Options trading interface
+│   ├── treasuries.png               # Treasury management
+│   ├── symbol.png                   # Individual symbol analysis
+│   ├── import.png                   # CSV import tools
+│   ├── database.png                 # Database management
+│   └── polygon.png                  # Polygon.io integration
 ├── internal/
 │   ├── database/
 │   │   ├── db.go                    # Database connection and setup
@@ -141,12 +154,28 @@ wheeler/
 │   │   ├── option.go                # Options tracking service
 │   │   ├── long_position.go         # Stock position management
 │   │   ├── dividend.go              # Dividend payment tracking
-│   │   └── treasury.go              # Treasury securities management
+│   │   ├── treasury.go              # Treasury securities management
+│   │   └── setting.go               # Application settings
+│   ├── polygon/                     # Polygon.io API integration
+│   │   ├── client.go                # API client
+│   │   ├── service.go               # Service layer
+│   │   └── live_integration_test.go # Integration tests
 │   └── web/
 │       ├── server.go                # Web server and routing
 │       ├── handlers.go              # Main page handlers
+│       ├── dashboard_handlers.go    # Dashboard specific handlers
+│       ├── monthly_handlers.go      # Monthly analysis handlers
+│       ├── options_handlers.go      # Options trading handlers
+│       ├── symbol_handlers.go       # Symbol page handlers
+│       ├── position_handlers.go     # Position management handlers
+│       ├── treasury_handlers.go     # Treasury management handlers
 │       ├── import_handlers.go       # Import/backup/database handlers
+│       ├── polygon_handlers.go      # Polygon.io integration handlers
+│       ├── settings_handlers.go     # Settings management handlers
+│       ├── utility_handlers.go      # Utility functions
+│       ├── types.go                 # Web data types and structures
 │       ├── templates/               # HTML templates
+│       │   ├── _symbol_modal.html   # Shared symbol modal component
 │       │   ├── dashboard.html       # Main dashboard with charts
 │       │   ├── monthly.html         # Monthly performance analysis
 │       │   ├── options.html         # Options trading interface
@@ -154,80 +183,17 @@ wheeler/
 │       │   ├── symbol.html          # Individual symbol analysis
 │       │   ├── help.html            # Tabbed help system
 │       │   ├── backup.html          # Database management
-│       │   └── import.html          # CSV import tools
+│       │   ├── import.html          # CSV import tools
+│       │   └── settings.html        # Polygon.io configuration
 │       └── static/                  # Static web assets
-│           ├── css/styles.css       # Application styling
+│           ├── assets/              # Static asset files
+│           ├── css/
+│           │   └── styles.css       # Application styling
 │           └── js/                  # JavaScript modules
+│               ├── navigation.js    # Navigation functionality
+│               ├── symbol-modal.js  # Symbol modal interactions
+│               └── table-sort.js    # Table sorting functionality
 ```
-
-## Development
-
-### Building and Running
-```bash
-# Build the application
-go build .
-
-# Run with development logging
-go run main.go
-
-# Access the application
-open http://localhost:8080
-```
-
-### Testing with Real Data
-```bash
-# Generate test data via web interface (recommended)
-# Navigate to Help → Tutorial → Generate Test Data
-
-# Or manually load test data
-sqlite3 data/wheeler.db < internal/database/wheel_strategy_example.sql
-```
-
-### Architecture
-
-Wheeler follows modern web application patterns:
-
-- **Service Layer Architecture**: Each model has a dedicated service for CRUD operations
-- **RESTful API Design**: Clean HTTP endpoints using integer IDs for web-friendly operations
-- **Server-Side Rendering**: HTML templating with real-time data injection
-- **Interactive Frontend**: Chart.js visualizations with AJAX data loading
-- **Responsive Design**: Mobile-friendly interface using CSS Grid and Flexbox
-- **Multiple Database Support**: Dynamic database switching for portfolio management
-
-## Advanced Usage
-
-### Wheel Strategy Workflow
-
-1. **Setup Treasury Collateral**: Add Treasury securities as cash collateral
-2. **Sell Cash-Secured Puts**: Create put positions with Treasury backing
-3. **Assignment Handling**: Treasury balances automatically adjust on assignment
-4. **Stock Management**: Assigned shares become long positions
-5. **Covered Calls**: Sell calls against stock positions
-6. **Performance Tracking**: Monitor premium income and portfolio growth
-
-### Portfolio Management
-
-- **Multiple Environments**: Create separate databases for live trading vs. paper trading
-- **Risk Management**: Monitor put exposure and covered call obligations
-- **Performance Analysis**: Track monthly performance and allocation changes
-- **Treasury Optimization**: Balance cash collateral with yield optimization
-
-### Data Import and Export
-
-- **CSV Import**: Bulk import options, stocks, and dividends via web interface
-- **OFX Parser**: Parse broker files with `go run ofx_parser.go [directory] [output]`
-- **Database Backups**: Create timestamped backups via Admin → Database
-- **Data Portability**: SQLite files can be copied between systems
-
-## Financial Concepts
-
-Wheeler implements sophisticated financial tracking:
-
-- **Options Greeks**: While not calculated, position data supports external analysis
-- **Collateral Management**: Treasury securities automatically adjust based on option activity
-- **Yield Tracking**: Monitor income from dividends, interest, and option premiums
-- **Risk Metrics**: Put exposure visualization and covered call obligation tracking
-- **Portfolio Allocation**: Dynamic allocation including stocks, treasuries, and cash
 
 ## Getting Help
 

@@ -8,20 +8,15 @@ This is "Wheeler" - a comprehensive financial portfolio tracking system built wi
 
 ## Applications
 
-The project contains two main applications:
+The project contains one main application:
 
 1. **Web Dashboard** (`main.go`) - Modern web interface for comprehensive portfolio tracking
-2. **OFX Parser** (`ofx_parser.go`) - CLI utility for parsing financial data files from brokers
 
 ## Development Commands
 
 ### Web Dashboard (Primary Application)
 - **Run web dashboard**: `go run main.go` (starts on http://localhost:8080)
-- **Build web dashboard**: `go build . && ./stonks`
-
-### OFX Parser (Financial Data Import)
-- **Run OFX parser**: `go run ofx_parser.go [directory] [output_file]`
-- **Parse QuickenWin files**: `go run ofx_parser.go ./data/ transactions.json`
+- **Build web dashboard**: `go build . && ./wheeler`
 
 ### Database Operations
 - **Load test data**: Use the Generate Test Data buttons in Help → Tutorial
@@ -63,6 +58,7 @@ The modern web interface provides comprehensive portfolio tracking:
 - **Help** (`/help`) - Wheeler Help and Tutorial (with test data generation)
 - **Admin** (`/backup`) - Database management and backups
 - **Import** (`/import`) - CSV data import tools
+- **Settings** (`/settings`) - Polygon.io API configuration
 
 ### Dashboard Components
 - **Long by Symbol Chart** - Pie chart of current stock positions
@@ -78,6 +74,9 @@ The modern web interface provides comprehensive portfolio tracking:
 - **Test Data Generation** - One-click import of realistic wheel strategy trading history
 - **Comprehensive Import Tools** - CSV import for options, stocks, and dividends
 - **Real-time Calculations** - Automatic P&L, allocation, and risk calculations
+- **Polygon.io Integration** - Live market data integration with API key management
+- **Interactive Charts** - Click-to-navigate functionality on scatter plots and pie charts
+- **Responsive Design** - Modern web interface with Chart.js visualizations
 
 ### API Endpoints
 - `/api/symbols/{symbol}` - Symbol CRUD operations and price updates
@@ -87,6 +86,8 @@ The modern web interface provides comprehensive portfolio tracking:
 - `/api/treasuries/{cuspid}` - Treasury operations and interest tracking
 - `/api/allocation-data` - Portfolio allocation data for charts
 - `/api/generate-test-data` - Test data generation for tutorials
+- `/api/settings` - Application settings management
+- `/api/polygon/*` - Polygon.io API integration endpoints
 
 ## Financial Domain Context
 
@@ -111,6 +112,7 @@ Wheeler specializes in sophisticated options trading strategies:
 - **Long Stock Holdings** - Entry/exit tracking with cost basis and P&L
 - **Dividend Tracking** - Payment recording and yield analysis
 - **Performance Analytics** - Monthly breakdowns, allocation analysis, risk metrics
+- **Market Data Integration** - Live price updates via Polygon.io API
 
 ## Security Considerations
 
@@ -123,36 +125,79 @@ Wheeler specializes in sophisticated options trading strategies:
 ## Project Structure
 
 ```
-stonks/
-├── main.go                    # Web dashboard application entry point
-├── ofx_parser.go             # OFX financial data file parser
-├── model.md                   # Data model specification
-├── demo_data.sql             # Sample data for testing
-├── go.mod                    # Go module dependencies
-├── wheeler.db                 # SQLite database file
+wheeler/
+├── main.go                           # Web dashboard application entry point
+├── model.md                          # Data model specification
+├── CLAUDE.md                         # Development guidance for AI assistants
+├── README.md                         # Project documentation
+├── LICENSE                          # MIT License
+├── Makefile                         # Build automation
+├── go.mod                           # Go module dependencies
+├── go.sum                           # Go module checksums
+├── wheeler                          # Compiled binary
+├── bin/                             # Binary output directory
+├── data/                            # Database storage directory
+│   ├── currentdb                    # Current database tracker
+│   ├── *.db                         # SQLite database files
+│   └── backups/                     # Database backup directory
+├── screenshots/                     # Application screenshots for documentation
+│   ├── dashboard.png                # Dashboard interface
+│   ├── monthly.png                  # Monthly analysis view
+│   ├── options.png                  # Options trading interface
+│   ├── treasuries.png               # Treasury management
+│   ├── symbol.png                   # Individual symbol analysis
+│   ├── import.png                   # CSV import tools
+│   ├── database.png                 # Database management
+│   └── polygon.png                  # Polygon.io integration
 ├── internal/
 │   ├── database/
-│   │   ├── db.go             # Database connection and setup
-│   │   └── schema.sql        # SQLite schema with relationships
+│   │   ├── db.go                    # Database connection and setup
+│   │   ├── schema.sql               # Complete SQLite schema
+│   │   └── wheel_strategy_example.sql # Test data for tutorials
 │   ├── models/
-│   │   ├── symbol.go         # Symbol entity and service
-│   │   ├── option.go         # Options tracking with Put/Call
-│   │   ├── long_position.go  # Stock position management
-│   │   ├── dividend.go       # Dividend payment tracking
-│   │   └── treasury.go       # Treasury securities management
+│   │   ├── symbol.go                # Symbol entity and service
+│   │   ├── option.go                # Options tracking with Put/Call
+│   │   ├── long_position.go         # Stock position management
+│   │   ├── dividend.go              # Dividend payment tracking
+│   │   ├── treasury.go              # Treasury securities management
+│   │   └── setting.go               # Application settings model
+│   ├── polygon/                     # Polygon.io API integration
+│   │   ├── client.go                # HTTP client for Polygon.io API
+│   │   ├── service.go               # Service layer for market data
+│   │   └── live_integration_test.go # Integration tests with live API
 │   └── web/
-│       ├── server.go         # Web server setup and routing
-│       ├── handlers.go       # HTTP handlers and API endpoints
-│       ├── templates/        # HTML templates
-│       │   ├── dashboard.html
-│       │   ├── monthly.html
-│       │   ├── treasuries.html
-│       │   └── symbol.html
-│       └── static/           # Static web assets
+│       ├── server.go                # Web server setup and routing
+│       ├── handlers.go              # Main page handlers
+│       ├── dashboard_handlers.go    # Dashboard specific handlers
+│       ├── monthly_handlers.go      # Monthly analysis handlers
+│       ├── options_handlers.go      # Options trading handlers
+│       ├── symbol_handlers.go       # Symbol page handlers
+│       ├── position_handlers.go     # Position management handlers
+│       ├── treasury_handlers.go     # Treasury management handlers
+│       ├── import_handlers.go       # Import/backup/database handlers
+│       ├── polygon_handlers.go      # Polygon.io integration handlers
+│       ├── settings_handlers.go     # Settings management handlers
+│       ├── utility_handlers.go      # Utility functions and helpers
+│       ├── types.go                 # Web data types and structures
+│       ├── templates/               # HTML templates with Go templating
+│       │   ├── _symbol_modal.html   # Shared symbol modal component
+│       │   ├── dashboard.html       # Main dashboard with interactive charts
+│       │   ├── monthly.html         # Monthly performance analysis
+│       │   ├── options.html         # Options trading interface with scatter plots
+│       │   ├── treasuries.html      # Treasury securities management
+│       │   ├── symbol.html          # Individual symbol analysis with summary metrics
+│       │   ├── help.html            # Tabbed help system with tutorials
+│       │   ├── backup.html          # Database management interface
+│       │   ├── import.html          # CSV import tools with validation
+│       │   └── settings.html        # Polygon.io API configuration
+│       └── static/                  # Static web assets
+│           ├── assets/              # Static asset files
 │           ├── css/
-│           ├── js/
-│           └── images/
-└── README.md                 # Project documentation
+│           │   └── styles.css       # Application styling (dark theme)
+│           └── js/                  # JavaScript modules
+│               ├── navigation.js    # Navigation and sidebar functionality
+│               ├── symbol-modal.js  # Symbol modal interactions
+│               └── table-sort.js    # Table sorting functionality
 ```
 
 ## Database Schema Design

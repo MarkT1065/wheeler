@@ -94,64 +94,90 @@
             
             <!-- Stock Header Info -->
             <div class="stock-header">
-                <div class="stock-info">
+                <div class="stock-info" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                     <div>
                         <div class="stock-title">{{.Symbol}} - {{.CompanyName}}</div>
-                        <div style="font-size: 14px; color: #a0a0a0; margin-top: 5px;">Last updated: {{.LastUpdate}}</div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                            <div style="display: flex; align-items: center; gap: 20px;">
-                                <div class="stock-price">${{printf "%.2f" .Price}}</div>
-                                <div style="font-size: 20px; color: #a0a0a0;">
-                                    <span style="color: #4ade80;">Div:</span> ${{printf "%.2f" .Dividend}}
-                                </div>
-                                <div style="font-size: 20px; color: #a0a0a0;">
-                                    <span style="color: #4ade80;">Yield:</span> {{printf "%.2f" .Yield}}%
-                                </div>
-                                {{if .ExDividendDate}}
-                                <div style="font-size: 20px; color: #a0a0a0;">
-                                    <span style="color: #4ade80;">Ex-Div:</span> {{.ExDividendDate.Format "01/02/2006"}}
-                                </div>
-                                {{end}}
-                                {{if .HasPERatio}}
-                                <div style="font-size: 20px; color: #a0a0a0;">
-                                    <span style="color: #4ade80;">P/E:</span> {{printf "%.2f" .PERatioValue}}
-                                </div>
-                                {{end}}
-                            </div>
+                    
+                    {{$longValue := 0.0}}
+                    {{range .LongPositionsList}}
+                        {{if not .Closed}}
+                            {{$longValue = add $longValue (mul .BuyPrice .Shares)}}
+                        {{end}}
+                    {{end}}
+                    {{$putExposed := 0.0}}
+                    {{range .OptionsList}}
+                        {{if and (eq .Type "Put") (not .Closed)}}
+                            {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
+                        {{end}}
+                    {{end}}
+                    
+                    <!-- Summary Items -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Price</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">${{printf "%.2f" .Price}}</div>
                         </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Div</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">${{printf "%.2f" .Dividend}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Yield</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .Yield}}%</div>
+                        </div>
+                        {{if .ExDividendDate}}
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Ex-Div</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{.ExDividendDate.Format "01/02"}}</div>
+                        </div>
+                        {{end}}
+                        {{if .HasPERatio}}
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">P/E</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .PERatioValue}}</div>
+                        </div>
+                        {{end}}
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 110px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Options Gains</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">${{.OptionsGains}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Cap Gains</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">${{.CapGains}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Dividends</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">${{.Dividends}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Total Profits</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">${{.TotalProfits}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Cash on Cash</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{.CashOnCash}}%</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Long Value</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">${{printf "%.0f" $longValue}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Put Exposed</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">${{printf "%.0f" $putExposed}}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div style="display: flex; align-items: center; gap: 10px;">
                         <button id="editSymbolBtn" class="edit-btn">
                             <i class="fas fa-edit"></i>
                             Edit
                         </button>
-                        <button id="deleteSymbolBtn" class="btn btn-danger" style="margin-left: 10px;">
+                        <button id="deleteSymbolBtn" class="btn btn-danger">
                             <i class="fas fa-trash"></i>
                             Delete
                         </button>
-                    </div>
-                </div>
-                
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <div class="summary-label">Options Gains</div>
-                        <div class="summary-value positive">${{.OptionsGains}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Cap Gains</div>
-                        <div class="summary-value positive">${{.CapGains}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Dividends</div>
-                        <div class="summary-value positive">${{.Dividends}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Profits</div>
-                        <div class="summary-value positive">${{.TotalProfits}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Cash on Cash</div>
-                        <div class="summary-value positive">{{.CashOnCash}}%</div>
                     </div>
                 </div>
             </div>
