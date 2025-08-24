@@ -88,6 +88,5 @@ CREATE INDEX IF NOT EXISTS idx_settings_name ON settings(name);
 
 -- Unique constraints to prevent duplicate business records
 -- (These replace the compound primary keys while allowing easier HTTP CRUD with integer IDs)
-CREATE UNIQUE INDEX IF NOT EXISTS idx_long_positions_unique ON long_positions(symbol, opened, shares, buy_price);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_options_unique ON options(symbol, type, opened, strike, expiration, premium, contracts);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dividends_unique ON dividends(symbol, received, amount);

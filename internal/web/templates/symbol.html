@@ -243,10 +243,16 @@
                                             {{.Type}}
                                         </span>
                                     </td>
-                                    <td><span>{{printf "%.0f" (.CalculatePercentOfProfit)}}%</span></td>
-                                    <td>{{printf "%.2f" (.CalculatePercentOfTime)}}</td>
+                                    <td>
+                                        {{$percentProfit := .CalculatePercentOfProfit}}
+                                        <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.0f" $percentProfit}}%</span>
+                                    </td>
+                                    <td>{{printf "%.0f" (.CalculatePercentOfTime)}}%</td>
                                     <td>{{printf "%.2f" (.CalculateMultiplier)}}</td>
-                                    <td><span>${{printf "%.2f" (.CalculateTotalProfit)}}</span></td>
+                                    <td>
+                                        {{$totalProfit := .CalculateTotalProfit}}
+                                        <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
+                                    </td>
                                     <td>
                                         <button class="btn btn-secondary edit-option-btn" 
                                                 data-id="{{.ID}}"
