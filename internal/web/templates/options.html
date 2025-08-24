@@ -10,6 +10,76 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css?v=2">
+    <style>
+        /* Ensure chart containers have proper height */
+        .chart-container {
+            height: 400px;
+            min-height: 400px;
+            width: 100%;
+        }
+        
+        /* Highlight effect for symbol navigation */
+        .symbol-nav-item.highlighted {
+            background-color: #27ae60 !important;
+            color: #ffffff !important;
+            transform: scale(1.05);
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
+        }
+        
+        /* 8-column grid layout for accordion headers */
+        .accordion-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 0 5px;
+        }
+        
+        .grid-item {
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 2px 4px;
+        }
+        
+        .grid-item.span-2 {
+            grid-column: span 2;
+        }
+        
+        .grid-item.span-1 {
+            grid-column: span 1;
+        }
+        
+        .grid-item.expiration-section {
+            color: #e0e0e0;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        .grid-item.expiration-section i {
+            margin-right: 6px;
+        }
+        
+        .grid-item.dte-section {
+            color: #a0a0a0;
+        }
+        
+        .grid-item.positions-count {
+            color: #e0e0e0;
+        }
+        
+        .grid-item.calls-info {
+            color: #e0e0e0;
+        }
+        
+        .grid-item.puts-info {
+            color: #e0e0e0;
+        }
+    </style>
 </head>
 <body class="options-page">
     <div class="app-container">
@@ -77,6 +147,10 @@
                             <i class="fas fa-database"></i>
                             Database
                         </a>
+                        <a href="/settings" class="nav-item admin-nav-item">
+                            <i class="fas fa-chart-line"></i>
+                            Polygon
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -90,9 +164,9 @@
         <!-- Main Content -->
         <div class="main-content">
             
-            <!-- Expiration Distribution Chart -->
+            <!-- Profit by Expiration Date Chart -->
             <div class="content-section">
-                <div class="section-title">Position Distribution by Expiration</div>
+                <div class="section-title">Options by Expiration</div>
                 <div class="chart-container">
                     <canvas id="expirationScatterChart"></canvas>
                 </div>
@@ -107,16 +181,18 @@
                         {{range $groupedPositions}}
                         <div class="accordion-group">
                             <div class="accordion-header" data-target="exp-{{.DateStr | replace "/" "-"}}">
-                                <div class="accordion-title">
-                                    <span class="expiration-section">
+                                <div class="accordion-grid">
+                                    <!-- Expiration: Date (spans 1 div) -->
+                                    <div class="grid-item span-1 expiration-section">
                                         <i class="fas fa-calendar-alt"></i>
                                         Expiration: {{.DateStr}}
-                                    </span>
+                                    </div>
                                     {{if .Positions}}
                                         {{$firstPosition := index .Positions 0}}
-                                        <span class="dte-section">
+                                        <!-- DTE: X days (spans 1 div) -->
+                                        <div class="grid-item span-1 dte-section">
                                             DTE: <span class="{{if le $firstPosition.DaysToExpiration 0}}dte-expired{{else if le $firstPosition.DaysToExpiration 3}}dte-critical{{else if le $firstPosition.DaysToExpiration 6}}dte-warning{{else if le $firstPosition.DaysToExpiration 9}}dte-caution{{else if le $firstPosition.DaysToExpiration 15}}dte-neutral{{else if le $firstPosition.DaysToExpiration 21}}dte-safe{{else}}dte-healthy{{end}}">{{$firstPosition.DaysToExpiration}} days</span>
-                                        </span>
+                                        </div>
                                         {{$callCount := 0}}
                                         {{$putCount := 0}}
                                         {{$callNominal := 0.0}}
@@ -130,11 +206,31 @@
                                                 {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
                                             {{end}}
                                         {{end}}
-                                        <div class="position-breakdown">
-                                            <span class="positions-count">{{len .Positions}} Position{{if ne (len .Positions) 1}}s{{end}}</span>
-                                            {{if gt $callCount 0}}<span class="calls-info">{{$callCount}} Call{{if ne $callCount 1}}s{{end}} - {{formatCurrency $callNominal}}</span>{{end}}
-                                            {{if gt $putCount 0}}<span class="puts-info">{{$putCount}} Put{{if ne $putCount 1}}s{{end}} - {{formatCurrency $putExposed}}</span>{{end}}
+                                        <!-- Positions count (spans 1 div) -->
+                                        <div class="grid-item span-1 positions-count">
+                                            {{len .Positions}} Position{{if ne (len .Positions) 1}}s{{end}}
                                         </div>
+                                        <!-- Calls info (spans 1 div) -->
+                                        <div class="grid-item span-1 calls-info">
+                                            {{if gt $callCount 0}}{{$callCount}} Call{{if ne $callCount 1}}s{{end}} - {{formatCurrency $callNominal}}{{end}}
+                                        </div>
+                                        <!-- Puts info (spans 1 div) -->
+                                        <div class="grid-item span-1 puts-info">
+                                            {{if gt $putCount 0}}{{$putCount}} Put{{if ne $putCount 1}}s{{end}} - {{formatCurrency $putExposed}}{{end}}
+                                        </div>
+                                        <!-- Empty divs (spans 3 divs) -->
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                    {{else}}
+                                        <!-- If no positions, fill remaining space (7 divs) -->
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
+                                        <div class="grid-item span-1"></div>
                                     {{end}}
                                 </div>
                                 <div class="accordion-toggle">
@@ -151,7 +247,7 @@
                                                 <th>Strike</th>
                                                 <th>Quantity</th>
                                                 <th>Nominal</th>
-                                                <th>Premium</th>
+                                                <th>Total Profit</th>
                                                 <th>Entry Date</th>
                                             </tr>
                                         </thead>
@@ -168,7 +264,7 @@
                                                 <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
                                                 <td>{{.Contracts}}</td>
                                                 <td class="neutral-currency">{{formatCurrency (mul (mul .Strike .Contracts) 100)}}</td>
-                                                <td class="premium-column {{if lt .Premium 0.0}}negative{{else if gt .Premium 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .Premium}}</td>
+                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .CalculateTotalProfit}}</td>
                                                 <td>{{.EntryDate.Format "01/02/2006"}}</td>
                                             </tr>
                                             {{end}}
@@ -234,6 +330,7 @@
             });
         }
         
+        
         // Accordion functionality
         function initializeAccordions() {
             const accordionHeaders = document.querySelectorAll('.accordion-header');
@@ -285,48 +382,95 @@
             }
         }
         
-        // Create scatter plot for expiration distribution
+        // Create scatter plot for profit by expiration date
         function createExpirationScatterChart() {
-            const ctx = document.getElementById('expirationScatterChart').getContext('2d');
+            console.log('Creating profit by expiration scatter chart...');
+            const ctx = document.getElementById('expirationScatterChart');
+            if (!ctx) {
+                console.error('Cannot find expirationScatterChart canvas element');
+                return;
+            }
+            console.log('Found canvas element:', ctx);
+            const context = ctx.getContext('2d');
             
-            // Prepare data from accordion groups
+            // Prepare data from each individual option position
             const scatterData = [];
+            
+            // Extract position data from tables in each accordion
             const accordionGroups = document.querySelectorAll('.accordion-group');
+            console.log('Found', accordionGroups.length, 'accordion groups');
             
             accordionGroups.forEach(group => {
                 const header = group.querySelector('.accordion-header');
                 const expirationText = header.querySelector('.expiration-section').textContent;
-                const positionBreakdown = header.querySelector('.position-breakdown');
+                const table = group.querySelector('.financial-table tbody');
                 
                 // Extract expiration date
                 const expirationMatch = expirationText.match(/Expiration: (\d{2}\/\d{2}\/\d{4})/);
-                if (expirationMatch) {
+                if (expirationMatch && table) {
                     const expirationDate = new Date(expirationMatch[1]);
                     
-                    // Extract position count
-                    const positionText = positionBreakdown.querySelector('.positions-count').textContent;
-                    const positionCount = parseInt(positionText.match(/(\d+) Position/)[1]);
-                    
-                    scatterData.push({
-                        x: expirationDate,
-                        y: positionCount
+                    // Process each position row in this expiration group
+                    const rows = table.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 6) {
+                            // Extract: Symbol, Type, Strike, Quantity, Nominal, Total Profit
+                            const symbol = cells[0].textContent.trim();
+                            const type = cells[1].textContent.trim();
+                            const strike = parseFloat(cells[2].textContent.replace('$', ''));
+                            const quantity = parseInt(cells[3].textContent.trim());
+                            const totalProfitText = cells[5].textContent.trim();
+                            const totalProfit = parseFloat(totalProfitText.replace('$', ''));
+                            
+                            if (!isNaN(totalProfit) && !isNaN(quantity)) {
+                                // Total profit is already calculated by CalculateTotalProfit() method
+                                
+                                scatterData.push({
+                                    x: expirationDate,
+                                    y: totalProfit,
+                                    symbol: symbol,
+                                    type: type,
+                                    strike: strike,
+                                    quantity: quantity,
+                                    totalProfitValue: totalProfit
+                                });
+                                
+                                console.log(`Added: ${symbol} ${type} $${strike} x${quantity} = $${totalProfit.toFixed(0)} on ${expirationMatch[1]}`);
+                            }
+                        }
                     });
                 }
             });
             
             // Sort by date
             scatterData.sort((a, b) => a.x - b.x);
+            console.log('Total scatter points:', scatterData.length);
             
-            new Chart(ctx, {
+            // Store chart instance globally for resizing
+            window.expirationChart = new Chart(context, {
                 type: 'scatter',
                 data: {
                     datasets: [{
-                        label: 'Positions by Expiration',
+                        label: 'Option Profits by Expiration',
                         data: scatterData,
-                        backgroundColor: '#27ae60',
-                        borderColor: '#27ae60',
-                        pointRadius: 6,
-                        pointHoverRadius: 8
+                        backgroundColor: function(ctx) {
+                            // Color points by option type: green for puts, blue for calls
+                            const point = scatterData[ctx.dataIndex];
+                            if (point && point.type) {
+                                return point.type.toLowerCase().includes('put') ? '#27ae60' : '#3498db';
+                            }
+                            return '#27ae60';
+                        },
+                        borderColor: function(ctx) {
+                            const point = scatterData[ctx.dataIndex];
+                            if (point && point.type) {
+                                return point.type.toLowerCase().includes('put') ? '#27ae60' : '#3498db';
+                            }
+                            return '#27ae60';
+                        },
+                        pointRadius: 8,
+                        pointHoverRadius: 12
                     }]
                 },
                 options: {
@@ -337,7 +481,50 @@
                             display: false
                         },
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 12
+                                },
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    return [
+                                        {
+                                            text: 'Put Options',
+                                            fillStyle: '#27ae60',
+                                            strokeStyle: '#27ae60',
+                                            fontColor: '#ffffff',
+                                            pointStyle: 'circle',
+                                            rotation: 0
+                                        },
+                                        {
+                                            text: 'Call Options',
+                                            fillStyle: '#3498db',
+                                            strokeStyle: '#3498db',
+                                            fontColor: '#ffffff',
+                                            pointStyle: 'circle',
+                                            rotation: 0
+                                        }
+                                    ];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const point = scatterData[context[0].dataIndex];
+                                    return point.symbol + ' ' + point.type + ' $' + point.strike;
+                                },
+                                label: function(context) {
+                                    const point = scatterData[context.dataIndex];
+                                    return [
+                                        'Contracts: ' + point.quantity,
+                                        'Total Profit: $' + point.y.toLocaleString()
+                                    ];
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -352,10 +539,16 @@
                             title: {
                                 display: true,
                                 text: 'Expiration Date',
-                                color: '#e0e0e0'
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 16
+                                }
                             },
                             ticks: {
-                                color: '#a0a0a0'
+                                color: '#a0a0a0',
+                                font: {
+                                    size: 14
+                                }
                             },
                             grid: {
                                 color: '#3a3a3a'
@@ -365,12 +558,20 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Number of Positions',
-                                color: '#e0e0e0'
+                                text: 'Total Profit ($)',
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 16
+                                }
                             },
                             ticks: {
                                 color: '#a0a0a0',
-                                stepSize: 1
+                                font: {
+                                    size: 14
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
                             },
                             grid: {
                                 color: '#3a3a3a'
@@ -378,8 +579,58 @@
                         }
                     },
                     interaction: {
-                        intersect: false,
-                        mode: 'point'
+                        intersect: true,
+                        mode: 'nearest'
+                    },
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            const dataIndex = elements[0].index;
+                            const clickedPoint = scatterData[dataIndex];
+                            
+                            if (clickedPoint && clickedPoint.x) {
+                                // Format the date to match the accordion target format
+                                const expirationDate = new Date(clickedPoint.x);
+                                const dateStr = expirationDate.toLocaleDateString('en-US', {
+                                    month: '2-digit',
+                                    day: '2-digit', 
+                                    year: 'numeric'
+                                });
+                                const targetId = `exp-${dateStr.replace(/\//g, '-')}`;
+                                
+                                console.log('Clicked point expiration:', dateStr, 'Target ID:', targetId);
+                                
+                                // Find and open the corresponding accordion
+                                const targetAccordion = document.getElementById(targetId);
+                                const targetHeader = document.querySelector(`[data-target="${targetId}"]`);
+                                
+                                if (targetAccordion && targetHeader) {
+                                    // Close all other accordions first
+                                    const allHeaders = document.querySelectorAll('.accordion-header');
+                                    allHeaders.forEach(header => {
+                                        header.classList.remove('active');
+                                        const target = header.getAttribute('data-target');
+                                        const content = document.getElementById(target);
+                                        if (content) {
+                                            content.classList.remove('expanded');
+                                        }
+                                    });
+                                    
+                                    // Open the target accordion
+                                    targetHeader.classList.add('active');
+                                    targetAccordion.classList.add('expanded');
+                                    
+                                    // Scroll to the accordion
+                                    targetHeader.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'center'
+                                    });
+                                    
+                                    console.log('Opened accordion for expiration:', dateStr);
+                                } else {
+                                    console.log('Could not find accordion elements for:', targetId);
+                                }
+                            }
+                        }
                     }
                 }
             });
@@ -390,7 +641,7 @@
             applyOptionsTableColoring();
             initializeAccordions();
             
-            // Create scatter chart after accordions are initialized
+            // Create scatter chart after everything is initialized
             setTimeout(() => {
                 createExpirationScatterChart();
             }, 100);
@@ -399,11 +650,56 @@
         // Also apply immediately in case DOMContentLoaded already fired
         applyOptionsTableColoring();
 
+        // Function to scroll to and highlight symbol in sidebar navigation
+        function scrollToSymbolInNav(symbolName) {
+            // Find the symbol link in the sidebar
+            const symbolNavItem = document.querySelector(`.symbol-nav-item[href="/symbol/${symbolName}"]`);
+            if (symbolNavItem) {
+                // Ensure symbols section is expanded
+                const symbolsToggle = document.getElementById('symbolsToggle');
+                const symbolsList = document.getElementById('symbolsList');
+                if (!symbolsToggle.classList.contains('expanded')) {
+                    symbolsToggle.classList.add('expanded');
+                    symbolsList.classList.add('expanded');
+                }
+                
+                // Remove any existing highlight
+                document.querySelectorAll('.symbol-nav-item.highlighted').forEach(item => {
+                    item.classList.remove('highlighted');
+                });
+                
+                // Add highlight to target symbol
+                symbolNavItem.classList.add('highlighted');
+                
+                // Scroll to the symbol in the sidebar
+                symbolNavItem.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+                
+                // Remove highlight after 2 seconds
+                setTimeout(() => {
+                    symbolNavItem.classList.remove('highlighted');
+                }, 2000);
+            }
+        }
+        
+        // Add click handler for symbol links in main content
+        document.addEventListener('click', function(e) {
+            const symbolLink = e.target.closest('.symbol-link');
+            if (symbolLink) {
+                // Extract symbol from the link text
+                const symbolName = symbolLink.textContent.trim();
+                // Don't prevent default - still want to navigate
+                // Just add the scroll animation before navigation
+                scrollToSymbolInNav(symbolName);
+            }
+        });
+
         console.log('Options page loaded');
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
-    <script src="/static/js/tutorial.js"></script>
 </body>
 </html>

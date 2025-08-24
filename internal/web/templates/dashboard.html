@@ -109,6 +109,10 @@
                             <i class="fas fa-database"></i>
                             Database
                         </a>
+                        <a href="/settings" class="nav-item admin-nav-item">
+                            <i class="fas fa-chart-line"></i>
+                            Polygon
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -128,8 +132,10 @@
                     <span style="color: #a0a0a0;">Nominal Total:</span> <span id="nominalTotal" style="color: #27ae60;">$0</span>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Long:</span> <span id="totalLong" style="color: #27ae60;">$0</span>
+                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;Open Calls: <span id="callPremiums" style="color: #27ae60;">$0</span> / <span id="longROI" style="color: #27ae60;">0.0%</span> of Long</span>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
+                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;Open Puts: <span id="putPremiums" style="color: #27ae60;">$0</span> / <span id="putROI" style="color: #27ae60;">0.0%</span> of Exposure / <span id="putsOfTreasuries" style="color: #27ae60;">0.0%</span> of Treasuries</span>
                     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Treasuries:</span> <span id="totalTreasuries" style="color: #27ae60;">$0</span>
                 </div>
@@ -346,6 +352,11 @@
             const totalLongElement = document.getElementById('totalLong');
             const totalPutsElement = document.getElementById('totalPuts');
             const totalTreasuriesElement = document.getElementById('totalTreasuries');
+            const longROIElement = document.getElementById('longROI');
+            const putROIElement = document.getElementById('putROI');
+            const callPremiumsElement = document.getElementById('callPremiums');
+            const putPremiumsElement = document.getElementById('putPremiums');
+            const putsOfTreasuriesElement = document.getElementById('putsOfTreasuries');
             
             // Format currency with consistent green coloring
             function formatCurrency(value, element) {
@@ -356,6 +367,13 @@
                     element.innerHTML = formattedValue;
                 }
                 // Always use green color
+                element.style.color = '#27ae60';
+            }
+            
+            // Format percentage values
+            function formatPercentage(value, element) {
+                const formattedValue = value.toFixed(1) + '%';
+                element.innerHTML = formattedValue;
                 element.style.color = '#27ae60';
             }
             
@@ -388,6 +406,16 @@
             formatCurrency(totalLong, totalLongElement);
             formatCurrency(totalPutExposed, totalPutsElement);
             formatCurrency(totalTreasuries, totalTreasuriesElement);
+            
+            // Calculate Puts as % of Treasuries (using put premiums, not exposure)
+            const putsOfTreasuriesPercent = totalTreasuries > 0 ? ((data.totalPutPremiums || 0) / totalTreasuries) * 100 : 0;
+            
+            // Update ROI values and premiums
+            formatPercentage(data.longROI || 0, longROIElement);
+            formatPercentage(data.putROI || 0, putROIElement);
+            formatCurrency(data.totalCallPremiums || 0, callPremiumsElement);
+            formatCurrency(data.totalPutPremiums || 0, putPremiumsElement);
+            formatPercentage(putsOfTreasuriesPercent, putsOfTreasuriesElement);
         }
 
         // Function to create Total Allocation Chart with data

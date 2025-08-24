@@ -105,6 +105,8 @@ type DashboardTotals struct {
 	TotalDividends    float64 `json:"totalDividends"`
 	TotalNet          float64 `json:"totalNet"`
 	OverallCashOnCash float64 `json:"overallCashOnCash"`
+	PutROI            float64 `json:"putROI"`
+	LongROI           float64 `json:"longROI"`
 	GrandTotal        float64 `json:"grandTotal"`
 }
 
@@ -248,7 +250,11 @@ type LongPositionRequest struct {
 }
 
 type AllocationData struct {
-	LongByTicker    []ChartData `json:"longByTicker"`
-	PutsByTicker    []ChartData `json:"putsByTicker"`
-	TotalAllocation []ChartData `json:"totalAllocation"`
+	LongByTicker      []ChartData `json:"longByTicker"`
+	PutsByTicker      []ChartData `json:"putsByTicker"`
+	TotalAllocation   []ChartData `json:"totalAllocation"`
+	PutROI            float64     `json:"putROI"`
+	LongROI           float64     `json:"longROI"`
+	TotalPutPremiums  float64     `json:"totalPutPremiums"`
+	TotalCallPremiums float64     `json:"totalCallPremiums"`
 }

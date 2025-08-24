@@ -253,6 +253,18 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treas
 		overallCashOnCash = (totalNet / totalLong) * 100
 	}
 
+	// Calculate Put ROI: sum premium of all open Puts divided by Put exposure
+	putROI := 0.0
+	if totalPuts > 0 {
+		putROI = (totalPutPremiums / totalPuts) * 100
+	}
+
+	// Calculate Long ROI: sum premiums of all open Calls divided by Total Long
+	longROI := 0.0
+	if totalLong > 0 {
+		longROI = (totalCallPremiums / totalLong) * 100
+	}
+
 	return DashboardTotals{
 		TotalLong:         totalLong,
 		TotalPuts:         totalPuts,
@@ -263,6 +275,8 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treas
 		TotalDividends:    totalDividends,
 		TotalNet:          totalNet,
 		OverallCashOnCash: overallCashOnCash,
+		PutROI:            putROI,
+		LongROI:           longROI,
 		GrandTotal:        totalLong + totalPuts + totalTreasuries,
 	}
 }
@@ -344,13 +358,18 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var totalPuts float64
+	var totalPuts, totalPutPremiums, totalCallPremiums float64
 	putsByTicker := make(map[string]float64)
 	for _, opt := range options {
-		if opt.Type == "Put" && opt.Closed == nil { // Only open puts
-			exposure := opt.Strike * float64(opt.Contracts) * 100
-			totalPuts += exposure
-			putsByTicker[opt.Symbol] += exposure
+		if opt.Closed == nil { // Only open options
+			if opt.Type == "Put" {
+				exposure := opt.Strike * float64(opt.Contracts) * 100
+				totalPuts += exposure
+				putsByTicker[opt.Symbol] += exposure
+				totalPutPremiums += opt.Premium * float64(opt.Contracts) * 100
+			} else if opt.Type == "Call" {
+				totalCallPremiums += opt.Premium * float64(opt.Contracts) * 100
+			}
 		}
 	}
 
@@ -397,10 +416,25 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 		{Label: "Treasuries", Value: totalTreasuries, Color: "#FFCE56"},
 	}
 
+	// Calculate ROI values
+	putROI := 0.0
+	if totalPuts > 0 {
+		putROI = (totalPutPremiums / totalPuts) * 100
+	}
+
+	longROI := 0.0
+	if totalLong > 0 {
+		longROI = (totalCallPremiums / totalLong) * 100
+	}
+
 	response := AllocationData{
-		LongByTicker:    longByTickerChart,
-		PutsByTicker:    putsByTickerChart,
-		TotalAllocation: totalAllocation,
+		LongByTicker:      longByTickerChart,
+		PutsByTicker:      putsByTickerChart,
+		TotalAllocation:   totalAllocation,
+		PutROI:            putROI,
+		LongROI:           longROI,
+		TotalPutPremiums:  totalPutPremiums,
+		TotalCallPremiums: totalCallPremiums,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

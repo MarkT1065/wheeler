@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"context"
 	"log"
 	"net/http"
 	"sort"
@@ -434,6 +435,18 @@ func (s *Server) symbolAPIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if this is a price update request
+	if len(pathSegments) > 1 && pathSegments[1] == "update-price" {
+		s.symbolUpdatePriceHandler(w, r, symbol)
+		return
+	}
+
+	// Check if this is a dividend data fetch request
+	if len(pathSegments) > 1 && pathSegments[1] == "fetch-dividends" {
+		s.symbolFetchDividendsHandler(w, r, symbol)
+		return
+	}
+
 	// Handle different HTTP methods for symbol operations
 	switch r.Method {
 	case http.MethodPut:
@@ -455,4 +468,76 @@ func (s *Server) symbolDividendsHandler(w http.ResponseWriter, r *http.Request, 
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(dividends)
+}
+
+// symbolUpdatePriceHandler updates a symbol's price using Polygon.io API
+func (s *Server) symbolUpdatePriceHandler(w http.ResponseWriter, r *http.Request, symbol string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("[SYMBOL API] Updating price for symbol: %s", symbol)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Update symbol price using Polygon service
+	err := s.polygonService.UpdateSymbolPrice(ctx, symbol)
+	
+	response := map[string]interface{}{
+		"success": err == nil,
+		"symbol":  symbol,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+		log.Printf("[SYMBOL API] Failed to update price for %s: %v", symbol, err)
+		w.WriteHeader(http.StatusBadRequest)
+	} else {
+		response["message"] = "Price updated successfully"
+		log.Printf("[SYMBOL API] Successfully updated price for %s", symbol)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[SYMBOL API] Error encoding response: %v", err)
+	}
+}
+
+// symbolFetchDividendsHandler fetches dividend data for a symbol from Polygon.io
+func (s *Server) symbolFetchDividendsHandler(w http.ResponseWriter, r *http.Request, symbol string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("[SYMBOL API] Fetching dividends for symbol: %s", symbol)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Fetch dividend data using Polygon service
+	dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, 10)
+	
+	response := map[string]interface{}{
+		"success": err == nil,
+		"symbol":  symbol,
+	}
+
+	if err != nil {
+		response["error"] = err.Error()
+		log.Printf("[SYMBOL API] Failed to fetch dividends for %s: %v", symbol, err)
+		w.WriteHeader(http.StatusBadRequest)
+	} else {
+		response["message"] = "Dividends fetched successfully"
+		response["dividends"] = dividends
+		response["count"] = len(dividends)
+		log.Printf("[SYMBOL API] Successfully fetched %d dividends for %s", len(dividends), symbol)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[SYMBOL API] Error encoding response: %v", err)
+	}
 }

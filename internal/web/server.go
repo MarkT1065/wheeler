@@ -10,6 +10,7 @@ import (
 	"sort"
 	"stonks/internal/database"
 	"stonks/internal/models"
+	"stonks/internal/polygon"
 	"strings"
 	"time"
 
@@ -23,6 +24,8 @@ type Server struct {
 	treasuryService     *models.TreasuryService
 	longPositionService *models.LongPositionService
 	dividendService     *models.DividendService
+	settingService      *models.SettingService
+	polygonService      *polygon.Service
 	templates           *template.Template
 }
 
@@ -134,13 +137,20 @@ func NewServer() (*Server, error) {
 	log.Printf("[SERVER] HTML templates loaded successfully")
 
 	log.Printf("[SERVER] Initializing service layers")
+	
+	// Initialize core services
+	symbolService := models.NewSymbolService(dbWrapper.DB)
+	settingService := models.NewSettingService(dbWrapper.DB)
+	
 	server := &Server{
 		db:                  dbWrapper.DB,
 		optionService:       models.NewOptionService(dbWrapper.DB),
-		symbolService:       models.NewSymbolService(dbWrapper.DB),
+		symbolService:       symbolService,
 		treasuryService:     models.NewTreasuryService(dbWrapper.DB),
 		longPositionService: models.NewLongPositionService(dbWrapper.DB),
 		dividendService:     models.NewDividendService(dbWrapper.DB),
+		settingService:      settingService,
+		polygonService:      polygon.NewService(symbolService, settingService),
 		templates:           templates,
 	}
 
@@ -237,6 +247,30 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/help", s.helpHandler)
 	log.Printf("[SERVER] Route registered: /help -> helpHandler")
+
+	http.HandleFunc("/settings", s.settingsHandler)
+	log.Printf("[SERVER] Route registered: /settings -> settingsHandler")
+
+	http.HandleFunc("/api/settings", s.settingsAPIHandler)
+	log.Printf("[SERVER] Route registered: /api/settings -> settingsAPIHandler")
+
+	http.HandleFunc("/api/settings/", s.individualSettingAPIHandler)
+	log.Printf("[SERVER] Route registered: /api/settings/ -> individualSettingAPIHandler")
+
+	http.HandleFunc("/api/polygon/test", s.polygonTestHandler)
+	log.Printf("[SERVER] Route registered: /api/polygon/test -> polygonTestHandler")
+
+	http.HandleFunc("/api/polygon/update-prices", s.polygonUpdatePricesHandler)
+	log.Printf("[SERVER] Route registered: /api/polygon/update-prices -> polygonUpdatePricesHandler")
+
+	http.HandleFunc("/api/polygon/symbol-info/", s.polygonSymbolInfoHandler)
+	log.Printf("[SERVER] Route registered: /api/polygon/symbol-info/ -> polygonSymbolInfoHandler")
+
+	http.HandleFunc("/api/polygon/status", s.polygonStatusHandler)
+	log.Printf("[SERVER] Route registered: /api/polygon/status -> polygonStatusHandler")
+
+	http.HandleFunc("/api/polygon/fetch-dividends", s.polygonFetchDividendsHandler)
+	log.Printf("[SERVER] Route registered: /api/polygon/fetch-dividends -> polygonFetchDividendsHandler")
 
 	log.Printf("[SERVER] All routes registered successfully")
 }

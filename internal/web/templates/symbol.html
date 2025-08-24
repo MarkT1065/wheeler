@@ -75,6 +75,10 @@
                             <i class="fas fa-database"></i>
                             Database
                         </a>
+                        <a href="/settings" class="nav-item admin-nav-item">
+                            <i class="fas fa-chart-line"></i>
+                            Polygon
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -664,6 +668,7 @@
             openModal(false);
         });
         
+
         // Delete symbol button
         const deleteSymbolBtn = document.getElementById('deleteSymbolBtn');
         deleteSymbolBtn.addEventListener('click', function() {
@@ -1436,6 +1441,92 @@
             .catch(error => {
                 console.error('Error deleting option:', error);
                 alert('Failed to delete option. Please try again.');
+            });
+        }
+
+        function updateSymbolPrice(symbol) {
+            const updateBtn = document.getElementById('updatePriceBtn');
+            const originalText = updateBtn.innerHTML;
+            
+            // Disable button and show loading state
+            updateBtn.disabled = true;
+            updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            
+            fetch(`/api/symbols/${symbol}/update-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Price updated successfully for', symbol);
+                    // Reload the page to show updated price
+                    window.location.reload();
+                } else {
+                    throw new Error(data.error || 'Failed to update price');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating price:', error);
+                alert('Failed to update price: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                updateBtn.disabled = false;
+                updateBtn.innerHTML = originalText;
+            });
+        }
+
+        function fetchSymbolDividends(symbol) {
+            const fetchBtn = document.getElementById('fetchDividendsBtn');
+            const originalText = fetchBtn.innerHTML;
+            
+            // Disable button and show loading state
+            fetchBtn.disabled = true;
+            fetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+            
+            fetch(`/api/symbols/${symbol}/fetch-dividends`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Dividends fetched successfully for', symbol);
+                    const message = `Found ${data.count} dividend records for ${symbol}`;
+                    
+                    // Show dividend information in a more user-friendly way
+                    if (data.dividends && data.dividends.length > 0) {
+                        let dividendInfo = `<strong>Recent dividends for ${symbol}:</strong><br><br>`;
+                        data.dividends.slice(0, 5).forEach(div => {
+                            dividendInfo += `• $${div.cash_amount.toFixed(2)} - Ex-Date: ${div.ex_dividend_date}<br>`;
+                        });
+                        
+                        showConfirmModal(
+                            'Dividend Data Retrieved',
+                            dividendInfo,
+                            () => {
+                                // Optional: User can choose to refresh page to see updated data
+                                if (confirm('Would you like to refresh the page to see any updates?')) {
+                                    window.location.reload();
+                                }
+                            }
+                        );
+                    } else {
+                        alert(message + '\n\nNo recent dividends found.');
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to fetch dividends');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching dividends:', error);
+                alert('Failed to fetch dividends: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                fetchBtn.disabled = false;
+                fetchBtn.innerHTML = originalText;
             });
         }
 

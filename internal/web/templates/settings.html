@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygon - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="settings-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .AllSymbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list" id="adminList">
+                        <a href="/import" class="nav-item admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/backup" class="nav-item admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                        <a href="/settings" class="nav-item admin-nav-item active">
+                            <i class="fas fa-chart-line"></i>
+                            Polygon
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <a href="/help" class="nav-item">
+                <i class="fas fa-question-circle"></i>
+                Help
+            </a>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section">
+                <div class="section-title">Polygon</div>
+                <div class="section-subtitle">Configure your Polygon.io API key for live market data</div>
+                
+                <!-- API Key Configuration Form -->
+                <div class="settings-form-container">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-key"></i>
+                            <h3>Polygon.io API Configuration</h3>
+                        </div>
+                        <div class="settings-card-body">
+                            <form id="apiKeyForm">
+                                <div class="form-group">
+                                    <label for="apiKeyInput" class="form-label">API Key</label>
+                                    <input type="password" id="apiKeyInput" class="form-input" 
+                                           placeholder="Enter your Polygon.io API key"
+                                           value="{{if .ApiKey}}{{.ApiKey}}{{end}}">
+                                    <div class="form-help">
+                                        <i class="fas fa-info-circle"></i>
+                                        Get your free API key from <a href="https://polygon.io" target="_blank" rel="noopener">Polygon.io</a>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-secondary" id="toggleVisibilityBtn">
+                                            <i class="fas fa-eye" id="eyeIcon"></i>
+                                            <span id="toggleText">Show</span>
+                                        </button>
+                                        <button type="submit" class="btn btn-primary" id="saveApiKeyBtn">
+                                            <i class="fas fa-save"></i>
+                                            Save API Key
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            
+                            <!-- API Key Status -->
+                            <div class="api-status" id="apiStatus">
+                                <div class="status-indicator">
+                                    <i class="fas fa-circle" id="statusIcon"></i>
+                                    <span id="statusText">Not configured</span>
+                                </div>
+                                <div class="status-description" id="statusDescription">
+                                    Configure your API key to enable live market data updates
+                                </div>
+                            </div>
+                            
+                            <!-- API Actions -->
+                            <div class="api-actions" id="apiActions" style="display: none;">
+                                <button type="button" class="btn btn-secondary" id="testConnectionBtn">
+                                    <i class="fas fa-flask"></i>
+                                    Test Connection
+                                </button>
+                                <button type="button" class="btn btn-primary" id="updatePricesBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                    Update All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- API Key Information -->
+                <div class="info-section">
+                    <div class="info-card">
+                        <div class="info-header">
+                            <i class="fas fa-lightbulb"></i>
+                            <h4>About Polygon.io API</h4>
+                        </div>
+                        <div class="info-content">
+                            <p>The Polygon.io API provides real-time and historical market data for stocks, options, and other financial instruments.</p>
+                            <ul>
+                                <li><strong>Free Tier:</strong> 5 API calls per minute, delayed data</li>
+                                <li><strong>Starter Plan:</strong> 100 API calls per minute, real-time data</li>
+                                <li><strong>Developer Plan:</strong> 1000 API calls per minute, additional endpoints</li>
+                            </ul>
+                            <p>Your API key will be used to automatically update stock prices and fetch dividend information.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <style>
+        .settings-form-container {
+            max-width: 600px;
+            margin: 20px 0;
+        }
+
+        .settings-card {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .settings-card-header {
+            padding: 20px;
+            border-bottom: 1px solid #404040;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-card-header i {
+            color: #27ae60;
+            font-size: 18px;
+        }
+
+        .settings-card-header h3 {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .settings-card-body {
+            padding: 20px;
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .form-help a {
+            color: #27ae60;
+            text-decoration: none;
+        }
+
+        .form-help a:hover {
+            text-decoration: underline;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .api-status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 6px;
+            border-left: 4px solid #666;
+        }
+
+        .api-status.configured {
+            border-left-color: #27ae60;
+        }
+
+        .api-status.error {
+            border-left-color: #e74c3c;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .status-indicator i {
+            font-size: 8px;
+        }
+
+        .status-indicator.configured i {
+            color: #27ae60;
+        }
+
+        .status-indicator.error i {
+            color: #e74c3c;
+        }
+
+        .status-indicator.not-configured i {
+            color: #666;
+        }
+
+        .status-description {
+            font-size: 12px;
+            color: #888;
+            margin-left: 16px;
+        }
+
+        .info-section {
+            max-width: 600px;
+        }
+
+        .info-card {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-header i {
+            color: #f39c12;
+            font-size: 16px;
+        }
+
+        .info-header h4 {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .info-content {
+            color: #b0b0b0;
+            line-height: 1.5;
+        }
+
+        .info-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .info-content li {
+            margin: 5px 0;
+        }
+
+        .info-content strong {
+            color: #e0e0e0;
+        }
+
+        .api-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #404040;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+
+    <script>
+        // Get API key value from backend
+        let currentApiKey = '{{if .ApiKey}}{{.ApiKey}}{{end}}';
+        
+        // Toggle API key visibility
+        document.getElementById('toggleVisibilityBtn').addEventListener('click', function() {
+            const input = document.getElementById('apiKeyInput');
+            const eyeIcon = document.getElementById('eyeIcon');
+            const toggleText = document.getElementById('toggleText');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeIcon.className = 'fas fa-eye-slash';
+                toggleText.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                eyeIcon.className = 'fas fa-eye';
+                toggleText.textContent = 'Show';
+            }
+        });
+
+        // Update API status display
+        function updateApiStatus(hasKey, isValid = null) {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusText = document.getElementById('statusText');
+            const statusDescription = document.getElementById('statusDescription');
+            const apiStatus = document.getElementById('apiStatus');
+            const apiActions = document.getElementById('apiActions');
+            
+            // Remove all status classes
+            apiStatus.classList.remove('configured', 'error', 'not-configured');
+            statusIndicator.classList.remove('configured', 'error', 'not-configured');
+            
+            if (!hasKey) {
+                apiStatus.classList.add('not-configured');
+                statusIndicator.classList.add('not-configured');
+                statusText.textContent = 'Not configured';
+                statusDescription.textContent = 'Configure your API key to enable live market data updates';
+                apiActions.style.display = 'none';
+            } else {
+                apiStatus.classList.add('configured');
+                statusIndicator.classList.add('configured');
+                statusText.textContent = 'Configured';
+                statusDescription.textContent = 'API key is set and ready for market data requests';
+                apiActions.style.display = 'flex';
+            }
+        }
+
+        // Form submission
+        document.getElementById('apiKeyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const saveBtn = document.getElementById('saveApiKeyBtn');
+            
+            // Disable button and show loading state
+            saveBtn.disabled = true;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            
+            // Update API key via API
+            fetch('/api/settings/POLYGON_API_KEY', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: apiKey,
+                    description: 'API key for Polygon.io stock market data integration'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to save API key');
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentApiKey = apiKey;
+                updateApiStatus(apiKey.length > 0);
+                showNotification('API key saved successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error saving API key:', error);
+                showNotification('Error saving API key: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // Restore button state
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            });
+        });
+
+        // Test API connection
+        document.getElementById('testConnectionBtn').addEventListener('click', function() {
+            const btn = this;
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+            
+            fetch('/api/polygon/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('API connection test successful!', 'success');
+                } else {
+                    showNotification('API connection test failed: ' + (data.error || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error testing API connection:', error);
+                showNotification('Error testing API connection: ' + error.message, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        });
+
+        // Update all prices
+        document.getElementById('updatePricesBtn').addEventListener('click', function() {
+            const btn = this;
+            
+            if (!confirm('This will update prices for all symbols using your Polygon.io API quota. Continue?')) {
+                return;
+            }
+            
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            
+            fetch('/api/polygon/update-prices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ all: true })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Price update completed! Updated: ${data.updated}, Failed: ${data.failed}`, 'success');
+                } else {
+                    showNotification('Price update failed: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating prices:', error);
+                showNotification('Error updating prices: ' + error.message, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+        });
+
+
+        // Initialize status display
+        document.addEventListener('DOMContentLoaded', function() {
+            updateApiStatus(currentApiKey.length > 0);
+        });
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                <span>${message}</span>
+                <button class="notification-close">&times;</button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+            
+            // Manual close
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            });
+        }
+
+        console.log('Settings page loaded');
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+</body>
+</html>

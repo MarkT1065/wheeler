@@ -120,6 +120,29 @@ Represents U.S. Treasury securities used as cash collateral for options trading 
 - amount, yield, and buy_price must be positive
 - maturity must be after purchased date
 
+### Settings
+Represents application configuration settings stored as name-value pairs for dynamic system configuration.
+
+**Primary Key:** name (TEXT) - Natural primary key using setting name
+
+**Attributes:**
+- name (TEXT) - Unique setting name identifier (e.g., "POLYGON_API_KEY", "AUTO_UPDATE_PRICES")
+- value (TEXT) - Setting value stored as text (can be parsed for different data types)
+- description (TEXT) - Human-readable description of the setting purpose
+- created_at (DATETIME) - Record creation timestamp (default: CURRENT_TIMESTAMP)
+- updated_at (DATETIME) - Record update timestamp (default: CURRENT_TIMESTAMP)
+
+**Common Settings:**
+- **POLYGON_API_KEY**: API key for Polygon.io stock market data integration
+- **AUTO_UPDATE_INTERVAL**: Minutes between automatic price updates
+- **DEFAULT_CURRENCY**: Base currency for portfolio calculations
+- **ENABLE_NOTIFICATIONS**: Enable/disable system notifications
+
+**Constraints:**
+- name must be unique
+- name cannot be null or empty
+- value can be null (for boolean false or unset values)
+
 ## Relationships
 
 ```
@@ -127,6 +150,7 @@ Symbols (1) ←→ (Many) Long Positions (via symbol FK)
 Symbols (1) ←→ (Many) Options (via symbol FK)
 Symbols (1) ←→ (Many) Dividends (via symbol FK)
 Treasuries (Independent entity - no FK relationships)
+Settings (Independent entity - no FK relationships)
 ```
 
 ### Primary Key Strategy
@@ -139,7 +163,7 @@ Wheeler uses a hybrid primary key approach optimized for modern web applications
 - Unique constraints on business keys prevent duplicate records
 
 **Reference Tables (Natural Keys):**
-- symbols.symbol (stock ticker), treasuries.cuspid (bond identifier)  
+- symbols.symbol (stock ticker), treasuries.cuspid (bond identifier), settings.name (configuration key)
 - Business identifiers as primary keys for reference data
 
 ## Database Indexes
@@ -156,6 +180,7 @@ Wheeler uses a hybrid primary key approach optimized for modern web applications
 - `idx_treasuries_cuspid` - Primary key index on treasuries.cuspid
 - `idx_treasuries_maturity` - Query optimization for maturity dates
 - `idx_treasuries_purchased` - Query optimization for purchase dates
+- `idx_settings_name` - Primary key index on settings.name
 
 ## Data Constraints & Business Rules
 

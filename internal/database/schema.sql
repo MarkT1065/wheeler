@@ -60,6 +60,18 @@ CREATE TABLE IF NOT EXISTS treasuries (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    name TEXT PRIMARY KEY,
+    value TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert default POLYGON_API_KEY setting
+INSERT OR IGNORE INTO settings (name, value, description) 
+VALUES ('POLYGON_API_KEY', '', 'API key for Polygon.io stock market data integration');
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_symbols_symbol ON symbols(symbol);
 CREATE INDEX IF NOT EXISTS idx_long_positions_symbol ON long_positions(symbol);
@@ -72,6 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_dividends_received ON dividends(received);
 CREATE INDEX IF NOT EXISTS idx_treasuries_cuspid ON treasuries(cuspid);
 CREATE INDEX IF NOT EXISTS idx_treasuries_maturity ON treasuries(maturity);
 CREATE INDEX IF NOT EXISTS idx_treasuries_purchased ON treasuries(purchased);
+CREATE INDEX IF NOT EXISTS idx_settings_name ON settings(name);
 
 -- Unique constraints to prevent duplicate business records
 -- (These replace the compound primary keys while allowing easier HTTP CRUD with integer IDs)
