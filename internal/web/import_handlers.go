@@ -909,9 +909,12 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Construct full path to database file in data directory
+	sourceFilePath := filepath.Join("./data", dbFileName)
+	
 	// Check if source file exists
-	if _, err := os.Stat(dbFileName); os.IsNotExist(err) {
-		log.Printf("[BACKUP] Source file does not exist: %s", dbFileName)
+	if _, err := os.Stat(sourceFilePath); os.IsNotExist(err) {
+		log.Printf("[BACKUP] Source file does not exist: %s", sourceFilePath)
 		http.Error(w, `{"success": false, "error": "Source file not found"}`, http.StatusNotFound)
 		return
 	}
@@ -923,13 +926,13 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 	backupPath := filepath.Join("./data/backups", backupFileName)
 
 	// Create backup by copying the file
-	if err := s.copyFile(dbFileName, backupPath); err != nil {
+	if err := s.copyFile(sourceFilePath, backupPath); err != nil {
 		log.Printf("[BACKUP] Error creating backup: %v", err)
 		http.Error(w, `{"success": false, "error": "Failed to create backup"}`, http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[BACKUP] Successfully created backup: %s -> %s", dbFileName, backupPath)
+	log.Printf("[BACKUP] Successfully created backup: %s -> %s", sourceFilePath, backupPath)
 
 	// Return success response
 	response := map[string]interface{}{

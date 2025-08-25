@@ -29,6 +29,10 @@
                     <i class="fas fa-calendar-alt"></i>
                     Monthly
                 </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Options
+                </a>
                 <a href="/treasuries" class="nav-item">
                     <i class="fas fa-university"></i>
                     Treasuries
@@ -46,7 +50,7 @@
                             <i class="fas fa-plus"></i>
                             New Symbol
                         </a>
-                        {{range .AllSymbols}}
+                        {{range .Symbols}}
                         <a href="/symbol/{{.}}" class="symbol-nav-item">
                             {{.}}
                         </a>
@@ -1131,6 +1135,8 @@ VZ,2/3/2025,$241.64
             color: #ef4444;
         }
     </style>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/tutorial.js"></script>
 </body>
 </html>

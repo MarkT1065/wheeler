@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"stonks/internal/database"
 	"stonks/internal/models"
 	"stonks/internal/polygon"
@@ -87,6 +88,25 @@ func NewServer() (*Server, error) {
 			}
 			return 0.0
 		},
+		"div": func(a, b interface{}) interface{} {
+			switch aVal := a.(type) {
+			case int:
+				if bVal, ok := b.(int); ok && bVal != 0 {
+					return float64(aVal) / float64(bVal)
+				}
+				if bVal, ok := b.(float64); ok && bVal != 0.0 {
+					return float64(aVal) / bVal
+				}
+			case float64:
+				if bVal, ok := b.(int); ok && bVal != 0 {
+					return aVal / float64(bVal)
+				}
+				if bVal, ok := b.(float64); ok && bVal != 0.0 {
+					return aVal / bVal
+				}
+			}
+			return 0.0
+		},
 		"formatCurrency": func(value interface{}) string {
 			var floatVal float64
 			switch v := value.(type) {
@@ -126,6 +146,57 @@ func NewServer() (*Server, error) {
 				return "-$" + str
 			}
 			return "$" + str
+		},
+		"formatCurrencyWithDecimals": func(value interface{}) string {
+			var floatVal float64
+			var err error
+			switch v := value.(type) {
+			case float64:
+				floatVal = v
+			case int:
+				floatVal = float64(v)
+			case string:
+				floatVal, err = strconv.ParseFloat(v, 64)
+				if err != nil {
+					return "$0.00"
+				}
+			default:
+				return "$0.00"
+			}
+			
+			// Format to 2 decimal places
+			formatted := fmt.Sprintf("%.2f", floatVal)
+			
+			// Split into integer and decimal parts
+			parts := strings.Split(formatted, ".")
+			intPart := parts[0]
+			decPart := parts[1]
+			
+			// Handle negative numbers
+			isNegative := false
+			if strings.HasPrefix(intPart, "-") {
+				isNegative = true
+				intPart = intPart[1:]
+			}
+			
+			// Add commas to integer part
+			if len(intPart) > 3 {
+				var result string
+				for i, digit := range intPart {
+					if i > 0 && (len(intPart)-i)%3 == 0 {
+						result += ","
+					}
+					result += string(digit)
+				}
+				intPart = result
+			}
+			
+			// Combine with decimals
+			formatted = intPart + "." + decPart
+			if isNegative {
+				return "-$" + formatted
+			}
+			return "$" + formatted
 		},
 	}
 	
@@ -286,6 +357,11 @@ func (s *Server) Start(port string) error {
 	fmt.Printf("   📈 Dashboard:    http://localhost:%s/\n", port)
 
 	return http.ListenAndServe(":"+port, nil)
+}
+
+// SetupTestRoutes sets up routes for testing purposes
+func (s *Server) SetupTestRoutes() {
+	s.setupRoutes()
 }
 
 // ExpirationGroup represents a group of positions with the same expiration date

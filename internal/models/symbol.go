@@ -139,47 +139,6 @@ func (o *Option) CalculateTotalProfit() float64 {
 	return (o.Premium - exitPrice) * float64(o.Contracts) * 100
 }
 
-// CalculateTotalProfitWithCurrentPrice calculates profit/loss including open options using current market price
-func (o *Option) CalculateTotalProfitWithCurrentPrice(currentPrice float64) float64 {
-	exitPrice := 0.0
-	
-	// For closed options, use actual exit price
-	if o.ExitPrice != nil {
-		exitPrice = *o.ExitPrice
-	} else if o.IsOpen() && currentPrice > 0 {
-		// For open options, estimate current value based on intrinsic value
-		exitPrice = o.estimateCurrentOptionValue(currentPrice)
-	}
-	
-	return (o.Premium - exitPrice) * float64(o.Contracts) * 100
-}
-
-// estimateCurrentOptionValue estimates the current value of an open option based on intrinsic value
-func (o *Option) estimateCurrentOptionValue(currentPrice float64) float64 {
-	if currentPrice <= 0 {
-		return 0.0
-	}
-	
-	// Calculate intrinsic value (minimum option value at expiration)
-	intrinsicValue := 0.0
-	
-	if o.Type == "Put" {
-		// Put option: max(Strike - Current Price, 0)
-		if o.Strike > currentPrice {
-			intrinsicValue = o.Strike - currentPrice
-		}
-	} else if o.Type == "Call" {
-		// Call option: max(Current Price - Strike, 0)
-		if currentPrice > o.Strike {
-			intrinsicValue = currentPrice - o.Strike
-		}
-	}
-	
-	// For short options (sold), we want the intrinsic value
-	// For long options, we'd need more complex pricing, but for now use intrinsic as minimum
-	return intrinsicValue
-}
-
 func (o *Option) CalculatePercentOfProfit() float64 {
 	if o.Premium == 0 {
 		return 0
@@ -189,15 +148,6 @@ func (o *Option) CalculatePercentOfProfit() float64 {
 	return (actualProfit / maxProfit) * 100
 }
 
-// CalculatePercentOfProfitWithCurrentPrice calculates percentage of profit including open options
-func (o *Option) CalculatePercentOfProfitWithCurrentPrice(currentPrice float64) float64 {
-	if o.Premium == 0 {
-		return 0
-	}
-	maxProfit := o.Premium * float64(o.Contracts) * 100
-	actualProfit := o.CalculateTotalProfitWithCurrentPrice(currentPrice)
-	return (actualProfit / maxProfit) * 100
-}
 
 func (o *Option) CalculatePercentOfTime() float64 {
 	totalDays := o.Expiration.Sub(o.Opened).Hours() / 24
@@ -238,15 +188,6 @@ func (o *Option) CalculateMultiplier() float64 {
 		return 0
 	}
 	return o.CalculatePercentOfProfit() / percentTime
-}
-
-// CalculateMultiplierWithCurrentPrice calculates multiplier for open positions using current market price
-func (o *Option) CalculateMultiplierWithCurrentPrice(currentPrice float64) float64 {
-	percentTime := o.CalculatePercentOfTime()
-	if percentTime == 0 {
-		return 0
-	}
-	return o.CalculatePercentOfProfitWithCurrentPrice(currentPrice) / percentTime
 }
 
 func (o *Option) GetExitPriceValue() float64 {

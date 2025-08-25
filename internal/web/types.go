@@ -112,15 +112,16 @@ type DashboardTotals struct {
 
 // MonthlyData holds data for the monthly template
 type MonthlyData struct {
-	Symbols       []string             `json:"symbols"`
-	PutsData      MonthlyOptionData    `json:"putsData"`
-	CallsData     MonthlyOptionData    `json:"callsData"`
-	CapGainsData  MonthlyFinancialData `json:"capGainsData"`
-	DividendsData MonthlyFinancialData `json:"dividendsData"`
-	TableData     []MonthlyTableRow    `json:"tableData"`
-	TotalsByMonth []MonthlyTotal       `json:"totalsByMonth"`
-	GrandTotal    float64              `json:"grandTotal"`
-	CurrentDB     string               `json:"currentDB"`
+	Symbols                  []string                      `json:"symbols"`
+	PutsData                 MonthlyOptionData             `json:"putsData"`
+	CallsData                MonthlyOptionData             `json:"callsData"`
+	CapGainsData             MonthlyFinancialData          `json:"capGainsData"`
+	DividendsData            MonthlyFinancialData          `json:"dividendsData"`
+	TableData                []MonthlyTableRow             `json:"tableData"`
+	TotalsByMonth            []MonthlyTotal                `json:"totalsByMonth"`
+	MonthlyPremiumsBySymbol  []MonthlyPremiumsBySymbol     `json:"monthlyPremiumsBySymbol"`
+	GrandTotal               float64                       `json:"grandTotal"`
+	CurrentDB                string                        `json:"currentDB"`
 }
 
 type MonthlyOptionData struct {
@@ -151,6 +152,17 @@ type MonthlyTableRow struct {
 
 type MonthlyTotal struct {
 	Month  string  `json:"month"`
+	Amount float64 `json:"amount"`
+}
+
+// MonthlyPremiumsBySymbol holds data for stacked bar chart showing monthly premiums by symbol
+type MonthlyPremiumsBySymbol struct {
+	Month   string             `json:"month"`
+	Symbols []SymbolPremiumData `json:"symbols"`
+}
+
+type SymbolPremiumData struct {
+	Symbol string  `json:"symbol"`
 	Amount float64 `json:"amount"`
 }
 

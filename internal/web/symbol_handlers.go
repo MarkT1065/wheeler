@@ -138,7 +138,7 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 	var optionsGains float64
 	allOptionsCount := 0
 	for _, option := range optionsList {
-		profit := option.CalculateTotalProfitWithCurrentPrice(symbolData.Price)
+		profit := option.CalculateTotalProfit()
 		optionsGains += profit
 		allOptionsCount++
 		status := "closed"

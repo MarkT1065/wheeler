@@ -50,6 +50,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 	// Ticker -> Month -> Amount for table
 	tickerMonthData := make(map[string][12]float64)
+	
+	// Symbol -> Month -> Premium for stacked bar chart
+	symbolMonthPremiums := make(map[string][12]float64)
+	
 
 	// Process all options (both open and closed)
 	for _, option := range options {
@@ -77,6 +81,16 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			newData[month] = totalPremium
 			tickerMonthData[option.Symbol] = newData
 		}
+
+		// Aggregate for stacked chart data (premium only)
+		if data, exists := symbolMonthPremiums[option.Symbol]; exists {
+			data[month] += totalPremium
+			symbolMonthPremiums[option.Symbol] = data
+		} else {
+			var newData [12]float64
+			newData[month] = totalPremium
+			symbolMonthPremiums[option.Symbol] = newData
+		}
 	}
 
 	// Process all dividends (based on received date)
@@ -101,7 +115,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		}
 	}
 
-	// Process capital gains from closed long positions (based on closed date)
+	// Process capital gains only from closed long positions (realized gains only)
 	for _, position := range longPositions {
 		if position.Closed != nil {
 			// Calculate profit/loss for closed position
@@ -237,6 +251,29 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		})
 	}
 
+	// Build monthly premiums by symbol data for stacked chart
+	monthlyPremiumsBySymbol := make([]MonthlyPremiumsBySymbol, 12)
+	
+	for i := 0; i < 12; i++ {
+		symbolData := []SymbolPremiumData{}
+		
+		// Get all symbols that have premiums in this month
+		for symbol, monthData := range symbolMonthPremiums {
+			if monthData[i] > 0 {
+				symbolData = append(symbolData, SymbolPremiumData{
+					Symbol: symbol,
+					Amount: monthData[i],
+				})
+			}
+		}
+		
+		monthlyPremiumsBySymbol[i] = MonthlyPremiumsBySymbol{
+			Month:   monthNames[i],
+			Symbols: symbolData,
+		}
+	}
+	
+
 	return MonthlyData{
 		Symbols: symbols,
 		PutsData: MonthlyOptionData{
@@ -255,9 +292,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			ByMonth:  dividendsMonthChart,
 			ByTicker: dividendsTickerChart,
 		},
-		TableData:     tableData,
-		TotalsByMonth: totalsByMonth,
-		GrandTotal:    grandTotal,
-		CurrentDB:     s.getCurrentDatabaseName(),
+		TableData:               tableData,
+		TotalsByMonth:           totalsByMonth,
+		MonthlyPremiumsBySymbol: monthlyPremiumsBySymbol,
+		GrandTotal:              grandTotal,
+		CurrentDB:               s.getCurrentDatabaseName(),
 	}
 }

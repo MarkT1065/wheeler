@@ -107,11 +107,11 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 					summary.PutExposed += opt.Strike * float64(opt.Contracts) * 100
 				}
 				// Count premium for all puts (closed and open)
-				premium := opt.CalculateTotalProfitWithCurrentPrice(summary.CurrentPrice)
+				premium := opt.CalculateTotalProfit()
 				summary.Puts += premium
 			} else {
 				// Count premium for all calls (closed and open)
-				premium := opt.CalculateTotalProfitWithCurrentPrice(summary.CurrentPrice)
+				premium := opt.CalculateTotalProfit()
 				summary.Calls += premium
 			}
 		}

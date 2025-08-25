@@ -120,6 +120,54 @@ Represents U.S. Treasury securities used as cash collateral for options trading 
 - amount, yield, and buy_price must be positive
 - maturity must be after purchased date
 
+### Transactions
+Represents individual financial transactions using the Universal Transaction CSV format. This entity provides granular tracking of all portfolio activities including stock trades, option operations, and dividend receipts.
+
+**Primary Key:** id (INTEGER AUTOINCREMENT)
+**Unique Constraint:** (transaction_type, symbol, date, action, quantity, price, strike, expiration, option_type) - Prevents duplicate entries
+
+**Attributes:**
+- id (INTEGER) - Auto-incrementing primary key for web-friendly operations
+- transaction_type (TEXT) - Transaction category: "STOCK", "OPTION", "DIVIDEND" (CHECK constraint enforced)
+- symbol (TEXT) - Foreign key to symbols table
+- date (DATE) - Transaction execution date
+- action (TEXT) - Transaction action: "BUY", "SELL", "SELL_TO_OPEN", "BUY_TO_CLOSE", "ASSIGNED", "EXPIRED", "RECEIVE" (CHECK constraint enforced)
+- quantity (INTEGER) - Number of shares or contracts (null for dividends)
+- price (REAL) - Price per share or option premium (null for dividends)
+- strike (REAL) - Strike price (options only, null otherwise)
+- expiration (DATE) - Option expiration date (options only, null otherwise)
+- option_type (TEXT) - "Put" or "Call" (options only, null otherwise)
+- amount (REAL) - Direct monetary amount (dividends and fees, null otherwise)
+- commission (REAL) - Transaction commission/fees (default: 0.0)
+- notes (TEXT) - Free-form transaction description
+- created_at (DATETIME) - Record creation timestamp (default: CURRENT_TIMESTAMP)
+- updated_at (DATETIME) - Record update timestamp (default: CURRENT_TIMESTAMP)
+
+**Transaction Types & Actions:**
+
+**STOCK Transactions:**
+- BUY: Purchase shares (requires quantity, price)
+- SELL: Sell shares (requires quantity, price)
+
+**OPTION Transactions:**
+- SELL_TO_OPEN: Sell option to open position (requires quantity, price, strike, expiration, option_type)
+- BUY_TO_CLOSE: Buy option to close position (requires quantity, price, strike, expiration, option_type)
+- ASSIGNED: Option assignment (requires quantity, strike, expiration, option_type)
+- EXPIRED: Option expired worthless (requires quantity, strike, expiration, option_type)
+
+**DIVIDEND Transactions:**
+- RECEIVE: Dividend payment received (requires amount)
+
+**Constraints:**
+- symbol must reference existing symbol in symbols table
+- transaction_type must be "STOCK", "OPTION", or "DIVIDEND"
+- action must be valid for the transaction_type
+- quantity must be positive for STOCK and OPTION transactions
+- price must be positive for BUY/SELL/SELL_TO_OPEN/BUY_TO_CLOSE actions
+- strike, expiration, option_type required for OPTION transactions
+- amount must be positive for DIVIDEND transactions
+- Unique constraint prevents duplicate transactions
+
 ### Settings
 Represents application configuration settings stored as name-value pairs for dynamic system configuration.
 
@@ -149,6 +197,7 @@ Represents application configuration settings stored as name-value pairs for dyn
 Symbols (1) ←→ (Many) Long Positions (via symbol FK)
 Symbols (1) ←→ (Many) Options (via symbol FK)
 Symbols (1) ←→ (Many) Dividends (via symbol FK)
+Symbols (1) ←→ (Many) Transactions (via symbol FK)
 Treasuries (Independent entity - no FK relationships)
 Settings (Independent entity - no FK relationships)
 ```
@@ -158,7 +207,7 @@ Settings (Independent entity - no FK relationships)
 Wheeler uses a hybrid primary key approach optimized for modern web applications:
 
 **Transactional Tables (Auto-increment IDs):**
-- options.id, long_positions.id, dividends.id
+- options.id, long_positions.id, dividends.id, transactions.id
 - Web-friendly integer IDs for easy HTTP CRUD operations
 - Unique constraints on business keys prevent duplicate records
 
@@ -177,6 +226,10 @@ Wheeler uses a hybrid primary key approach optimized for modern web applications
 - `idx_options_type` - Query optimization for Put/Call filtering
 - `idx_dividends_symbol` - Foreign key index on dividends.symbol
 - `idx_dividends_received` - Query optimization for date ranges
+- `idx_transactions_symbol` - Foreign key index on transactions.symbol
+- `idx_transactions_date` - Query optimization for date ranges
+- `idx_transactions_type` - Query optimization for transaction type filtering
+- `idx_transactions_action` - Query optimization for action filtering
 - `idx_treasuries_cuspid` - Primary key index on treasuries.cuspid
 - `idx_treasuries_maturity` - Query optimization for maturity dates
 - `idx_treasuries_purchased` - Query optimization for purchase dates
@@ -185,7 +238,7 @@ Wheeler uses a hybrid primary key approach optimized for modern web applications
 ## Data Constraints & Business Rules
 
 ### Referential Integrity
-- All symbol references in long_positions, options, and dividends must exist in symbols table
+- All symbol references in long_positions, options, dividends, and transactions must exist in symbols table
 - Foreign key constraints enforced at database level
 
 ### Data Validation

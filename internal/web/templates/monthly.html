@@ -203,6 +203,13 @@
                 </div>
             </div>
             
+            <!-- Monthly Premiums by Symbol Stacked Bar Chart -->
+            <div class="content-section" style="margin-bottom: 30px;">
+                <div class="section-title">Monthly Premiums by Symbol</div>
+                <div class="chart-container-large">
+                    <canvas id="monthlyPremiumsStackedChart"></canvas>
+                </div>
+            </div>
             
             <!-- Total Profit by Symbol Table -->
             <div class="content-section">
@@ -1165,6 +1172,7 @@
                 }
             }
         });
+
         
         // Symbol Modal functionality is handled by shared module
         
@@ -1200,6 +1208,127 @@
         document.addEventListener('DOMContentLoaded', applyMonthlyTableColoring);
         // Also apply coloring immediately in case DOMContentLoaded already fired
         applyMonthlyTableColoring();
+
+        // Monthly Premiums Stacked Bar Chart with Backend Data
+        function createMonthlyPremiumsChart() {
+            const ctx = document.getElementById('monthlyPremiumsStackedChart');
+            if (!ctx) return;
+
+            // Get data from backend
+            const monthlyPremiumsData = {{.MonthlyPremiumsBySymbol}};
+            
+            // Extract all unique symbols
+            const allSymbols = new Set();
+            monthlyPremiumsData.forEach(monthData => {
+                monthData.symbols.forEach(symbolData => {
+                    allSymbols.add(symbolData.symbol);
+                });
+            });
+            
+            // Colors for symbols (consistent with other charts)
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+            const symbolsArray = Array.from(allSymbols).sort();
+            
+            // Build datasets for Chart.js
+            const datasets = symbolsArray.map((symbol, index) => {
+                const data = monthlyPremiumsData.map(monthData => {
+                    const symbolData = monthData.symbols.find(s => s.symbol === symbol);
+                    return symbolData ? symbolData.amount : 0;
+                });
+                
+                return {
+                    label: symbol,
+                    data: data,
+                    backgroundColor: colors[index % colors.length],
+                    borderColor: colors[index % colors.length],
+                    borderWidth: 1
+                };
+            });
+            
+            const chartData = {
+                labels: monthlyPremiumsData.map(d => d.month),
+                datasets: datasets
+            };
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: chartData,
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                color: '#404040'
+                            },
+                            ticks: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: {
+                                color: '#404040'
+                            },
+                            ticks: {
+                                color: '#e0e0e0',
+                                callback: function(value) {
+                                    return '$' + Math.round(value).toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            align: 'start',
+                            maxWidth: 200,
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 12
+                                },
+                                padding: 10,
+                                usePointStyle: false,
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + Math.round(context.parsed.y).toLocaleString();
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#e0e0e0',
+                            font: {
+                                size: 9,
+                                weight: 'normal'
+                            },
+                            formatter: function(value, context) {
+                                if (value < 100) return '';
+                                return Math.round(value).toLocaleString();
+                            },
+                            anchor: 'center',
+                            align: 'center'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create the stacked bar chart when page loads
+        document.addEventListener('DOMContentLoaded', createMonthlyPremiumsChart);
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>

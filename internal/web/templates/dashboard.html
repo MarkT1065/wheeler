@@ -130,13 +130,14 @@
             <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
                 <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; text-align: center; font-size: 20px;">
                     <span style="color: #a0a0a0;">Nominal Total:</span> <span id="nominalTotal" style="color: #27ae60;">$0</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Options: <span id="openOptions" style="color: #27ae60;">$0</span> / <span id="openOptionsPercent" style="color: #27ae60;">0.0%</span> of Nominal</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Long:</span> <span id="totalLong" style="color: #27ae60;">$0</span>
-                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;Open Calls: <span id="callPremiums" style="color: #27ae60;">$0</span> / <span id="longROI" style="color: #27ae60;">0.0%</span> of Long</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Calls: <span id="callPremiums" style="color: #27ae60;">$0</span> / <span id="longROI" style="color: #27ae60;">0.0%</span> of Long</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
-                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;Open Puts: <span id="putPremiums" style="color: #27ae60;">$0</span> / <span id="putROI" style="color: #27ae60;">0.0%</span> of Exposure / <span id="putsOfTreasuries" style="color: #27ae60;">0.0%</span> of Treasuries</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Puts: <span id="putPremiums" style="color: #27ae60;">$0</span> / <span id="putROI" style="color: #27ae60;">0.0%</span> of Exposure / <span id="putsOfTreasuries" style="color: #27ae60;">0.0%</span> of Treasuries</span>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                     <span style="color: #a0a0a0;">Treasuries:</span> <span id="totalTreasuries" style="color: #27ae60;">$0</span>
                 </div>
             </div>
@@ -187,13 +188,13 @@
                                 {{range .SymbolSummaries}}
                                 <tr>
                                     <td class="ticker-col"><a href="/symbol/{{.Ticker}}" class="symbol-link">{{.Ticker}}</a></td>
-                                    <td>${{printf "%.0f" .LongAmount}}</td>
-                                    <td>${{printf "%.0f" .PutExposed}}</td>
-                                    <td class="{{if lt .Puts 0.0}}negative{{else if gt .Puts 0.0}}positive{{end}}">${{printf "%.2f" .Puts}}</td>
-                                    <td class="{{if lt .Calls 0.0}}negative{{else if gt .Calls 0.0}}positive{{end}}">${{printf "%.2f" .Calls}}</td>
-                                    <td class="{{if lt .CapGains 0.0}}negative{{else if gt .CapGains 0.0}}positive{{end}}">${{printf "%.2f" .CapGains}}</td>
-                                    <td class="{{if lt .Dividends 0.0}}negative{{else if gt .Dividends 0.0}}positive{{end}}">${{printf "%.2f" .Dividends}}</td>
-                                    <td class="{{if lt .Net 0.0}}negative{{else if gt .Net 0.0}}positive{{end}}">${{printf "%.2f" .Net}}</td>
+                                    <td>{{formatCurrency .LongAmount}}</td>
+                                    <td>{{formatCurrency .PutExposed}}</td>
+                                    <td class="{{if lt .Puts 0.0}}negative{{else if gt .Puts 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Puts}}</td>
+                                    <td class="{{if lt .Calls 0.0}}negative{{else if gt .Calls 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Calls}}</td>
+                                    <td class="{{if lt .CapGains 0.0}}negative{{else if gt .CapGains 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .CapGains}}</td>
+                                    <td class="{{if lt .Dividends 0.0}}negative{{else if gt .Dividends 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Dividends}}</td>
+                                    <td class="{{if lt .Net 0.0}}negative{{else if gt .Net 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Net}}</td>
                                     <td class="{{if lt .CashOnCash 0.0}}negative{{else if gt .CashOnCash 0.0}}positive{{end}}">{{printf "%.2f" .CashOnCash}}%</td>
                                 </tr>
                                 {{end}}
@@ -208,13 +209,13 @@
                         <tfoot>
                             <tr class="table-totals-row">
                                 <td class="ticker-col">Total</td>
-                                <td>${{printf "%.0f" .Totals.TotalLong}}</td>
-                                <td>${{printf "%.0f" .Totals.TotalPuts}}</td>
-                                <td class="{{if lt .Totals.TotalPutPremiums 0.0}}negative{{else if gt .Totals.TotalPutPremiums 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalPutPremiums}}</td>
-                                <td class="{{if lt .Totals.TotalCallPremiums 0.0}}negative{{else if gt .Totals.TotalCallPremiums 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalCallPremiums}}</td>
-                                <td class="{{if lt .Totals.TotalCapGains 0.0}}negative{{else if gt .Totals.TotalCapGains 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalCapGains}}</td>
-                                <td class="{{if lt .Totals.TotalDividends 0.0}}negative{{else if gt .Totals.TotalDividends 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalDividends}}</td>
-                                <td class="{{if lt .Totals.OverallCashOnCash 0.0}}negative{{else if gt .Totals.OverallCashOnCash 0.0}}positive{{end}}">${{printf "%.2f" .Totals.TotalNet}}</td>
+                                <td>{{formatCurrency .Totals.TotalLong}}</td>
+                                <td>{{formatCurrency .Totals.TotalPuts}}</td>
+                                <td class="{{if lt .Totals.TotalPutPremiums 0.0}}negative{{else if gt .Totals.TotalPutPremiums 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalPutPremiums}}</td>
+                                <td class="{{if lt .Totals.TotalCallPremiums 0.0}}negative{{else if gt .Totals.TotalCallPremiums 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalCallPremiums}}</td>
+                                <td class="{{if lt .Totals.TotalCapGains 0.0}}negative{{else if gt .Totals.TotalCapGains 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalCapGains}}</td>
+                                <td class="{{if lt .Totals.TotalDividends 0.0}}negative{{else if gt .Totals.TotalDividends 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalDividends}}</td>
+                                <td class="{{if lt .Totals.OverallCashOnCash 0.0}}negative{{else if gt .Totals.OverallCashOnCash 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalNet}}</td>
                                 <td class="{{if lt .Totals.OverallCashOnCash 0.0}}negative{{else if gt .Totals.OverallCashOnCash 0.0}}positive{{end}}">{{printf "%.2f" .Totals.OverallCashOnCash}}%</td>
                             </tr>
                         </tfoot>
@@ -357,6 +358,8 @@
             const callPremiumsElement = document.getElementById('callPremiums');
             const putPremiumsElement = document.getElementById('putPremiums');
             const putsOfTreasuriesElement = document.getElementById('putsOfTreasuries');
+            const openOptionsElement = document.getElementById('openOptions');
+            const openOptionsPercentElement = document.getElementById('openOptionsPercent');
             
             // Format currency with consistent green coloring
             function formatCurrency(value, element) {
@@ -398,8 +401,8 @@
                 totalTreasuries = data.totalTreasuries || 0;
             }
             
-            // Calculate nominal total (sum of all categories)
-            const nominalTotalValue = totalLong + totalPutExposed + totalTreasuries;
+            // Calculate nominal total (Long + Put Exposure only, excluding Treasuries)
+            const nominalTotalValue = totalLong + totalPutExposed;
             
             // Update each total
             formatCurrency(nominalTotalValue, nominalTotalElement);
@@ -410,12 +413,18 @@
             // Calculate Puts as % of Treasuries (using put premiums, not exposure)
             const putsOfTreasuriesPercent = totalTreasuries > 0 ? ((data.totalPutPremiums || 0) / totalTreasuries) * 100 : 0;
             
+            // Calculate Open Options total and percentage of nominal
+            const totalOpenOptions = (data.totalCallPremiums || 0) + (data.totalPutPremiums || 0);
+            const openOptionsPercent = nominalTotalValue > 0 ? (totalOpenOptions / nominalTotalValue) * 100 : 0;
+            
             // Update ROI values and premiums
             formatPercentage(data.longROI || 0, longROIElement);
             formatPercentage(data.putROI || 0, putROIElement);
             formatCurrency(data.totalCallPremiums || 0, callPremiumsElement);
             formatCurrency(data.totalPutPremiums || 0, putPremiumsElement);
             formatPercentage(putsOfTreasuriesPercent, putsOfTreasuriesElement);
+            formatCurrency(totalOpenOptions, openOptionsElement);
+            formatPercentage(openOptionsPercent, openOptionsPercentElement);
         }
 
         // Function to create Total Allocation Chart with data
@@ -488,7 +497,7 @@
                     const text = cell.textContent.trim();
                     
                     // Check if it's a monetary value (with or without decimal places)
-                    if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
+                    if (text.match(/^-?\$[\d,]*\.?\d*$/)) {
                         // Extract numeric value
                         const value = parseFloat(text.replace(/[\$,]/g, ''));
                         

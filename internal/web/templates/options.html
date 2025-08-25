@@ -197,6 +197,7 @@
                                         {{$putCount := 0}}
                                         {{$callNominal := 0.0}}
                                         {{$putExposed := 0.0}}
+                                        {{$totalPremium := 0.0}}
                                         {{range .Positions}}
                                             {{if eq .Type "Call"}}
                                                 {{$callCount = add $callCount 1}}
@@ -205,10 +206,11 @@
                                                 {{$putCount = add $putCount 1}}
                                                 {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
                                             {{end}}
+                                            {{$totalPremium = add $totalPremium .CalculateTotalProfit}}
                                         {{end}}
                                         <!-- Positions count (spans 1 div) -->
                                         <div class="grid-item span-1 positions-count">
-                                            {{len .Positions}} Position{{if ne (len .Positions) 1}}s{{end}}
+                                            {{len .Positions}} Position{{if ne (len .Positions) 1}}s{{end}} - {{formatCurrency $totalPremium}} premium
                                         </div>
                                         <!-- Calls info (spans 1 div) -->
                                         <div class="grid-item span-1 calls-info">
@@ -447,12 +449,14 @@
             scatterData.sort((a, b) => a.x - b.x);
             console.log('Total scatter points:', scatterData.length);
             
+            // Daily sum calculation removed - now displayed in accordion headers
+            
             // Store chart instance globally for resizing
             window.expirationChart = new Chart(context, {
                 type: 'scatter',
                 data: {
                     datasets: [{
-                        label: 'Option Profits by Expiration',
+                        label: 'Individual Options',
                         data: scatterData,
                         backgroundColor: function(ctx) {
                             // Color points by option type: green for puts, blue for calls
@@ -514,10 +518,12 @@
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
+                                    // Individual option point
                                     const point = scatterData[context[0].dataIndex];
                                     return point.symbol + ' ' + point.type + ' $' + point.strike;
                                 },
                                 label: function(context) {
+                                    // Individual option point
                                     const point = scatterData[context.dataIndex];
                                     return [
                                         'Contracts: ' + point.quantity,
@@ -555,19 +561,21 @@
                             }
                         },
                         y: {
+                            type: 'linear',
+                            position: 'left',
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Profit ($)',
+                                text: 'Individual Option Profit ($)',
                                 color: '#e0e0e0',
                                 font: {
-                                    size: 16
+                                    size: 14
                                 }
                             },
                             ticks: {
                                 color: '#a0a0a0',
                                 font: {
-                                    size: 14
+                                    size: 12
                                 },
                                 callback: function(value) {
                                     return '$' + value.toLocaleString();
