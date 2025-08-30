@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrics - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
+    <style>
+        .metrics-table th,
+        .metrics-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        
+        .metrics-table th {
+            background-color: #2c2c2c;
+            font-weight: 600;
+            color: #27ae60;
+        }
+        
+        .metric-type {
+            font-family: 'Courier New', monospace;
+            background-color: #2c2c2c;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #27ae60;
+        }
+        
+        .metric-date {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .chart-full-width {
+            grid-column: 1 / -1;
+        }
+        
+        .chart-card {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #404040;
+        }
+        
+        .chart-title {
+            color: #27ae60;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="metrics-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <div class="main-title">
+                    <i class="fas fa-chart-line"></i>
+                    Wheeler
+                </div>
+                <div class="current-db">{{.CurrentDB}}</div>
+            </div>
+            
+            <nav>
+                <a href="/" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Dashboard
+                </a>
+                <a href="/monthly" class="nav-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    Monthly
+                </a>
+                <a href="/options" class="nav-item">
+                    <i class="fas fa-chart-line"></i>
+                    Options
+                </a>
+                <a href="/metrics" class="nav-item active">
+                    <i class="fas fa-chart-pie"></i>
+                    Metrics
+                </a>
+                <a href="/treasuries" class="nav-item">
+                    <i class="fas fa-university"></i>
+                    Treasuries
+                </a>
+                
+                <!-- Collapsible Symbols Section -->
+                <div class="symbols-section">
+                    <button class="symbols-toggle expanded" id="symbolsToggle">
+                        <i class="fas fa-chart-line"></i>
+                        Symbols
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="symbols-list expanded" id="symbolsList">
+                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                            <i class="fas fa-plus"></i>
+                            New Symbol
+                        </a>
+                        {{range .Symbols}}
+                        <a href="/symbol/{{.}}" class="symbol-nav-item">
+                            {{.}}
+                        </a>
+                        {{end}}
+                    </div>
+                </div>
+                
+                <!-- Collapsible Admin Section -->
+                <div class="admin-section">
+                    <button class="admin-toggle expanded" id="adminToggle">
+                        <i class="fas fa-cog"></i>
+                        Admin
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </button>
+                    <div class="admin-list expanded" id="adminList">
+                        <a href="/help" class="admin-nav-item">
+                            <i class="fas fa-question-circle"></i>
+                            Help
+                        </a>
+                        <a href="/backup" class="admin-nav-item">
+                            <i class="fas fa-database"></i>
+                            Database
+                        </a>
+                        <a href="/import" class="admin-nav-item">
+                            <i class="fas fa-upload"></i>
+                            Import
+                        </a>
+                        <a href="/settings" class="admin-nav-item">
+                            <i class="fas fa-tools"></i>
+                            Settings
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+
+            <!-- Charts Section -->
+            <div class="content-section">
+                <div class="section-title">
+                    <h2>
+                        <i class="fas fa-chart-line"></i>
+                        Metrics Trends (180 Days)
+                    </h2>
+                </div>
+                
+                <div class="charts-grid">
+                    <!-- Row 1: Put Exposure and Put Premium (50/50) -->
+                    <div class="chart-card">
+                        <div class="chart-title">Put Exposure</div>
+                        <div class="chart-container">
+                            <canvas id="putExposureChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-title">Put Premium</div>
+                        <div class="chart-container">
+                            <canvas id="putPremiumChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 2: Long Positions and Call Premium (50/50) -->
+                    <div class="chart-card">
+                        <div class="chart-title">Long Positions</div>
+                        <div class="chart-container">
+                            <canvas id="longValueChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-title">Call Premium</div>
+                        <div class="chart-container">
+                            <canvas id="callPremiumChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Row 3: Treasuries (100% width) -->
+                    <div class="chart-card chart-full-width">
+                        <div class="chart-title">Treasuries</div>
+                        <div class="chart-container">
+                            <canvas id="treasuryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Table -->
+            <div class="content-section">
+                <div class="section-title">
+                    <h2>
+                        <i class="fas fa-list"></i>
+                        All Metrics ({{len .Metrics}})
+                    </h2>
+                    <button id="snapshotBtn" class="btn btn-primary">
+                        <i class="fas fa-camera"></i>
+                        Snapshot
+                    </button>
+                </div>
+
+                <div class="table-container">
+                    <table class="metrics-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Created</th>
+                                <th>Type</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{if .Metrics}}
+                                {{range .Metrics}}
+                                <tr>
+                                    <td>{{.ID}}</td>
+                                    <td class="metric-date">{{.Created.Format "2006-01-02 15:04:05"}}</td>
+                                    <td><span class="metric-type">{{.Type}}</span></td>
+                                    <td class="metric-value">{{printf "%.2f" .Value}}</td>
+                                </tr>
+                                {{end}}
+                            {{else}}
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: #666; font-style: italic;">
+                                        No metrics found
+                                    </td>
+                                </tr>
+                            {{end}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include shared navigation script -->
+    <script src="/static/js/navigation.js"></script>
+    
+    <!-- Metrics page specific JavaScript -->
+    <script>
+        $(document).ready(function() {
+            console.log('Metrics page loaded with', {{len .Metrics}}, 'metrics');
+            
+            // Update dashboard totals on page load
+            updateDashboardTotals();
+            
+            // Load charts
+            loadMetricsCharts();
+            
+            // Handle snapshot button click
+            $('#snapshotBtn').click(function() {
+                createMetricsSnapshot();
+            });
+        });
+
+        // Function to create metrics snapshot
+        function createMetricsSnapshot() {
+            const button = $('#snapshotBtn');
+            const originalText = button.html();
+            
+            // Show loading state
+            button.prop('disabled', true);
+            button.html('<i class="fas fa-spinner fa-spin"></i> Creating 180-Day Snapshot...');
+            
+            $.ajax({
+                url: '/api/metrics/snapshot',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    days: 180
+                }),
+                success: function(response) {
+                    console.log('180-day snapshot created successfully:', response);
+                    
+                    // Show success message
+                    button.html('<i class="fas fa-check"></i> 180-Day Snapshot Created!');
+                    button.removeClass('btn-primary').addClass('btn-success');
+                    
+                    // Reload the page to show new metrics
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 1000);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to create 180-day snapshot:', error);
+                    
+                    // Show error state
+                    button.html('<i class="fas fa-exclamation-triangle"></i> 180-Day Snapshot Failed');
+                    button.removeClass('btn-primary').addClass('btn-danger');
+                    
+                    // Reset button after delay
+                    setTimeout(function() {
+                        button.prop('disabled', false);
+                        button.html(originalText);
+                        button.removeClass('btn-danger').addClass('btn-primary');
+                    }, 3000);
+                }
+            });
+        }
+
+        // Function to load metrics charts
+        function loadMetricsCharts() {
+            $.getJSON('/api/metrics/chart-data')
+                .done(function(data) {
+                    console.log('Loaded chart data:', data);
+                    
+                    // Create regular charts for treasury only
+                    createLineChart('treasuryChart', 'Treasury Value', data.treasury_value || [], '#FFCE56');
+                    
+                    // Create dual-axis charts with reorganized logic:
+                    
+                    // Put Exposure chart: Put Exposure + Put Premium as % of Exposure
+                    createExposurePremiumChart('putExposureChart', 'Put Exposure', data.put_exposure || [], data.open_put_premium || [], 'Premium % of Exposure', '#FF6384');
+                    
+                    //  Put Premium chart: Put Premium + Put Count as second Y-axis
+                    createDualAxisChartWithCount('putPremiumChart', 'Put Premium', data.open_put_premium || [], data.open_put_count || [], 'Put Count', '#FF6384');
+                    
+                    // Long Positions  chart: Long Value + Call Premium as % of Long Value
+                    createExposurePremiumChart('longValueChart', 'Long Value', data.long_value || [], data.open_call_premium || [], 'Premium % of Long', '#36A2EB');
+                    
+                    //  Call Premium chart: Call Premium + Call Count as second Y-axis
+                    createDualAxisChartWithCount('callPremiumChart', 'Call Premium', data.open_call_premium || [], data.open_call_count || [], 'Call Count', '#9966FF');
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    console.error('Failed to load chart data:', textStatus, errorThrown);
+                    // Show error message in charts
+                    $('.chart-container').html('<div style="color: #ff6384; text-align: center; padding: 50px;">Failed to load chart data</div>');
+                });
+        }
+
+        // Function to create a line chart
+        function createLineChart(canvasId, label, chartData, color) {
+            try {
+                if (!chartData || chartData.length === 0) {
+                    console.log('No data for chart:', canvasId);
+                    // Show "No data" message
+                    const container = document.getElementById(canvasId).parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No data available</div>';
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('Canvas element not found:', canvasId);
+                    return;
+                }
+                const context = ctx.getContext('2d');
+                
+                // Validate and process chart data
+                const validData = chartData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value)
+                );
+                
+                if (validData.length === 0) {
+                    console.log('No valid data points for chart:', canvasId);
+                    const container = ctx.parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No valid data points</div>';
+                    return;
+                }
+
+                // Sort data by date to ensure proper line chart
+                validData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            new Chart(context, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: label,
+                        data: validData.map(point => ({
+                            x: point.date,
+                            y: point.value
+                        })),
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 1,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'yyyy-MM-dd',
+                                displayFormats: {
+                                    day: 'MMM d'
+                                }
+                            },
+                            ticks: {
+                                color: '#999',
+                                maxTicksLimit: 8
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#999',
+                                callback: function(value) {
+                                    if (typeof value !== 'number' || isNaN(value)) {
+                                        return '0';
+                                    }
+                                    if (label.includes('Count')) {
+                                        return Math.round(value);
+                                    } else {
+                                        return '$' + value.toLocaleString();
+                                    }
+                                }
+                            },
+                            grid: {
+                                color: '#404040'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+            } catch (error) {
+                console.error('Error creating chart:', canvasId, error);
+                const container = document.getElementById(canvasId).parentElement;
+                container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
+            }
+        }
+
+        // Function to create a dual-axis chart (premium with percentage)
+        function createDualAxisChart(canvasId, label, premiumData, baseData, percentLabel, color) {
+            try {
+                if (!premiumData || premiumData.length === 0 || !baseData || baseData.length === 0) {
+                    console.log('No data for dual-axis chart:', canvasId);
+                    const container = document.getElementById(canvasId).parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No data available</div>';
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('Canvas element not found:', canvasId);
+                    return;
+                }
+                const context = ctx.getContext('2d');
+                
+                // Create a map for base values by date for easy lookup
+                const baseValuesByDate = {};
+                baseData.forEach(point => {
+                    if (point && point.date && typeof point.value === 'number') {
+                        baseValuesByDate[point.date] = point.value;
+                    }
+                });
+                
+                // Process premium data and calculate percentages
+                const validPremiumData = premiumData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value) &&
+                    baseValuesByDate[point.date] > 0 // Only include if we have base data for this date
+                );
+                
+                if (validPremiumData.length === 0) {
+                    console.log('No valid data points for dual-axis chart:', canvasId);
+                    const container = ctx.parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No valid data points</div>';
+                    return;
+                }
+
+                // Sort data by date to ensure proper line chart
+                validPremiumData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Calculate percentage data
+                const percentageData = validPremiumData.map(point => {
+                    const baseValue = baseValuesByDate[point.date];
+                    return baseValue > 0 ? (point.value / baseValue) * 100 : 0;
+                });
+
+                new Chart(context, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: label,
+                            data: validPremiumData.map((point, index) => ({
+                                x: point.date,
+                                y: point.value
+                            })),
+                            borderColor: color,
+                            backgroundColor: color + '20',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y'
+                        }, {
+                            label: percentLabel,
+                            data: validPremiumData.map((point, index) => ({
+                                x: point.date,
+                                y: percentageData[index]
+                            })),
+                            borderColor: '#FFD700', // Golden yellow
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y1',
+                            borderDash: [5, 5] // Dashed line for percentage
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#999',
+                                    usePointStyle: true,
+                                    pointStyle: 'line'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    parser: 'yyyy-MM-dd',
+                                    displayFormats: {
+                                        day: 'MMM d'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#999',
+                                    maxTicksLimit: 8
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                ticks: {
+                                    color: '#999',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '$0';
+                                        }
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                ticks: {
+                                    color: '#FFD700', // Golden yellow to match the percentage line
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '0.0%';
+                                        }
+                                        return value.toFixed(1) + '%';
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false, // Only want grid lines for one axis
+                                },
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating dual-axis chart:', canvasId, error);
+                const container = document.getElementById(canvasId).parentElement;
+                container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
+            }
+        }
+
+        // Function to create a dual-axis chart (premium with count instead of percentage)
+        function createDualAxisChartWithCount(canvasId, label, premiumData, countData, countLabel, color) {
+            try {
+                if (!premiumData || premiumData.length === 0 || !countData || countData.length === 0) {
+                    console.log('No data for dual-axis count chart:', canvasId);
+                    const container = document.getElementById(canvasId).parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No data available</div>';
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('Canvas element not found:', canvasId);
+                    return;
+                }
+                const context = ctx.getContext('2d');
+                
+                // Create a map for count values by date for easy lookup
+                const countValuesByDate = {};
+                countData.forEach(point => {
+                    if (point && point.date && typeof point.value === 'number') {
+                        countValuesByDate[point.date] = point.value;
+                    }
+                });
+                
+                // Process premium data and match with count data
+                const validPremiumData = premiumData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value) &&
+                    countValuesByDate.hasOwnProperty(point.date) // Only include if we have count data for this date
+                );
+                
+                if (validPremiumData.length === 0) {
+                    console.log('No valid data points for dual-axis count chart:', canvasId);
+                    const container = ctx.parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No valid data points</div>';
+                    return;
+                }
+
+                // Sort data by date to ensure proper line chart
+                validPremiumData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                new Chart(context, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: label,
+                            data: validPremiumData.map(point => ({
+                                x: point.date,
+                                y: point.value
+                            })),
+                            borderColor: color,
+                            backgroundColor: color + '20',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y'
+                        }, {
+                            label: countLabel,
+                            data: validPremiumData.map(point => ({
+                                x: point.date,
+                                y: countValuesByDate[point.date]
+                            })),
+                            borderColor: '#FFD700', // Golden yellow
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y1',
+                            borderDash: [5, 5] // Dashed line for count
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#999',
+                                    usePointStyle: true,
+                                    pointStyle: 'line'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    parser: 'yyyy-MM-dd',
+                                    displayFormats: {
+                                        day: 'MMM d'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#999',
+                                    maxTicksLimit: 8
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                ticks: {
+                                    color: '#999',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '$0';
+                                        }
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                ticks: {
+                                    color: '#FFD700', // Golden yellow to match the count line
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '0';
+                                        }
+                                        return Math.round(value);
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false, // Only want grid lines for one axis
+                                },
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating dual-axis count chart:', canvasId, error);
+                const container = document.getElementById(canvasId).parentElement;
+                container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
+            }
+        }
+
+        // Function to create exposure/premium chart (exposure with premium as % of exposure)
+        function createExposurePremiumChart(canvasId, label, exposureData, premiumData, percentLabel, color) {
+            try {
+                if (!exposureData || exposureData.length === 0 || !premiumData || premiumData.length === 0) {
+                    console.log('No data for exposure-premium chart:', canvasId);
+                    const container = document.getElementById(canvasId).parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No data available</div>';
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('Canvas element not found:', canvasId);
+                    return;
+                }
+                const context = ctx.getContext('2d');
+                
+                // Create a map for exposure values by date for percentage calculation
+                const exposureValuesByDate = {};
+                exposureData.forEach(point => {
+                    if (point && point.date && typeof point.value === 'number') {
+                        exposureValuesByDate[point.date] = point.value;
+                    }
+                });
+                
+                // Process premium data and match with exposure data
+                const validPremiumData = premiumData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value) &&
+                    exposureValuesByDate.hasOwnProperty(point.date) && // Only include if we have exposure data for this date
+                    exposureValuesByDate[point.date] > 0 // Avoid division by zero
+                );
+                
+                // Get valid exposure data that matches premium dates
+                const validExposureData = exposureData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value) &&
+                    validPremiumData.some(p => p.date === point.date) // Only include if we have matching premium data
+                );
+                
+                if (validExposureData.length === 0 || validPremiumData.length === 0) {
+                    console.log('No valid matching data points for exposure-premium chart:', canvasId);
+                    const container = ctx.parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No valid data points</div>';
+                    return;
+                }
+
+                // Sort both datasets by date
+                validExposureData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                validPremiumData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Calculate percentage data: (premium / exposure) * 100
+                const percentageData = validPremiumData.map(point => {
+                    const exposureValue = exposureValuesByDate[point.date];
+                    return exposureValue > 0 ? (point.value / exposureValue) * 100 : 0;
+                });
+
+                new Chart(context, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: label,
+                            data: validExposureData.map(point => ({
+                                x: point.date,
+                                y: point.value
+                            })),
+                            borderColor: color,
+                            backgroundColor: color + '20',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y'
+                        }, {
+                            label: percentLabel,
+                            data: validPremiumData.map((point, index) => ({
+                                x: point.date,
+                                y: percentageData[index]
+                            })),
+                            borderColor: '#FFD700', // Golden yellow
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4,
+                            yAxisID: 'y1',
+                            borderDash: [5, 5] // Dashed line for percentage
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#999',
+                                    usePointStyle: true,
+                                    pointStyle: 'line'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    parser: 'yyyy-MM-dd',
+                                    displayFormats: {
+                                        day: 'MMM d'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#999',
+                                    maxTicksLimit: 8
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                ticks: {
+                                    color: '#999',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '$0';
+                                        }
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                ticks: {
+                                    color: '#FFD700', // Golden yellow to match the percentage line
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '0.0%';
+                                        }
+                                        return value.toFixed(1) + '%';
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false, // Only want grid lines for one axis
+                                },
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating exposure-premium chart:', canvasId, error);
+                const container = document.getElementById(canvasId).parentElement;
+                container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
+            }
+        }
+
+        // Function to update dashboard totals (metrics page doesn't need this functionality)
+        function updateDashboardTotals() {
+            // This function is not needed on the metrics page since there are no dashboard total elements
+            console.log('Dashboard totals update skipped on metrics page');
+        }
+    </script>
+</body>
+</html>

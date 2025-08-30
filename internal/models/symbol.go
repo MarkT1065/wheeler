@@ -128,7 +128,8 @@ func (o *Option) CalculateDTC() int {
 
 func (o *Option) CalculateDaysRemaining() int {
 	now := time.Now()
-	return int(o.Expiration.Sub(now).Hours() / 24)
+	// Use ceiling to avoid off-by-one error - tomorrow should show 1 day, not 0
+	return int(math.Ceil(o.Expiration.Sub(now).Hours() / 24))
 }
 
 func (o *Option) CalculateTotalProfit() float64 {

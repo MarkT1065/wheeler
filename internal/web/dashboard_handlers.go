@@ -98,6 +98,9 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 		}
 	}
 
+	// Build map of symbols with open call coverage for optionable calculation
+	callCoverage := make(map[string]bool)
+	
 	// Process options
 	for _, opt := range options {
 		if summary, exists := summaryMap[opt.Symbol]; exists {
@@ -113,6 +116,21 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 				// Count premium for all calls (closed and open)
 				premium := opt.CalculateTotalProfit()
 				summary.Calls += premium
+				// Track call coverage for open calls
+				if opt.Closed == nil {
+					callCoverage[opt.Symbol] = true
+				}
+			}
+		}
+	}
+
+	// Calculate optionable amounts (long positions without call coverage and with 100+ shares)
+	for _, pos := range longPositions {
+		if summary, exists := summaryMap[pos.Symbol]; exists {
+			if pos.Closed == nil { // Only open positions
+				if !callCoverage[pos.Symbol] && pos.Shares >= 100 { // No call coverage and enough shares for options
+					summary.Optionable += pos.CalculateAmount()
+				}
 			}
 		}
 	}
@@ -230,7 +248,7 @@ func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition,
 }
 
 func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treasuries []*models.Treasury) DashboardTotals {
-	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalTreasuries float64
+	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalTreasuries, totalOptionable float64
 
 	// Sum from symbol summaries
 	for _, summary := range symbolSummaries {
@@ -240,6 +258,7 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treas
 		totalCallPremiums += summary.Calls
 		totalCapGains += summary.CapGains
 		totalDividends += summary.Dividends
+		totalOptionable += summary.Optionable
 	}
 
 	// Sum treasuries
@@ -278,6 +297,7 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treas
 		PutROI:            putROI,
 		LongROI:           longROI,
 		GrandTotal:        totalLong + totalPuts + totalTreasuries,
+		TotalOptionable:   totalOptionable,
 	}
 }
 
@@ -360,6 +380,8 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	var totalPuts, totalPutPremiums, totalCallPremiums float64
 	putsByTicker := make(map[string]float64)
+	callCoverage := make(map[string]bool)
+	
 	for _, opt := range options {
 		if opt.Closed == nil { // Only open options
 			if opt.Type == "Put" {
@@ -369,6 +391,20 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 				totalPutPremiums += opt.Premium * float64(opt.Contracts) * 100
 			} else if opt.Type == "Call" {
 				totalCallPremiums += opt.Premium * float64(opt.Contracts) * 100
+				callCoverage[opt.Symbol] = true
+			}
+		}
+	}
+
+	// Calculate optionable positions (long positions without call coverage and with 100+ shares)
+	var totalOptionable, totalCallCovered float64
+	for _, pos := range longPositions {
+		if pos.Closed == nil { // Only open positions
+			amount := pos.CalculateAmount()
+			if callCoverage[pos.Symbol] {
+				totalCallCovered += amount
+			} else if pos.Shares >= 100 { // Only count positions with enough shares for options
+				totalOptionable += amount
 			}
 		}
 	}
@@ -416,6 +452,11 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 		{Label: "Treasuries", Value: totalTreasuries, Color: "#FFCE56"},
 	}
 
+	callsToLongs := []ChartData{
+		{Label: "Call Covered", Value: totalCallCovered, Color: "#36A2EB"},
+		{Label: "Optionable", Value: totalOptionable, Color: "#FFCE56"},
+	}
+
 	// Calculate ROI values
 	putROI := 0.0
 	if totalPuts > 0 {
@@ -430,16 +471,102 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 	response := AllocationData{
 		LongByTicker:      longByTickerChart,
 		PutsByTicker:      putsByTickerChart,
+		CallsToLongs:      callsToLongs,
 		TotalAllocation:   totalAllocation,
 		PutROI:            putROI,
 		LongROI:           longROI,
 		TotalPutPremiums:  totalPutPremiums,
 		TotalCallPremiums: totalCallPremiums,
+		TotalCallCovered:  totalCallCovered,
+		TotalOptionable:   totalOptionable,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("[ALLOCATION API] Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+// optionablePositionsHandler returns long positions that have no open call coverage
+func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get all open long positions
+	longPositions, err := s.longPositionService.GetAll()
+	if err != nil {
+		log.Printf("[OPTIONABLE API] Error getting long positions: %v", err)
+		http.Error(w, "Failed to get long positions", http.StatusInternalServerError)
+		return
+	}
+
+	// Get all open call options
+	options, err := s.optionService.GetAll()
+	if err != nil {
+		log.Printf("[OPTIONABLE API] Error getting options: %v", err)
+		http.Error(w, "Failed to get options", http.StatusInternalServerError)
+		return
+	}
+
+	// Build map of symbols with open call coverage
+	callCoverage := make(map[string]bool)
+	for _, opt := range options {
+		if opt.Type == "Call" && opt.Closed == nil {
+			callCoverage[opt.Symbol] = true
+		}
+	}
+
+	// Find long positions without call coverage
+	type OptionablePosition struct {
+		Symbol     string  `json:"symbol"`
+		Shares     int     `json:"shares"`
+		Amount     float64 `json:"amount"`
+		BuyPrice   float64 `json:"buyPrice"`
+		Opened     string  `json:"opened"`
+		CurrentValue float64 `json:"currentValue,omitempty"`
+	}
+
+	var optionablePositions []OptionablePosition
+	totalOptionableValue := 0.0
+
+	for _, pos := range longPositions {
+		if pos.Closed == nil { // Only open positions
+			if !callCoverage[pos.Symbol] && pos.Shares >= 100 { // No call coverage and enough shares for options
+				amount := pos.CalculateAmount()
+				
+				// Get current price for value calculation
+				currentPrice := pos.BuyPrice // fallback to buy price
+				if symbolData, err := s.symbolService.GetBySymbol(pos.Symbol); err == nil {
+					currentPrice = symbolData.Price
+				}
+				
+				optionablePositions = append(optionablePositions, OptionablePosition{
+					Symbol:       pos.Symbol,
+					Shares:       pos.Shares,
+					Amount:       amount,
+					BuyPrice:     pos.BuyPrice,
+					Opened:       pos.Opened.Format("2006-01-02"),
+					CurrentValue: float64(pos.Shares) * currentPrice,
+				})
+				totalOptionableValue += amount
+			}
+		}
+	}
+
+	log.Printf("[OPTIONABLE API] Found %d optionable positions worth $%.2f", len(optionablePositions), totalOptionableValue)
+
+	response := map[string]interface{}{
+		"positions":   optionablePositions,
+		"totalValue":  totalOptionableValue,
+		"count":       len(optionablePositions),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[OPTIONABLE API] Error encoding response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }

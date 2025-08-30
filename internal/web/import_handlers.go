@@ -29,18 +29,14 @@ func (s *Server) HandleImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		AllSymbols []string
-		CurrentDB  string
+		Symbols   []string
+		CurrentDB string
 	}{
-		AllSymbols: symbols,
-		CurrentDB:  s.getCurrentDatabaseName(),
+		Symbols:   symbols,
+		CurrentDB: s.getCurrentDatabaseName(),
 	}
 
-	if err := s.templates.ExecuteTemplate(w, "import.html", data); err != nil {
-		log.Printf("[IMPORT] Error rendering template: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	s.renderTemplate(w, "import.html", data)
 }
 
 // HandleBackup renders the backup page and lists available database files
@@ -274,6 +270,67 @@ func (s *Server) HandleDividendsImportUpload(w http.ResponseWriter, r *http.Requ
 	}
 
 	log.Printf("[DIVIDENDS_IMPORT] Import completed: %d imported, %d skipped", importedCount, skippedCount)
+	response := ImportResponse{
+		Success:       true,
+		ImportedCount: importedCount,
+		SkippedCount:  skippedCount,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandleTreasuriesImportUpload processes the treasuries CSV file upload and imports treasury records
+func (s *Server) HandleTreasuriesImportUpload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Printf("[TREASURIES_IMPORT] Starting treasuries CSV import")
+
+	// Parse multipart form (10MB max)
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		log.Printf("[TREASURIES_IMPORT] Error parsing multipart form: %v", err)
+		response := ImportResponse{
+			Success: false,
+			Error:   "Failed to parse form data",
+			Details: err.Error(),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	file, _, err := r.FormFile("csvFile")
+	if err != nil {
+		log.Printf("[TREASURIES_IMPORT] Error getting form file: %v", err)
+		response := ImportResponse{
+			Success: false,
+			Error:   "No file provided or error reading file",
+			Details: err.Error(),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+	defer file.Close()
+
+	// Import treasuries from CSV
+	importedCount, skippedCount, err := s.importTreasuriesFromCSV(file)
+	if err != nil {
+		log.Printf("[TREASURIES_IMPORT] Import failed: %v", err)
+		response := ImportResponse{
+			Success: false,
+			Error:   "Failed to import treasuries from CSV",
+			Details: err.Error(),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	log.Printf("[TREASURIES_IMPORT] Import completed: %d imported, %d skipped", importedCount, skippedCount)
 	response := ImportResponse{
 		Success:       true,
 		ImportedCount: importedCount,
@@ -545,6 +602,64 @@ func (s *Server) importDividendsFromCSV(file io.Reader) (importedCount int, skip
 	return importedCount, skippedCount, nil
 }
 
+// importTreasuriesFromCSV parses the CSV file and imports treasury records
+func (s *Server) importTreasuriesFromCSV(file io.Reader) (importedCount int, skippedCount int, err error) {
+	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = 8 // Expect exactly 8 fields: CUSPID, Purchased, Maturity, Amount, Yield, BuyPrice, CurrentValue, ExitPrice
+
+	records, err := reader.ReadAll()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to read CSV: %w", err)
+	}
+
+	if len(records) == 0 {
+		return 0, 0, fmt.Errorf("CSV file is empty")
+	}
+
+	// Skip header row
+	if len(records) <= 1 {
+		return 0, 0, fmt.Errorf("CSV file must contain data rows beyond the header")
+	}
+
+	log.Printf("[TREASURIES_IMPORT] Processing %d treasury records", len(records)-1)
+
+	for i, record := range records[1:] { // Skip header row
+		if len(record) != 8 {
+			log.Printf("[TREASURIES_IMPORT] Row %d: Invalid column count (expected 8, got %d)", i+2, len(record))
+			return importedCount, skippedCount, fmt.Errorf("row %d: expected 8 columns, got %d", i+2, len(record))
+		}
+
+		csvRecord := CSVTreasuryRecord{
+			CUSPID:       strings.TrimSpace(record[0]),
+			Purchased:    strings.TrimSpace(record[1]),
+			Maturity:     strings.TrimSpace(record[2]),
+			Amount:       strings.TrimSpace(record[3]),
+			Yield:        strings.TrimSpace(record[4]),
+			BuyPrice:     strings.TrimSpace(record[5]),
+			CurrentValue: strings.TrimSpace(record[6]),
+			ExitPrice:    strings.TrimSpace(record[7]),
+		}
+
+		treasury, created, err := s.processTreasuryRecord(csvRecord, i+2)
+		if err != nil {
+			log.Printf("[TREASURIES_IMPORT] Row %d: %v", i+2, err)
+			return importedCount, skippedCount, err
+		}
+
+		if created {
+			importedCount++
+			log.Printf("[TREASURIES_IMPORT] Row %d: Created treasury %s %.2f purchased on %s",
+				i+2, treasury.CUSPID, treasury.Amount, treasury.Purchased.Format("2006-01-02"))
+		} else {
+			skippedCount++
+			log.Printf("[TREASURIES_IMPORT] Row %d: Skipped duplicate treasury %s %.2f purchased on %s",
+				i+2, treasury.CUSPID, treasury.Amount, treasury.Purchased.Format("2006-01-02"))
+		}
+	}
+
+	return importedCount, skippedCount, nil
+}
+
 // convertCSVRecordToOption converts a CSV record to an Option struct
 func (s *Server) convertCSVRecordToOption(record CSVOptionRecord, rowNumber int) (*models.Option, error) {
 	// Validate required fields
@@ -799,6 +914,125 @@ func (s *Server) processDividendRecord(csvRecord CSVDividendRecord, rowNum int) 
 	}
 
 	return dividend, true, nil
+}
+
+// processTreasuryRecord processes a single treasury record from CSV
+func (s *Server) processTreasuryRecord(csvRecord CSVTreasuryRecord, rowNum int) (*models.Treasury, bool, error) {
+	// Validate CUSPID
+	if csvRecord.CUSPID == "" {
+		return nil, false, fmt.Errorf("CUSPID cannot be empty")
+	}
+
+	// Parse purchased date (accepting multiple formats: YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY)
+	var purchasedDate time.Time
+	var err error
+
+	// Try different date formats
+	dateFormats := []string{
+		"2006-01-02", // YYYY-MM-DD
+		"1/2/2006",   // M/D/YYYY
+		"01/02/2006", // MM/DD/YYYY
+		"1/2/06",     // M/D/YY
+		"01/02/06",   // MM/DD/YY
+	}
+
+	for _, format := range dateFormats {
+		purchasedDate, err = time.Parse(format, csvRecord.Purchased)
+		if err == nil {
+			break
+		}
+	}
+
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid purchased date format '%s' (expected YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY, MM/DD/YY, or M/D/YY)", csvRecord.Purchased)
+	}
+
+	// Parse maturity date
+	var maturityDate time.Time
+	for _, format := range dateFormats {
+		maturityDate, err = time.Parse(format, csvRecord.Maturity)
+		if err == nil {
+			break
+		}
+	}
+
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid maturity date format '%s' (expected YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY, MM/DD/YY, or M/D/YY)", csvRecord.Maturity)
+	}
+
+	// Parse amount
+	amount, err := strconv.ParseFloat(strings.TrimPrefix(strings.ReplaceAll(csvRecord.Amount, ",", ""), "$"), 64)
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid amount '%s'", csvRecord.Amount)
+	}
+
+	if amount <= 0 {
+		return nil, false, fmt.Errorf("amount must be positive, got %.2f", amount)
+	}
+
+	// Parse yield
+	yieldStr := strings.TrimSuffix(csvRecord.Yield, "%")
+	yield, err := strconv.ParseFloat(yieldStr, 64)
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid yield '%s'", csvRecord.Yield)
+	}
+
+	// Parse buy price
+	buyPrice, err := strconv.ParseFloat(strings.TrimPrefix(strings.ReplaceAll(csvRecord.BuyPrice, ",", ""), "$"), 64)
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid buy price '%s'", csvRecord.BuyPrice)
+	}
+
+	if buyPrice <= 0 {
+		return nil, false, fmt.Errorf("buy price must be positive, got %.2f", buyPrice)
+	}
+
+	// Parse optional current value
+	var currentValue *float64
+	if csvRecord.CurrentValue != "" {
+		value, err := strconv.ParseFloat(strings.TrimPrefix(strings.ReplaceAll(csvRecord.CurrentValue, ",", ""), "$"), 64)
+		if err != nil {
+			return nil, false, fmt.Errorf("invalid current value '%s'", csvRecord.CurrentValue)
+		}
+		currentValue = &value
+	}
+
+	// Parse optional exit price
+	var exitPrice *float64
+	if csvRecord.ExitPrice != "" {
+		price, err := strconv.ParseFloat(strings.TrimPrefix(strings.ReplaceAll(csvRecord.ExitPrice, ",", ""), "$"), 64)
+		if err != nil {
+			return nil, false, fmt.Errorf("invalid exit price '%s'", csvRecord.ExitPrice)
+		}
+		exitPrice = &price
+	}
+
+	// Check if treasury already exists (to avoid duplicates)
+	existingTreasury, err := s.treasuryService.GetByCUSPID(csvRecord.CUSPID)
+	if err == nil && existingTreasury != nil {
+		// Treasury already exists, check if it's the same one
+		if existingTreasury.Purchased.Equal(purchasedDate) && 
+		   existingTreasury.Maturity.Equal(maturityDate) && 
+		   existingTreasury.Amount == amount {
+			return existingTreasury, false, nil // Already exists, skip
+		}
+	}
+
+	// Create the treasury
+	treasury, err := s.treasuryService.Create(csvRecord.CUSPID, purchasedDate, maturityDate, amount, yield, buyPrice)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create treasury: %v", err)
+	}
+
+	// Update with optional fields if provided
+	if currentValue != nil || exitPrice != nil {
+		_, err = s.treasuryService.Update(treasury.CUSPID, currentValue, exitPrice)
+		if err != nil {
+			log.Printf("[TREASURIES_IMPORT] Warning: Failed to update treasury with optional fields: %v", err)
+		}
+	}
+
+	return treasury, true, nil
 }
 
 // ensureSymbolExists creates a symbol if it doesn't exist

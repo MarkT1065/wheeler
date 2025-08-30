@@ -6,25 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"stonks/internal/database"
 	"stonks/internal/web"
 	"syscall"
 	"time"
 )
 
 func main() {
-	// Initialize current database
-	dbPath, err := database.GetCurrentDatabasePath()
-	if err != nil {
-		log.Fatalf("Failed to get current database path: %v", err)
-	}
-	
-	_, err = database.NewDB(dbPath)
-	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
-	}
-
-	// Create web server
+	// Create web server (it will handle database initialization)
 	server, err := web.NewServer()
 	if err != nil {
 		log.Fatalf("Failed to create web server: %v", err)
@@ -65,5 +53,12 @@ func main() {
 		log.Printf("Server forced to shutdown: %v", err)
 	} else {
 		log.Println("Server gracefully shut down")
+	}
+	
+	// Close database connection
+	if err := server.Close(); err != nil {
+		log.Printf("Error closing database: %v", err)
+	} else {
+		log.Println("Database connection closed")
 	}
 }

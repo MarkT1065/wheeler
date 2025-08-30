@@ -21,6 +21,15 @@ type Treasury struct {
 }
 
 func (t *Treasury) CalculateProfitLoss() float64 {
+	// Use exit price if bond was sold
+	if t.ExitPrice != nil {
+		return *t.ExitPrice - t.BuyPrice
+	}
+	// Use current market value if available
+	if t.CurrentValue != nil {
+		return *t.CurrentValue - t.BuyPrice
+	}
+	// Fall back to face value vs purchase price
 	return t.Amount - t.BuyPrice
 }
 

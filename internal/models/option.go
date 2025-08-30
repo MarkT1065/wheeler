@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"math"
 	"time"
 )
 
@@ -361,8 +362,9 @@ func (s *OptionService) GetOpenPositionsWithDetails() ([]*OpenPositionData, erro
 	now := time.Now()
 	
 	for _, option := range options {
-		// Calculate days to expiration
-		daysToExp := int(option.Expiration.Sub(now).Hours() / 24)
+		// Calculate days to expiration - use ceiling to avoid off-by-one error
+		// An option expiring tomorrow should show 1 day, not 0
+		daysToExp := int(math.Ceil(option.Expiration.Sub(now).Hours() / 24))
 		
 		// Determine status based on days to expiration
 		status := "Active"

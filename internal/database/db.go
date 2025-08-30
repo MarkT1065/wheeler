@@ -19,10 +19,17 @@ type DB struct {
 }
 
 func NewDB(dataSourceName string) (*DB, error) {
-	db, err := sql.Open("sqlite3", dataSourceName)
+	// Add SQLite connection parameters for better reliability
+	connStr := dataSourceName + "?_busy_timeout=10000&_journal_mode=WAL&_foreign_keys=on"
+	
+	db, err := sql.Open("sqlite3", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
+
+	// Configure connection pool
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)

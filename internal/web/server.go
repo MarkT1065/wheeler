@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -26,6 +27,7 @@ type Server struct {
 	longPositionService *models.LongPositionService
 	dividendService     *models.DividendService
 	settingService      *models.SettingService
+	metricService       *models.MetricService
 	polygonService      *polygon.Service
 	templates           *template.Template
 }
@@ -221,6 +223,7 @@ func NewServer() (*Server, error) {
 		longPositionService: models.NewLongPositionService(dbWrapper.DB),
 		dividendService:     models.NewDividendService(dbWrapper.DB),
 		settingService:      settingService,
+		metricService:       models.NewMetricService(dbWrapper.DB),
 		polygonService:      polygon.NewService(symbolService, settingService),
 		templates:           templates,
 	}
@@ -229,6 +232,15 @@ func NewServer() (*Server, error) {
 	log.Printf("[SERVER] Server creation completed")
 
 	return server, nil
+}
+
+// Close closes the database connection
+func (s *Server) Close() error {
+	if s.db != nil {
+		log.Printf("[SERVER] Closing database connection")
+		return s.db.Close()
+	}
+	return nil
 }
 
 func (s *Server) setupRoutes() {
@@ -249,6 +261,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/treasuries", s.treasuriesHandler)
 	log.Printf("[SERVER] Route registered: /treasuries -> treasuriesHandler")
+
+	http.HandleFunc("/metrics", s.metricsHandler)
+	log.Printf("[SERVER] Route registered: /metrics -> metricsHandler")
 
 	http.HandleFunc("/symbol/", s.symbolHandler)
 	log.Printf("[SERVER] Route registered: /symbol/ -> symbolHandler")
@@ -274,6 +289,36 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/api/treasuries/", s.treasuryAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/treasuries/ -> treasuryAPIHandler")
 
+	http.HandleFunc("/api/metrics", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			s.getMetricsHandler(w, r)
+		case http.MethodPost:
+			s.createMetricHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	log.Printf("[SERVER] Route registered: /api/metrics -> metrics API handler")
+
+	http.HandleFunc("/api/metrics/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPut:
+			s.updateMetricHandler(w, r)
+		case http.MethodDelete:
+			s.deleteMetricHandler(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+	log.Printf("[SERVER] Route registered: /api/metrics/ -> individual metric API handler")
+
+	http.HandleFunc("/api/metrics/snapshot", s.createMetricsSnapshotHandler)
+	log.Printf("[SERVER] Route registered: /api/metrics/snapshot -> createMetricsSnapshotHandler")
+
+	http.HandleFunc("/api/metrics/chart-data", s.getMetricsChartDataHandler)
+	log.Printf("[SERVER] Route registered: /api/metrics/chart-data -> getMetricsChartDataHandler")
+
 	http.HandleFunc("/add-option", s.addOptionHandler)
 	log.Printf("[SERVER] Route registered: /add-option -> addOptionHandler")
 
@@ -282,6 +327,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/api/allocation-data", s.allocationDataHandler)
 	log.Printf("[SERVER] Route registered: /api/allocation-data -> allocationDataHandler")
+
+	http.HandleFunc("/api/optionable-positions", s.optionablePositionsHandler)
+	log.Printf("[SERVER] Route registered: /api/optionable-positions -> optionablePositionsHandler")
 
 	http.HandleFunc("/import", s.HandleImport)
 	log.Printf("[SERVER] Route registered: /import -> HandleImport")
@@ -312,6 +360,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/import/upload/dividends", s.HandleDividendsImportUpload)
 	log.Printf("[SERVER] Route registered: /import/upload/dividends -> HandleDividendsImportUpload")
+
+	http.HandleFunc("/import/upload/treasuries", s.HandleTreasuriesImportUpload)
+	log.Printf("[SERVER] Route registered: /import/upload/treasuries -> HandleTreasuriesImportUpload")
 
 	http.HandleFunc("/api/generate-test-data", s.HandleGenerateTestData)
 	log.Printf("[SERVER] Route registered: /api/generate-test-data -> HandleGenerateTestData")
@@ -410,10 +461,21 @@ func groupPositionsByExpiration(positions []*models.OpenPositionData) []Expirati
 
 func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
 	log.Printf("[TEMPLATE] Starting template execution for: %s", templateName)
-	err := s.templates.ExecuteTemplate(w, templateName, data)
+	
+	// Use a buffer to execute template first, then write to response if successful
+	var buf bytes.Buffer
+	err := s.templates.ExecuteTemplate(&buf, templateName, data)
 	if err != nil {
 		log.Printf("[TEMPLATE] ERROR: Template execution failed for %s: %v", templateName, err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	
+	// Template executed successfully, write to response
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, err = w.Write(buf.Bytes())
+	if err != nil {
+		log.Printf("[TEMPLATE] ERROR: Failed to write response for %s: %v", templateName, err)
 	} else {
 		log.Printf("[TEMPLATE] Successfully rendered template: %s", templateName)
 	}

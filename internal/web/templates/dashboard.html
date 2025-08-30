@@ -72,6 +72,10 @@
                     <i class="fas fa-university"></i>
                     Treasuries
                 </a>
+                <a href="/metrics" class="nav-item">
+                    <i class="fas fa-chart-pie"></i>
+                    Metrics
+                </a>
                 
                 <!-- Collapsible Symbols Section -->
                 <div class="symbols-section">
@@ -175,6 +179,7 @@
                                 <th>Symbol</th>
                                 <th>Long</th>
                                 <th>Put Exposed</th>
+                                <th>Optionable</th>
                                 <th>Puts</th>
                                 <th>Calls</th>
                                 <th>Cap Gains</th>
@@ -190,6 +195,7 @@
                                     <td class="ticker-col"><a href="/symbol/{{.Ticker}}" class="symbol-link">{{.Ticker}}</a></td>
                                     <td>{{formatCurrency .LongAmount}}</td>
                                     <td>{{formatCurrency .PutExposed}}</td>
+                                    <td>{{formatCurrency .Optionable}}</td>
                                     <td class="{{if lt .Puts 0.0}}negative{{else if gt .Puts 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Puts}}</td>
                                     <td class="{{if lt .Calls 0.0}}negative{{else if gt .Calls 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Calls}}</td>
                                     <td class="{{if lt .CapGains 0.0}}negative{{else if gt .CapGains 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .CapGains}}</td>
@@ -200,7 +206,7 @@
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="9" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                    <td colspan="10" style="text-align: center; color: #a0a0a0; padding: 20px;">
                                         No portfolio data available
                                     </td>
                                 </tr>
@@ -211,6 +217,7 @@
                                 <td class="ticker-col">Total</td>
                                 <td>{{formatCurrency .Totals.TotalLong}}</td>
                                 <td>{{formatCurrency .Totals.TotalPuts}}</td>
+                                <td>{{formatCurrency .Totals.TotalOptionable}}</td>
                                 <td class="{{if lt .Totals.TotalPutPremiums 0.0}}negative{{else if gt .Totals.TotalPutPremiums 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalPutPremiums}}</td>
                                 <td class="{{if lt .Totals.TotalCallPremiums 0.0}}negative{{else if gt .Totals.TotalCallPremiums 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalCallPremiums}}</td>
                                 <td class="{{if lt .Totals.TotalCapGains 0.0}}negative{{else if gt .Totals.TotalCapGains 0.0}}positive{{end}}">{{formatCurrencyWithDecimals .Totals.TotalCapGains}}</td>
@@ -401,8 +408,8 @@
                 totalTreasuries = data.totalTreasuries || 0;
             }
             
-            // Calculate nominal total (Long + Put Exposure only, excluding Treasuries)
-            const nominalTotalValue = totalLong + totalPutExposed;
+            // Calculate nominal total (Long + Treasuries)
+            const nominalTotalValue = totalLong + totalTreasuries;
             
             // Update each total
             formatCurrency(nominalTotalValue, nominalTotalElement);
@@ -507,8 +514,8 @@
                         // Format as whole dollars with comma separators
                         const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
                         
-                        // Long (column 1) and Put Exposed (column 2) are absolute values - no profit/loss coloring
-                        if (columnIndex === 1 || columnIndex === 2) {
+                        // Long (column 1), Put Exposed (column 2), and Optionable (column 3) are absolute values - no profit/loss coloring
+                        if (columnIndex === 1 || columnIndex === 2 || columnIndex === 3) {
                             cell.innerHTML = formattedValue;
                         }
                         // Other monetary columns get profit/loss coloring

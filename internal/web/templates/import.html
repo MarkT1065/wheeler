@@ -37,6 +37,10 @@
                     <i class="fas fa-university"></i>
                     Treasuries
                 </a>
+                <a href="/metrics" class="nav-item">
+                    <i class="fas fa-chart-pie"></i>
+                    Metrics
+                </a>
                 
                 <!-- Collapsible Symbols Section -->
                 <div class="symbols-section">
@@ -110,6 +114,10 @@
                     <button class="tab-button" data-tab="dividends">
                         <i class="fas fa-money-bill-wave"></i>
                         Dividends
+                    </button>
+                    <button class="tab-button" data-tab="treasuries">
+                        <i class="fas fa-university"></i>
+                        Treasuries
                     </button>
                 </div>
 
@@ -255,6 +263,55 @@
                         <div id="dividendsImportResults" style="display: none;">
                             <div class="alert" id="dividendsResultsAlert">
                                 <div id="dividendsResultsContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Treasuries Tab Content -->
+                <div class="tab-content" id="treasuries-tab">
+                    <div class="import-form-container">
+                        <form id="treasuriesImportForm" enctype="multipart/form-data" method="POST" action="/import/upload/treasuries">
+                            <div class="upload-area" id="treasuriesUploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: #4ade80; margin-bottom: 15px;"></i>
+                                    <h3>Drop your treasuries CSV file here or click to select</h3>
+                                    <p>Maximum file size: 10MB</p>
+                                    <input type="file" id="treasuriesCsvFile" name="csvFile" accept=".csv" style="display: none;">
+                                    <button type="button" id="treasuriesSelectFileBtn" class="btn btn-primary">
+                                        <i class="fas fa-folder-open"></i>
+                                        Select File
+                                    </button>
+                                </div>
+                                <div class="file-info" id="treasuriesFileInfo" style="display: none;">
+                                    <i class="fas fa-file-csv" style="color: #4ade80;"></i>
+                                    <span id="treasuriesFileName"></span>
+                                    <span id="treasuriesFileSize"></span>
+                                    <button type="button" id="treasuriesRemoveFileBtn" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="submit" id="treasuriesUploadBtn" class="btn btn-primary" disabled>
+                                    <i class="fas fa-upload"></i>
+                                    Import Treasuries
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <!-- Progress and Results -->
+                        <div id="treasuriesImportProgress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="treasuriesProgressFill"></div>
+                            </div>
+                            <p id="treasuriesProgressText">Processing...</p>
+                        </div>
+                        
+                        <div id="treasuriesImportResults" style="display: none;">
+                            <div class="alert" id="treasuriesResultsAlert">
+                                <div id="treasuriesResultsContent"></div>
                             </div>
                         </div>
                     </div>
@@ -558,6 +615,116 @@ VZ,2/3/2025,$241.64
                         </ul>
                     </div>
                 </div>
+                
+                <!-- Treasuries Format Documentation -->
+                <div class="format-content" id="treasuries-format">
+                    <h4>Treasuries CSV Format</h4>
+                    
+                    <div class="format-section">
+                        <h4>Required Columns</h4>
+                        <p>Your CSV file must include these columns in the exact order shown:</p>
+                        <div class="code-block">
+CUSPID,Purchased,Maturity,Amount,Yield,BuyPrice,CurrentValue,ExitPrice
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Column Definitions</h4>
+                        <div class="format-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Format</th>
+                                        <th>Example</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>CUSPID</code></td>
+                                        <td>Text</td>
+                                        <td>Yes</td>
+                                        <td>9-character identifier</td>
+                                        <td>912828CG9</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Purchased</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>YYYY-MM-DD or MM/DD/YYYY</td>
+                                        <td>2024-01-15</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Maturity</code></td>
+                                        <td>Date</td>
+                                        <td>Yes</td>
+                                        <td>YYYY-MM-DD or MM/DD/YYYY</td>
+                                        <td>2025-01-15</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Amount</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal (with or without $)</td>
+                                        <td>$10,000.00 or 10000.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>Yield</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal (with or without %)</td>
+                                        <td>4.5% or 4.5</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>BuyPrice</code></td>
+                                        <td>Number</td>
+                                        <td>Yes</td>
+                                        <td>Decimal (with or without $)</td>
+                                        <td>$9,850.00 or 9850.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>CurrentValue</code></td>
+                                        <td>Number</td>
+                                        <td>No</td>
+                                        <td>Decimal or empty</td>
+                                        <td>$9,900.00 or empty</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>ExitPrice</code></td>
+                                        <td>Number</td>
+                                        <td>No</td>
+                                        <td>Decimal or empty</td>
+                                        <td>$10,100.00 or empty</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Sample CSV Content</h4>
+                        <div class="code-block">
+CUSPID,Purchased,Maturity,Amount,Yield,BuyPrice,CurrentValue,ExitPrice
+912828CG9,2024-01-15,2025-01-15,$10000.00,4.5%,$9850.00,$9900.00,
+912828DH1,2024-03-01,2025-03-01,25000.00,4.2,24800.00,,24950.00
+                        </div>
+                    </div>
+                    
+                    <div class="format-section">
+                        <h4>Important Notes</h4>
+                        <ul>
+                            <li><strong>CUSPID:</strong> Must be a valid 9-character Treasury security identifier</li>
+                            <li><strong>Date Formats:</strong> Accepts YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY, MM/DD/YY, or M/D/YY</li>
+                            <li><strong>Amount/Price Format:</strong> Can include dollar signs ($) and commas, or be plain decimal</li>
+                            <li><strong>Yield Format:</strong> Can include percent sign (%) or be plain decimal (e.g., 4.5% or 4.5)</li>
+                            <li><strong>Open Positions:</strong> Leave <code>ExitPrice</code> empty for active treasuries</li>
+                            <li><strong>Optional Fields:</strong> <code>CurrentValue</code> and <code>ExitPrice</code> can be left empty</li>
+                            <li><strong>Duplicates:</strong> Existing treasuries with same CUSPID, dates, and amount will be skipped</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -643,6 +810,23 @@ VZ,2/3/2025,$241.64
         const dividendsResultsAlert = document.getElementById('dividendsResultsAlert');
         const dividendsResultsContent = document.getElementById('dividendsResultsContent');
 
+        // Treasuries upload functionality
+        const treasuriesUploadArea = document.getElementById('treasuriesUploadArea');
+        const treasuriesCsvFile = document.getElementById('treasuriesCsvFile');
+        const treasuriesSelectFileBtn = document.getElementById('treasuriesSelectFileBtn');
+        const treasuriesFileInfo = document.getElementById('treasuriesFileInfo');
+        const treasuriesFileName = document.getElementById('treasuriesFileName');
+        const treasuriesFileSize = document.getElementById('treasuriesFileSize');
+        const treasuriesRemoveFileBtn = document.getElementById('treasuriesRemoveFileBtn');
+        const treasuriesUploadBtn = document.getElementById('treasuriesUploadBtn');
+        const treasuriesImportForm = document.getElementById('treasuriesImportForm');
+        const treasuriesImportProgress = document.getElementById('treasuriesImportProgress');
+        const treasuriesProgressFill = document.getElementById('treasuriesProgressFill');
+        const treasuriesProgressText = document.getElementById('treasuriesProgressText');
+        const treasuriesImportResults = document.getElementById('treasuriesImportResults');
+        const treasuriesResultsAlert = document.getElementById('treasuriesResultsAlert');
+        const treasuriesResultsContent = document.getElementById('treasuriesResultsContent');
+
         // Options file selection
         optionsSelectFileBtn.addEventListener('click', () => optionsCsvFile.click());
         optionsCsvFile.addEventListener('change', () => handleFileSelection('options'));
@@ -654,6 +838,10 @@ VZ,2/3/2025,$241.64
         // Dividends file selection
         dividendsSelectFileBtn.addEventListener('click', () => dividendsCsvFile.click());
         dividendsCsvFile.addEventListener('change', () => handleFileSelection('dividends'));
+
+        // Treasuries file selection
+        treasuriesSelectFileBtn.addEventListener('click', () => treasuriesCsvFile.click());
+        treasuriesCsvFile.addEventListener('change', () => handleFileSelection('treasuries'));
 
         // Options drag and drop
         optionsUploadArea.addEventListener('dragover', (e) => {
@@ -709,13 +897,43 @@ VZ,2/3/2025,$241.64
             }
         });
 
+        // Treasuries drag and drop
+        treasuriesUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            treasuriesUploadArea.classList.add('drag-over');
+        });
+        treasuriesUploadArea.addEventListener('dragleave', () => {
+            treasuriesUploadArea.classList.remove('drag-over');
+        });
+        treasuriesUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            treasuriesUploadArea.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                treasuriesCsvFile.files = files;
+                handleFileSelection('treasuries');
+            }
+        });
+
         function handleFileSelection(type) {
-            const csvFile = type === 'options' ? optionsCsvFile : type === 'stocks' ? stocksCsvFile : dividendsCsvFile;
-            const fileName = type === 'options' ? optionsFileName : type === 'stocks' ? stocksFileName : dividendsFileName;
-            const fileSize = type === 'options' ? optionsFileSize : type === 'stocks' ? stocksFileSize : dividendsFileSize;
-            const fileInfo = type === 'options' ? optionsFileInfo : type === 'stocks' ? stocksFileInfo : dividendsFileInfo;
-            const uploadArea = type === 'options' ? optionsUploadArea : type === 'stocks' ? stocksUploadArea : dividendsUploadArea;
-            const uploadBtn = type === 'options' ? optionsUploadBtn : type === 'stocks' ? stocksUploadBtn : dividendsUploadBtn;
+            const csvFile = type === 'options' ? optionsCsvFile : 
+                           type === 'stocks' ? stocksCsvFile : 
+                           type === 'dividends' ? dividendsCsvFile : treasuriesCsvFile;
+            const fileName = type === 'options' ? optionsFileName : 
+                            type === 'stocks' ? stocksFileName : 
+                            type === 'dividends' ? dividendsFileName : treasuriesFileName;
+            const fileSize = type === 'options' ? optionsFileSize : 
+                            type === 'stocks' ? stocksFileSize : 
+                            type === 'dividends' ? dividendsFileSize : treasuriesFileSize;
+            const fileInfo = type === 'options' ? optionsFileInfo : 
+                            type === 'stocks' ? stocksFileInfo : 
+                            type === 'dividends' ? dividendsFileInfo : treasuriesFileInfo;
+            const uploadArea = type === 'options' ? optionsUploadArea : 
+                              type === 'stocks' ? stocksUploadArea : 
+                              type === 'dividends' ? dividendsUploadArea : treasuriesUploadArea;
+            const uploadBtn = type === 'options' ? optionsUploadBtn : 
+                             type === 'stocks' ? stocksUploadBtn : 
+                             type === 'dividends' ? dividendsUploadBtn : treasuriesUploadBtn;
             
             const file = csvFile.files[0];
             if (file) {
@@ -765,6 +983,15 @@ VZ,2/3/2025,$241.64
             dividendsUploadArea.querySelector('.upload-content').style.display = 'block';
             dividendsUploadBtn.disabled = true;
             hideResults('dividends');
+        });
+        
+        // Treasuries remove file
+        treasuriesRemoveFileBtn.addEventListener('click', () => {
+            treasuriesCsvFile.value = '';
+            treasuriesFileInfo.style.display = 'none';
+            treasuriesUploadArea.querySelector('.upload-content').style.display = 'block';
+            treasuriesUploadBtn.disabled = true;
+            hideResults('treasuries');
         });
 
         // Options form submission
@@ -868,11 +1095,51 @@ VZ,2/3/2025,$241.64
                 }, false);
             }
         });
+        
+        // Treasuries form submission
+        treasuriesImportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!treasuriesCsvFile.files[0]) {
+                alert('Please select a CSV file to upload.');
+                return;
+            }
+
+            showProgress('treasuries');
+            hideResults('treasuries');
+
+            const formData = new FormData();
+            formData.append('csvFile', treasuriesCsvFile.files[0]);
+
+            try {
+                const response = await fetch('/import/upload/treasuries', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                hideProgress('treasuries');
+                showResults('treasuries', result, response.ok);
+
+            } catch (error) {
+                hideProgress('treasuries');
+                showResults('treasuries', {
+                    success: false,
+                    error: 'Upload failed: ' + error.message
+                }, false);
+            }
+        });
 
         function showProgress(type) {
-            const importProgress = type === 'options' ? optionsImportProgress : type === 'stocks' ? stocksImportProgress : dividendsImportProgress;
-            const progressFill = type === 'options' ? optionsProgressFill : type === 'stocks' ? stocksProgressFill : dividendsProgressFill;
-            const progressText = type === 'options' ? optionsProgressText : type === 'stocks' ? stocksProgressText : dividendsProgressText;
+            const importProgress = type === 'options' ? optionsImportProgress : 
+                                  type === 'stocks' ? stocksImportProgress : 
+                                  type === 'dividends' ? dividendsImportProgress : treasuriesImportProgress;
+            const progressFill = type === 'options' ? optionsProgressFill : 
+                                type === 'stocks' ? stocksProgressFill : 
+                                type === 'dividends' ? dividendsProgressFill : treasuriesProgressFill;
+            const progressText = type === 'options' ? optionsProgressText : 
+                               type === 'stocks' ? stocksProgressText : 
+                               type === 'dividends' ? dividendsProgressText : treasuriesProgressText;
             
             importProgress.style.display = 'block';
             progressFill.style.width = '100%';
@@ -880,15 +1147,25 @@ VZ,2/3/2025,$241.64
         }
 
         function hideProgress(type) {
-            const importProgress = type === 'options' ? optionsImportProgress : type === 'stocks' ? stocksImportProgress : dividendsImportProgress;
+            const importProgress = type === 'options' ? optionsImportProgress : 
+                                  type === 'stocks' ? stocksImportProgress : 
+                                  type === 'dividends' ? dividendsImportProgress : treasuriesImportProgress;
             importProgress.style.display = 'none';
         }
 
         function showResults(type, result, success) {
-            const importResults = type === 'options' ? optionsImportResults : type === 'stocks' ? stocksImportResults : dividendsImportResults;
-            const resultsAlert = type === 'options' ? optionsResultsAlert : type === 'stocks' ? stocksResultsAlert : dividendsResultsAlert;
-            const resultsContent = type === 'options' ? optionsResultsContent : type === 'stocks' ? stocksResultsContent : dividendsResultsContent;
-            const dataType = type === 'options' ? 'options' : type === 'stocks' ? 'stock positions' : 'dividend records';
+            const importResults = type === 'options' ? optionsImportResults : 
+                                 type === 'stocks' ? stocksImportResults : 
+                                 type === 'dividends' ? dividendsImportResults : treasuriesImportResults;
+            const resultsAlert = type === 'options' ? optionsResultsAlert : 
+                                type === 'stocks' ? stocksResultsAlert : 
+                                type === 'dividends' ? dividendsResultsAlert : treasuriesResultsAlert;
+            const resultsContent = type === 'options' ? optionsResultsContent : 
+                                  type === 'stocks' ? stocksResultsContent : 
+                                  type === 'dividends' ? dividendsResultsContent : treasuriesResultsContent;
+            const dataType = type === 'options' ? 'options' : 
+                            type === 'stocks' ? 'stock positions' : 
+                            type === 'dividends' ? 'dividend records' : 'treasuries';
             
             importResults.style.display = 'block';
             resultsAlert.className = success ? 'alert alert-success' : 'alert alert-error';
@@ -910,7 +1187,9 @@ VZ,2/3/2025,$241.64
         }
 
         function hideResults(type) {
-            const importResults = type === 'options' ? optionsImportResults : type === 'stocks' ? stocksImportResults : dividendsImportResults;
+            const importResults = type === 'options' ? optionsImportResults : 
+                                 type === 'stocks' ? stocksImportResults : 
+                                 type === 'dividends' ? dividendsImportResults : treasuriesImportResults;
             importResults.style.display = 'none';
         }
     </script>

@@ -65,6 +65,17 @@ type CSVDividendRecord struct {
 	Amount       string
 }
 
+type CSVTreasuryRecord struct {
+	CUSPID       string
+	Purchased    string
+	Maturity     string
+	Amount       string
+	Yield        string
+	BuyPrice     string
+	CurrentValue string
+	ExitPrice    string
+}
+
 // DashboardData holds data for the dashboard template
 type DashboardData struct {
 	Symbols         []string        `json:"symbols"`
@@ -87,6 +98,7 @@ type SymbolSummary struct {
 	Dividends    float64 `json:"dividends"`
 	Net          float64 `json:"net"`
 	CashOnCash   float64 `json:"cashOnCash"`
+	Optionable   float64 `json:"optionable"`
 }
 
 type ChartData struct {
@@ -108,6 +120,7 @@ type DashboardTotals struct {
 	PutROI            float64 `json:"putROI"`
 	LongROI           float64 `json:"longROI"`
 	GrandTotal        float64 `json:"grandTotal"`
+	TotalOptionable   float64 `json:"totalOptionable"`
 }
 
 // MonthlyData holds data for the monthly template
@@ -262,11 +275,71 @@ type LongPositionRequest struct {
 }
 
 type AllocationData struct {
-	LongByTicker      []ChartData `json:"longByTicker"`
-	PutsByTicker      []ChartData `json:"putsByTicker"`
-	TotalAllocation   []ChartData `json:"totalAllocation"`
-	PutROI            float64     `json:"putROI"`
-	LongROI           float64     `json:"longROI"`
-	TotalPutPremiums  float64     `json:"totalPutPremiums"`
-	TotalCallPremiums float64     `json:"totalCallPremiums"`
+	LongByTicker        []ChartData `json:"longByTicker"`
+	PutsByTicker        []ChartData `json:"putsByTicker"`
+	CallsToLongs        []ChartData `json:"callsToLongs"`
+	TotalAllocation     []ChartData `json:"totalAllocation"`
+	PutROI              float64     `json:"putROI"`
+	LongROI             float64     `json:"longROI"`
+	TotalPutPremiums    float64     `json:"totalPutPremiums"`
+	TotalCallPremiums   float64     `json:"totalCallPremiums"`
+	TotalCallCovered    float64     `json:"totalCallCovered"`
+	TotalOptionable     float64     `json:"totalOptionable"`
+}
+
+type ChartPoint struct {
+	Date  string  `json:"date"`
+	Value float64 `json:"value"`
+}
+
+// OptionsScatterData holds data for the options scatter plot (replaces DOM extraction)
+type OptionsScatterData struct {
+	ScatterPoints []OptionScatterPoint `json:"scatterPoints"`
+	ChartConfig   ScatterChartConfig   `json:"chartConfig"`
+}
+
+type OptionScatterPoint struct {
+	Expiration     string  `json:"expiration"`     // "2024-12-20"
+	ExpirationDate string  `json:"expirationDate"` // For JS Date parsing
+	Profit         float64 `json:"profit"`         // Y-axis value
+	Symbol         string  `json:"symbol"`         // For tooltip
+	Type           string  `json:"type"`           // "Put" or "Call"  
+	Strike         float64 `json:"strike"`         // Strike price
+	Contracts      int     `json:"contracts"`      // Quantity
+	DTE            int     `json:"dte"`            // Days to expiration
+}
+
+type ScatterChartConfig struct {
+	Colors      ScatterColors `json:"colors"`
+	DateRange   DateRange     `json:"dateRange"`
+	ProfitRange ProfitRange   `json:"profitRange"`
+}
+
+type ScatterColors struct {
+	PutColor  string `json:"putColor"`  // "#27ae60"
+	CallColor string `json:"callColor"` // "#3498db"
+}
+
+type DateRange struct {
+	Start string `json:"start"` // "2024-12-01"
+	End   string `json:"end"`   // "2025-01-31"
+}
+
+type ProfitRange struct {
+	Min float64 `json:"min"` // -100.0
+	Max float64 `json:"max"` // 200.0
+}
+
+// TutorialChartData holds data for the tutorial financial analysis chart
+type TutorialChartData struct {
+	IncomeBreakdown []TutorialIncomeData `json:"incomeBreakdown"`
+	TotalReturn     float64              `json:"totalReturn"`
+	AnnualizedROI   float64              `json:"annualizedROI"`
+}
+
+type TutorialIncomeData struct {
+	Category   string  `json:"category"`   // "Put Premiums", "Call Premiums", etc.
+	Amount     float64 `json:"amount"`     // Dollar amount
+	Percentage float64 `json:"percentage"` // Percentage of total
+	Color      string  `json:"color"`      // Chart color
 }
