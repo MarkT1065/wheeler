@@ -218,6 +218,7 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 		LongPositionsList: longPositionsList,
 		MonthlyResults:    monthlyResults,
 		CurrentDB:         s.getCurrentDatabaseName(),
+		ActivePage:        "symbol",
 	}
 
 	log.Printf("[SYMBOL] Step 11: Template data created successfully for %s", symbol)

@@ -32,16 +32,13 @@ func (s *Server) metricsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[METRICS PAGE] Retrieved %d metrics", len(metrics))
 	}
 
-	data := struct {
-		PageTitle string
-		Symbols   []string
-		Metrics   []*models.Metric
-		CurrentDB string
-	}{
-		PageTitle: "Metrics",
-		Symbols:   symbols,
-		Metrics:   metrics,
-		CurrentDB: s.getCurrentDatabaseName(),
+	data := MetricsData{
+		PageTitle:  "Metrics",
+		Symbols:    symbols,
+		AllSymbols: symbols, // For navigation compatibility
+		Metrics:    metrics,
+		CurrentDB:  s.getCurrentDatabaseName(),
+		ActivePage: "metrics",
 	}
 
 	log.Printf("[METRICS PAGE] Rendering template with %d metrics", len(metrics))

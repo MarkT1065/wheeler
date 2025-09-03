@@ -115,6 +115,35 @@ func TestSymbolDataStructure(t *testing.T) {
 			if option.Contracts <= 0 {
 				t.Errorf("Option %d contracts should be positive, got %d", i, option.Contracts)
 			}
+			
+			// Test AROI calculation
+			aroi := option.CalculateAROI()
+			if math.IsNaN(aroi) || math.IsInf(aroi, 0) {
+				t.Errorf("Option %d AROI should be a valid number, got %f", i, aroi)
+			}
+			
+			// For closed positions, AROI should be calculated based on actual days in trade
+			if option.Closed != nil {
+				// AROI should be reasonable (between -1000% and +1000% annualized)
+				if aroi < -1000 || aroi > 1000 {
+					t.Errorf("Option %d AROI seems unrealistic: %.1f%% (closed position)", i, aroi)
+				}
+			}
+			
+			// Test other option calculations work correctly
+			percentProfit := option.CalculatePercentOfProfit()
+			percentTime := option.CalculatePercentOfTime()
+			multiplier := option.CalculateMultiplier()
+			
+			if math.IsNaN(percentProfit) || math.IsInf(percentProfit, 0) {
+				t.Errorf("Option %d PercentOfProfit should be valid, got %f", i, percentProfit)
+			}
+			if math.IsNaN(percentTime) || math.IsInf(percentTime, 0) {
+				t.Errorf("Option %d PercentOfTime should be valid, got %f", i, percentTime)
+			}
+			if math.IsNaN(multiplier) || math.IsInf(multiplier, 0) {
+				t.Errorf("Option %d Multiplier should be valid, got %f", i, multiplier)
+			}
 		}
 	})
 
@@ -558,4 +587,149 @@ func createSymbolTestServer(db *database.DB) http.Handler {
 // Helper function for case-insensitive string contains
 func containsIgnoreCase(str, substr string) bool {
 	return strings.Contains(strings.ToLower(str), strings.ToLower(substr))
+}
+
+// TestOptionAROICalculation tests the AROI (Annualized Return on Investment) calculation
+func TestOptionAROICalculation(t *testing.T) {
+	t.Run("PutOption_TwoWeeks_Profit", func(t *testing.T) {
+		// Create a put option: 2 weeks in trade, $100 profit, $5200 exposure
+		openDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		closeDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC) // 14 days
+		expirationDate := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+		
+		option := &models.Option{
+			ID:         1,
+			Symbol:     "AAPL",
+			Type:       "Put",
+			Opened:     openDate,
+			Closed:     &closeDate,
+			Strike:     52.0, // $5200 exposure for 1 contract
+			Expiration: expirationDate,
+			Premium:    2.0,
+			Contracts:  1,
+			ExitPrice:  func() *float64 { v := 1.0; return &v }(), // $1 exit price = $1 * 1 * 100 = $100 profit
+			Commission: 1.30, // $0.65 * 2
+		}
+		
+		aroi := option.CalculateAROI()
+		
+		// Expected calculation:
+		// Profit = (2.0 - 1.0) * 1 * 100 = $100
+		// Capital = 52.0 * 1 * 100 = $5200
+		// Period return = ($100 / $5200) * 100 = 1.923%
+		// Days in trade = 14
+		// AROI = 1.923% * (365.25 / 14) = 50.2%
+		
+		expectedAROI := 50.2
+		tolerance := 1.0 // Allow 1% tolerance
+		
+		if math.Abs(aroi-expectedAROI) > tolerance {
+			t.Errorf("Put AROI calculation incorrect. Expected ~%.1f%%, got %.1f%%", expectedAROI, aroi)
+		}
+		
+		t.Logf("✅ Put Option AROI: %.1f%% (14 days, $100 profit, $5200 exposure)", aroi)
+	})
+	
+	t.Run("CallOption_OneMonth_Loss", func(t *testing.T) {
+		// Create a call option: 30 days in trade, -$50 loss, $15000 exposure
+		openDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		closeDate := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC) // 30 days
+		expirationDate := time.Date(2024, 2, 15, 0, 0, 0, 0, time.UTC)
+		
+		option := &models.Option{
+			ID:         2,
+			Symbol:     "TSLA",
+			Type:       "Call",
+			Opened:     openDate,
+			Closed:     &closeDate,
+			Strike:     150.0, // $15000 exposure for 1 contract
+			Expiration: expirationDate,
+			Premium:    3.0,
+			Contracts:  1,
+			ExitPrice:  func() *float64 { v := 3.5; return &v }(), // $3.5 exit price = -$0.5 * 1 * 100 = -$50 loss
+			Commission: 1.30,
+		}
+		
+		aroi := option.CalculateAROI()
+		
+		// Expected calculation:
+		// Profit = (3.0 - 3.5) * 1 * 100 = -$50
+		// Capital = 150.0 * 1 * 100 = $15000
+		// Period return = (-$50 / $15000) * 100 = -0.333%
+		// Days in trade = 30
+		// AROI = -0.333% * (365.25 / 30) = -4.1%
+		
+		expectedAROI := -4.1
+		tolerance := 0.5
+		
+		if math.Abs(aroi-expectedAROI) > tolerance {
+			t.Errorf("Call AROI calculation incorrect. Expected ~%.1f%%, got %.1f%%", expectedAROI, aroi)
+		}
+		
+		t.Logf("✅ Call Option AROI: %.1f%% (30 days, -$50 loss, $15000 exposure)", aroi)
+	})
+	
+	t.Run("OpenPosition_CurrentCalculation", func(t *testing.T) {
+		// Create an open position: opened 7 days ago, $25 current profit
+		openDate := time.Now().AddDate(0, 0, -7) // 7 days ago
+		expirationDate := time.Now().AddDate(0, 0, 7) // 7 days from now
+		
+		option := &models.Option{
+			ID:         3,
+			Symbol:     "NVDA",
+			Type:       "Put",
+			Opened:     openDate,
+			Closed:     nil, // Open position
+			Strike:     100.0, // $10000 exposure for 1 contract
+			Expiration: expirationDate,
+			Premium:    1.25,
+			Contracts:  1,
+			ExitPrice:  nil, // Open position, no exit price yet
+			Commission: 0.65,
+		}
+		
+		aroi := option.CalculateAROI()
+		
+		// For open positions, profit = premium * contracts * 100 (assuming exit at $0)
+		// Profit = 1.25 * 1 * 100 = $125
+		// Capital = 100.0 * 1 * 100 = $10000
+		// Period return = ($125 / $10000) * 100 = 1.25%
+		// Days in trade = 7
+		// AROI = 1.25% * (365.25 / 7) = 65.2%
+		
+		expectedAROI := 65.2
+		tolerance := 5.0 // Higher tolerance for open positions due to current date variations
+		
+		if math.Abs(aroi-expectedAROI) > tolerance {
+			t.Errorf("Open Position AROI calculation incorrect. Expected ~%.1f%%, got %.1f%%", expectedAROI, aroi)
+		}
+		
+		t.Logf("✅ Open Position AROI: %.1f%% (7 days so far, $125 current profit, $10000 exposure)", aroi)
+	})
+	
+	t.Run("EdgeCase_ZeroCapital", func(t *testing.T) {
+		// Test edge case with zero strike price
+		option := &models.Option{
+			ID:         4,
+			Symbol:     "TEST",
+			Type:       "Put",
+			Opened:     time.Now().AddDate(0, 0, -1),
+			Closed:     nil,
+			Strike:     0.0, // Zero capital
+			Expiration: time.Now().AddDate(0, 0, 30),
+			Premium:    1.0,
+			Contracts:  1,
+			ExitPrice:  nil,
+			Commission: 0.65,
+		}
+		
+		aroi := option.CalculateAROI()
+		
+		// Should return 0 for zero capital to avoid division by zero
+		if aroi != 0 {
+			t.Errorf("Zero capital should return 0 AROI, got %.1f%%", aroi)
+		}
+		
+		t.Logf("✅ Zero Capital Edge Case: AROI = %.1f%%", aroi)
+	})
 }

@@ -75,86 +75,7 @@
 </head>
 <body class="metrics-page">
     <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="main-title">
-                    <i class="fas fa-chart-line"></i>
-                    Wheeler
-                </div>
-                <div class="current-db">{{.CurrentDB}}</div>
-            </div>
-            
-            <nav>
-                <a href="/" class="nav-item">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                <a href="/monthly" class="nav-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    Monthly
-                </a>
-                <a href="/options" class="nav-item">
-                    <i class="fas fa-chart-line"></i>
-                    Options
-                </a>
-                <a href="/metrics" class="nav-item active">
-                    <i class="fas fa-chart-pie"></i>
-                    Metrics
-                </a>
-                <a href="/treasuries" class="nav-item">
-                    <i class="fas fa-university"></i>
-                    Treasuries
-                </a>
-                
-                <!-- Collapsible Symbols Section -->
-                <div class="symbols-section">
-                    <button class="symbols-toggle expanded" id="symbolsToggle">
-                        <i class="fas fa-chart-line"></i>
-                        Symbols
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="symbols-list expanded" id="symbolsList">
-                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
-                            <i class="fas fa-plus"></i>
-                            New Symbol
-                        </a>
-                        {{range .Symbols}}
-                        <a href="/symbol/{{.}}" class="symbol-nav-item">
-                            {{.}}
-                        </a>
-                        {{end}}
-                    </div>
-                </div>
-                
-                <!-- Collapsible Admin Section -->
-                <div class="admin-section">
-                    <button class="admin-toggle expanded" id="adminToggle">
-                        <i class="fas fa-cog"></i>
-                        Admin
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="admin-list expanded" id="adminList">
-                        <a href="/help" class="admin-nav-item">
-                            <i class="fas fa-question-circle"></i>
-                            Help
-                        </a>
-                        <a href="/backup" class="admin-nav-item">
-                            <i class="fas fa-database"></i>
-                            Database
-                        </a>
-                        <a href="/import" class="admin-nav-item">
-                            <i class="fas fa-upload"></i>
-                            Import
-                        </a>
-                        <a href="/settings" class="admin-nav-item">
-                            <i class="fas fa-tools"></i>
-                            Settings
-                        </a>
-                    </div>
-                </div>
-            </nav>
-        </div>
+        {{template "_navigation.html" .}}
 
         <!-- Main Content -->
         <div class="main-content">
@@ -199,11 +120,18 @@
                         </div>
                     </div>
                     
-                    <!-- Row 3: Treasuries (100% width) -->
-                    <div class="chart-card chart-full-width">
+                    <!-- Row 3: Treasuries and Total Value (50/50) -->
+                    <div class="chart-card">
                         <div class="chart-title">Treasuries</div>
                         <div class="chart-container">
                             <canvas id="treasuryChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-title">Total Value</div>
+                        <div class="chart-container">
+                            <canvas id="totalValueChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -327,8 +255,9 @@
                 .done(function(data) {
                     console.log('Loaded chart data:', data);
                     
-                    // Create regular charts for treasury only
+                    // Create regular charts for treasury and total value
                     createLineChart('treasuryChart', 'Treasury Value', data.treasury_value || [], '#FFCE56');
+                    createLineChart('totalValueChart', 'Total Value', data.total_value || [], '#FF9500');
                     
                     // Create dual-axis charts with reorganized logic:
                     

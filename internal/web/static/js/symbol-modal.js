@@ -68,19 +68,34 @@ class SymbolModal {
         if (!this.modal) return;
         
         this.isEditMode = editMode;
-        this.modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
+        if (this.modalTitle) {
+            this.modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
+        }
         
         if (editMode && symbolData) {
             this.editingSymbol = symbolData.symbol;
-            document.getElementById('symbolInput').value = symbolData.symbol;
-            document.getElementById('priceInput').value = symbolData.price || '';
-            document.getElementById('dividendInput').value = symbolData.dividend || '';
-            document.getElementById('exDividendDateInput').value = symbolData.ex_dividend_date || '';
-            document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
-            document.getElementById('symbolInput').disabled = true;
+            const symbolInput = document.getElementById('symbolInput');
+            const priceInput = document.getElementById('priceInput');
+            const dividendInput = document.getElementById('dividendInput');
+            const exDividendDateInput = document.getElementById('exDividendDateInput');
+            const peRatioInput = document.getElementById('peRatioInput');
+            
+            if (symbolInput) {
+                symbolInput.value = symbolData.symbol;
+                symbolInput.disabled = true;
+            }
+            if (priceInput) priceInput.value = symbolData.price || '';
+            if (dividendInput) dividendInput.value = symbolData.dividend || '';
+            if (exDividendDateInput) exDividendDateInput.value = symbolData.ex_dividend_date || '';
+            if (peRatioInput) peRatioInput.value = symbolData.pe_ratio || '';
         } else {
-            this.symbolForm.reset();
-            document.getElementById('symbolInput').disabled = false;
+            if (this.symbolForm) {
+                this.symbolForm.reset();
+            }
+            const symbolInput = document.getElementById('symbolInput');
+            if (symbolInput) {
+                symbolInput.disabled = false;
+            }
             this.editingSymbol = null;
         }
         
@@ -101,12 +116,23 @@ class SymbolModal {
     handleSubmit(e) {
         e.preventDefault();
         
+        const symbolInput = document.getElementById('symbolInput');
+        const priceInput = document.getElementById('priceInput');
+        const dividendInput = document.getElementById('dividendInput');
+        const exDividendDateInput = document.getElementById('exDividendDateInput');
+        const peRatioInput = document.getElementById('peRatioInput');
+        
+        if (!symbolInput) {
+            console.error('Symbol input not found');
+            return;
+        }
+        
         const symbolData = {
-            symbol: document.getElementById('symbolInput').value.toUpperCase(),
-            price: parseFloat(document.getElementById('priceInput').value) || 0,
-            dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
-            ex_dividend_date: document.getElementById('exDividendDateInput').value || null,
-            pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
+            symbol: symbolInput.value.toUpperCase(),
+            price: parseFloat(priceInput?.value) || 0,
+            dividend: parseFloat(dividendInput?.value) || 0,
+            ex_dividend_date: exDividendDateInput?.value || null,
+            pe_ratio: parseFloat(peRatioInput?.value) || null
         };
         
         const url = `/api/symbols/${symbolData.symbol}`;

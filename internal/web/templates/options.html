@@ -79,91 +79,71 @@
         .grid-item.puts-info {
             color: #e0e0e0;
         }
+        
+        /* Dynamic panel sizing for Open Positions */
+        .options-dynamic-panel {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 40px;
+        }
+        
+        .options-dynamic-panel .section-title {
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        
+        .options-dynamic-panel .accordion-container {
+            flex: 1;
+            overflow: visible;
+        }
+        
+        /* Sortable table styling */
+        .sortable-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        
+        .sortable-table th.sortable:hover {
+            background-color: #404040;
+        }
+        
+        .sortable-table th.sortable i {
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+        
+        .sortable-table th.sortable.asc i:before {
+            content: "\f0de";
+            opacity: 1;
+        }
+        
+        .sortable-table th.sortable.desc i:before {
+            content: "\f0dd"; 
+            opacity: 1;
+        }
+        
+        /* Status badges */
+        .status-open {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .status-closed {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+        
+        .text-muted {
+            color: #95a5a6;
+            font-style: italic;
+        }
     </style>
 </head>
 <body class="options-page">
     <div class="app-container">
         <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="main-title">
-                    <i class="fas fa-chart-line"></i>
-                    Wheeler
-                </div>
-                <div class="current-db">{{.CurrentDB}}</div>
-            </div>
-            
-            <nav>
-                <a href="/" class="nav-item">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                <a href="/monthly" class="nav-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    Monthly
-                </a>
-                <a href="/options" class="nav-item active">
-                    <i class="fas fa-chart-bar"></i>
-                    Options
-                </a>
-                <a href="/treasuries" class="nav-item">
-                    <i class="fas fa-university"></i>
-                    Treasuries
-                </a>
-                <a href="/metrics" class="nav-item">
-                    <i class="fas fa-chart-pie"></i>
-                    Metrics
-                </a>
-                
-                <!-- Collapsible Symbols Section -->
-                <div class="symbols-section">
-                    <button class="symbols-toggle expanded" id="symbolsToggle">
-                        <i class="fas fa-chart-line"></i>
-                        Symbols
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="symbols-list expanded" id="symbolsList">
-                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
-                            <i class="fas fa-plus"></i>
-                            New Symbol
-                        </a>
-                        {{range .Symbols}}
-                        <a href="/symbol/{{.}}" class="symbol-nav-item">
-                            {{.}}
-                        </a>
-                        {{end}}
-                    </div>
-                </div>
-                
-                <!-- Collapsible Admin Section -->
-                <div class="admin-section">
-                    <button class="admin-toggle" id="adminToggle">
-                        <i class="fas fa-cog"></i>
-                        Admin
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="admin-list" id="adminList">
-                        <a href="/import" class="nav-item admin-nav-item">
-                            <i class="fas fa-upload"></i>
-                            Import
-                        </a>
-                        <a href="/backup" class="nav-item admin-nav-item">
-                            <i class="fas fa-database"></i>
-                            Database
-                        </a>
-                        <a href="/settings" class="nav-item admin-nav-item">
-                            <i class="fas fa-chart-line"></i>
-                            Polygon
-                        </a>
-                    </div>
-                </div>
-            </nav>
-            
-            <a href="/help" class="nav-item">
-                <i class="fas fa-question-circle"></i>
-                Help
-            </a>
-        </div>
+        {{template "_navigation.html" .}}
         
         <!-- Main Content -->
         <div class="main-content">
@@ -176,8 +156,8 @@
                 </div>
             </div>
             
-            <!-- Open Positions Panel -->
-            <div class="content-section options-fullscreen-panel">
+            <!-- Open Positions Panel with Dynamic Height -->
+            <div class="content-section options-dynamic-panel" id="openPositionsPanel">
                 <div class="section-title">Open Positions</div>
                 <div class="accordion-container">
                     {{if .OpenPositions}}
@@ -263,8 +243,7 @@
                                                 <td class="ticker-col"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
                                                 <td>
                                                     <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
-                                                        <i class="fas fa-caret-up"></i>
-                                                        {{.Type}}
+                                                        {{if eq .Type "Put"}}P{{else}}C{{end}}
                                                     </span>
                                                 </td>
                                                 <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
@@ -423,7 +402,8 @@
                         if (cells.length >= 6) {
                             // Extract: Symbol, Type, Strike, Quantity, Nominal, Total Profit
                             const symbol = cells[0].textContent.trim();
-                            const type = cells[1].textContent.trim();
+                            const typeText = cells[1].textContent.trim();
+                            const type = typeText === 'P' ? 'Put' : typeText === 'C' ? 'Call' : typeText;
                             const strike = parseFloat(cells[2].textContent.replace('$', ''));
                             const quantity = parseInt(cells[3].textContent.trim());
                             const totalProfitText = cells[5].textContent.trim();
@@ -707,6 +687,7 @@
                 scrollToSymbolInNav(symbolName);
             }
         });
+
 
         console.log('Options page loaded');
     </script>

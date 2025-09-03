@@ -13,87 +13,7 @@
 <body class="monthly-page">
     <div class="app-container">
         <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="main-title">
-                    <i class="fas fa-chart-line"></i>
-                    Wheeler
-                </div>
-                <div class="current-db">{{.CurrentDB}}</div>
-            </div>
-            
-            <nav>
-                <a href="/" class="nav-item">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                <a href="/monthly" class="nav-item active">
-                    <i class="fas fa-calendar-alt"></i>
-                    Monthly
-                </a>
-                <a href="/options" class="nav-item">
-                    <i class="fas fa-chart-bar"></i>
-                    Options
-                </a>
-                <a href="/treasuries" class="nav-item">
-                    <i class="fas fa-university"></i>
-                    Treasuries
-                </a>
-                <a href="/metrics" class="nav-item">
-                    <i class="fas fa-chart-pie"></i>
-                    Metrics
-                </a>
-                
-                <!-- Collapsible Symbols Section -->
-                <div class="symbols-section">
-                    <button class="symbols-toggle expanded" id="symbolsToggle">
-                        <i class="fas fa-chart-line"></i>
-                        Symbols
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="symbols-list expanded" id="symbolsList">
-                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
-                            <i class="fas fa-plus"></i>
-                            New Symbol
-                        </a>
-                        {{range .Symbols}}
-                        <a href="/symbol/{{.}}" class="symbol-nav-item">
-                            {{.}}
-                        </a>
-                        {{end}}
-                    </div>
-                </div>
-            </nav>
-            
-            <!-- Collapsible Admin Section -->
-            <div class="admin-section">
-                <button class="admin-toggle" id="adminToggle">
-                    <i class="fas fa-cog"></i>
-                    Admin
-                    <i class="fas fa-chevron-right chevron"></i>
-                </button>
-                <div class="admin-list" id="adminList">
-                    <a href="/import" class="nav-item admin-nav-item">
-                        <i class="fas fa-upload"></i>
-                        Import
-                    </a>
-                    <a href="/backup" class="nav-item admin-nav-item">
-                        <i class="fas fa-database"></i>
-                        Database
-                    </a>
-                    <a href="/settings" class="nav-item admin-nav-item">
-                        <i class="fas fa-chart-line"></i>
-                        Polygon
-                    </a>
-                </div>
-            </div>
-        </nav>
-        
-        <a href="/help" class="nav-item">
-            <i class="fas fa-question-circle"></i>
-            Help
-        </a>
-    </div>
+        {{template "_navigation.html" .}}
         
         <!-- Main Content -->
         <div class="main-content">
@@ -1249,12 +1169,17 @@
                 };
             });
             
+            // Calculate monthly totals for labels
+            const monthlyTotals = monthlyPremiumsData.map(monthData => {
+                return monthData.symbols.reduce((sum, symbolData) => sum + symbolData.amount, 0);
+            });
+
             const chartData = {
                 labels: monthlyPremiumsData.map(d => d.month),
                 datasets: datasets
             };
 
-            new Chart(ctx, {
+            const chart = new Chart(ctx, {
                 type: 'bar',
                 data: chartData,
                 plugins: [ChartDataLabels],
@@ -1327,6 +1252,57 @@
                             align: 'center'
                         }
                     }
+                }
+            });
+
+            // Add custom drawing for month totals after chart is rendered
+            Chart.register({
+                id: 'monthTotalLabels',
+                afterDraw: function(chart) {
+                    if (chart.canvas.id !== 'monthlyPremiumsStackedChart') return;
+                    
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    
+                    // Set font for month totals
+                    ctx.font = 'bold 11px Arial';
+                    ctx.fillStyle = '#27ae60';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    
+                    // Draw total for each month at the top of each stacked bar
+                    chart.data.labels.forEach((label, index) => {
+                        const total = monthlyTotals[index];
+                        if (total > 0) {
+                            // Find the top of the stacked bar
+                            let topY = chart.chartArea.bottom;
+                            
+                            // Get the top-most point from all datasets
+                            chart.data.datasets.forEach(dataset => {
+                                if (dataset.data[index] > 0) {
+                                    const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(dataset));
+                                    if (meta.data[index]) {
+                                        const barTop = meta.data[index].y;
+                                        if (barTop < topY) {
+                                            topY = barTop;
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            // Get x position from the first dataset's bar
+                            const meta = chart.getDatasetMeta(0);
+                            if (meta.data[index]) {
+                                const x = meta.data[index].x;
+                                const formattedTotal = '$' + Math.round(total).toLocaleString();
+                                
+                                // Draw the total label above the bar
+                                ctx.fillText(formattedTotal, x, topY - 5);
+                            }
+                        }
+                    });
+                    
+                    ctx.restore();
                 }
             });
         }

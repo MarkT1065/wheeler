@@ -1,0 +1,106 @@
+<!-- Sidebar Navigation -->
+<div class="sidebar">
+    <div class="logo">
+        <div class="main-title">
+            <i class="fas fa-chart-line"></i>
+            Wheeler
+        </div>
+        <div class="current-db">{{.CurrentDB}}</div>
+    </div>
+    
+    <nav>
+        <a href="/" class="nav-item {{if eq .ActivePage "dashboard"}}active{{end}}">
+            <i class="fas fa-tachometer-alt"></i>
+            Dashboard
+        </a>
+        <a href="/monthly" class="nav-item {{if eq .ActivePage "monthly"}}active{{end}}">
+            <i class="fas fa-calendar-alt"></i>
+            Monthly
+        </a>
+        
+        {{if eq .ActivePage "options"}}
+        <!-- Collapsible Options Section -->
+        <div class="options-section">
+            <button class="options-toggle expanded" id="optionsToggle">
+                <i class="fas fa-chart-bar"></i>
+                Options
+                <i class="fas fa-chevron-right chevron"></i>
+            </button>
+            <div class="options-list expanded" id="optionsList">
+                <a href="/options" class="option-nav-item active">
+                    <i class="fas fa-chart-bar"></i>
+                    Overview
+                </a>
+                <a href="/all-options" class="option-nav-item">
+                    <i class="fas fa-list"></i>
+                    All Options
+                </a>
+            </div>
+        </div>
+        {{else}}
+        <a href="/options" class="nav-item">
+            <i class="fas fa-chart-bar"></i>
+            Options
+        </a>
+        {{end}}
+        
+        <a href="/treasuries" class="nav-item {{if eq .ActivePage "treasuries"}}active{{end}}">
+            <i class="fas fa-university"></i>
+            Treasuries
+        </a>
+        <a href="/metrics" class="nav-item {{if eq .ActivePage "metrics"}}active{{end}}">
+            <i class="fas fa-chart-pie"></i>
+            Metrics
+        </a>
+        
+        <!-- Collapsible Symbols Section -->
+        <div class="symbols-section">
+            <button class="symbols-toggle expanded" id="symbolsToggle">
+                <i class="fas fa-chart-line"></i>
+                Symbols
+                <i class="fas fa-chevron-right chevron"></i>
+            </button>
+            <div class="symbols-list expanded" id="symbolsList">
+                <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
+                    <i class="fas fa-plus"></i>
+                    New Symbol
+                </a>
+                {{if .AllSymbols}}
+                    {{range .AllSymbols}}
+                    <a href="/symbol/{{.}}" class="symbol-nav-item{{if and (eq $.ActivePage "symbol") $.Symbol (eq . $.Symbol)}} active{{end}}">
+                        {{.}}
+                    </a>
+                    {{end}}
+                {{end}}
+            </div>
+        </div>
+        
+        <!-- Collapsible Admin Section -->
+        <div class="admin-section">
+            <button class="admin-toggle" id="adminToggle">
+                <i class="fas fa-cog"></i>
+                Admin
+                <i class="fas fa-chevron-right chevron"></i>
+            </button>
+            <div class="admin-list" id="adminList">
+                <a href="/import" class="nav-item admin-nav-item">
+                    <i class="fas fa-upload"></i>
+                    Import
+                </a>
+                <a href="/backup" class="nav-item admin-nav-item">
+                    <i class="fas fa-database"></i>
+                    Database
+                </a>
+                <a href="/settings" class="nav-item admin-nav-item">
+                    <i class="fas fa-chart-line"></i>
+                    Polygon
+                </a>
+            </div>
+        </div>
+    </nav>
+    
+    <a href="/help" class="nav-item">
+        <i class="fas fa-question-circle"></i>
+        Help
+    </a>
+</div>

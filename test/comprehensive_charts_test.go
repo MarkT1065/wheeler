@@ -424,10 +424,10 @@ func createMetricsData(t *testing.T, db *database.DB, date time.Time, index int)
 	metricsTypes := []string{
 		"put_exposure", "open_put_premium", "open_put_count",
 		"long_value", "open_call_premium", "open_call_count",
-		"treasury_value",
+		"treasury_value", "total_value",
 	}
 	
-	baseValues := []float64{45000.0, 1200.0, 5.0, 65000.0, 800.0, 3.0, 50000.0}
+	baseValues := []float64{45000.0, 1200.0, 5.0, 65000.0, 800.0, 3.0, 50000.0, 115000.0}
 	
 	for i, metricType := range metricsTypes {
 		value := baseValues[i] + float64(index)*100.0
@@ -481,7 +481,7 @@ func validateSymbolDataComprehensive(t *testing.T, data web.SymbolData) {
 }
 
 func validateMetricsDataComprehensive(t *testing.T, data map[string][]web.ChartPoint) {
-	requiredMetrics := []string{"put_exposure", "open_put_premium", "long_value", "treasury_value"}
+	requiredMetrics := []string{"put_exposure", "open_put_premium", "long_value", "treasury_value", "total_value"}
 	for _, metric := range requiredMetrics {
 		if _, exists := data[metric]; !exists {
 			t.Errorf("Missing required metric: %s", metric)
@@ -696,6 +696,11 @@ func buildComprehensiveMetricsData(t *testing.T, db *database.DB) map[string][]w
 			{Date: "2024-01-01", Value: 50000.0},
 			{Date: "2024-01-02", Value: 50100.0},
 			{Date: "2024-01-03", Value: 50200.0},
+		},
+		"total_value": {
+			{Date: "2024-01-01", Value: 115000.0},
+			{Date: "2024-01-02", Value: 116100.0},
+			{Date: "2024-01-03", Value: 117200.0},
 		},
 	}
 }

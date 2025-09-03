@@ -275,7 +275,8 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 	
 
 	return MonthlyData{
-		Symbols: symbols,
+		Symbols:    symbols,
+		AllSymbols: symbols, // For navigation compatibility
 		PutsData: MonthlyOptionData{
 			ByMonth:  putsMonthChart,
 			ByTicker: putsTickerChart,
@@ -297,5 +298,6 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		MonthlyPremiumsBySymbol: monthlyPremiumsBySymbol,
 		GrandTotal:              grandTotal,
 		CurrentDB:               s.getCurrentDatabaseName(),
+		ActivePage:              "monthly",
 	}
 }

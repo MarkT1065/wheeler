@@ -25,12 +25,10 @@ func (s *Server) helpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := struct {
-		AllSymbols []string
-		CurrentDB  string
-	}{
+	data := HelpData{
 		AllSymbols: symbols,
 		CurrentDB:  s.getCurrentDatabaseName(),
+		ActivePage: "help",
 	}
 	
 	log.Printf("[HANDLER] Rendering Help page template with %d symbols", len(symbols))

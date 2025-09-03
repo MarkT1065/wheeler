@@ -27,8 +27,10 @@ func (s *Server) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error building dashboard data: %v", err)
 		// Fallback to basic data structure
 		data = DashboardData{
-			Symbols:   symbols,
-			CurrentDB: s.getCurrentDatabaseName(),
+			Symbols:    symbols,
+			AllSymbols: symbols, // For navigation compatibility
+			CurrentDB:  s.getCurrentDatabaseName(),
+			ActivePage: "dashboard",
 		}
 	}
 
@@ -59,12 +61,14 @@ func (s *Server) buildDashboardData(symbols []string) (DashboardData, error) {
 
 	return DashboardData{
 		Symbols:         symbols,
+		AllSymbols:      symbols, // For navigation compatibility
 		SymbolSummaries: symbolSummaries,
 		LongByTicker:    longByTicker,
 		PutsByTicker:    putsByTicker,
 		TotalAllocation: totalAllocation,
 		Totals:          totals,
 		CurrentDB:       s.getCurrentDatabaseName(),
+		ActivePage:      "dashboard",
 	}, nil
 }
 

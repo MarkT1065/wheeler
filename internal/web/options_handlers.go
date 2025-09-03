@@ -56,15 +56,52 @@ func (s *Server) optionsHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := OptionsData{
 		Symbols:        symbols,
+		AllSymbols:     symbols, // For navigation compatibility
 		OptionsSummary: optionsSummary,
 		OpenPositions:  openPositions,
 		SummaryTotals:  summaryTotals,
 		CurrentDB:      s.getCurrentDatabaseName(),
+		ActivePage:     "options",
 	}
 
 	log.Printf("[OPTIONS PAGE] Rendering options.html template with %d summaries and %d open positions", len(optionsSummary), len(openPositions))
 	s.renderTemplate(w, "options.html", data)
 	log.Printf("[OPTIONS PAGE] Successfully completed options page request")
+}
+
+// allOptionsHandler serves the all options view with complete sortable table
+func (s *Server) allOptionsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[ALL OPTIONS PAGE] %s %s - Start processing all options page request", r.Method, r.URL.Path)
+
+	symbols, err := s.symbolService.GetDistinctSymbols()
+	if err != nil {
+		log.Printf("[ALL OPTIONS PAGE] WARNING: Failed to get symbols for navigation: %v", err)
+		symbols = []string{}
+	} else {
+		log.Printf("[ALL OPTIONS PAGE] Retrieved %d symbols for navigation", len(symbols))
+	}
+
+	// Get all options for the All Options table
+	log.Printf("[ALL OPTIONS PAGE] Fetching all options data")
+	allOptions, err := s.optionService.GetAll()
+	if err != nil {
+		log.Printf("[ALL OPTIONS PAGE] ERROR: Failed to get all options: %v", err)
+		allOptions = []*models.Option{}
+	} else {
+		log.Printf("[ALL OPTIONS PAGE] Retrieved %d total options", len(allOptions))
+	}
+
+	data := AllOptionsData{
+		Symbols:    symbols,
+		AllSymbols: symbols, // For navigation compatibility
+		AllOptions: allOptions,
+		CurrentDB:  s.getCurrentDatabaseName(),
+		ActivePage: "options",
+	}
+
+	log.Printf("[ALL OPTIONS PAGE] Rendering all-options.html template with %d options", len(allOptions))
+	s.renderTemplate(w, "all-options.html", data)
+	log.Printf("[ALL OPTIONS PAGE] Successfully completed all options page request")
 }
 
 // addOptionHandler handles form submission for adding new options

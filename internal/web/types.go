@@ -79,12 +79,14 @@ type CSVTreasuryRecord struct {
 // DashboardData holds data for the dashboard template
 type DashboardData struct {
 	Symbols         []string        `json:"symbols"`
+	AllSymbols      []string        `json:"allSymbols"`     // For navigation compatibility
 	SymbolSummaries []SymbolSummary `json:"symbolSummaries"`
 	LongByTicker    []ChartData     `json:"longByTicker"`
 	PutsByTicker    []ChartData     `json:"putsByTicker"`
 	TotalAllocation []ChartData     `json:"totalAllocation"`
 	Totals          DashboardTotals `json:"totals"`
 	CurrentDB       string          `json:"currentDB"`
+	ActivePage      string          `json:"activePage"`
 }
 
 type SymbolSummary struct {
@@ -126,6 +128,7 @@ type DashboardTotals struct {
 // MonthlyData holds data for the monthly template
 type MonthlyData struct {
 	Symbols                  []string                      `json:"symbols"`
+	AllSymbols               []string                      `json:"allSymbols"` // For navigation compatibility
 	PutsData                 MonthlyOptionData             `json:"putsData"`
 	CallsData                MonthlyOptionData             `json:"callsData"`
 	CapGainsData             MonthlyFinancialData          `json:"capGainsData"`
@@ -135,6 +138,7 @@ type MonthlyData struct {
 	MonthlyPremiumsBySymbol  []MonthlyPremiumsBySymbol     `json:"monthlyPremiumsBySymbol"`
 	GrandTotal               float64                       `json:"grandTotal"`
 	CurrentDB                string                        `json:"currentDB"`
+	ActivePage               string                        `json:"activePage"`
 }
 
 type MonthlyOptionData struct {
@@ -182,9 +186,11 @@ type SymbolPremiumData struct {
 // TreasuriesData holds data for the treasuries template
 type TreasuriesData struct {
 	Symbols    []string           `json:"symbols"`
+	AllSymbols []string           `json:"allSymbols"` // For navigation compatibility
 	Treasuries []*models.Treasury `json:"treasuries"`
 	Summary    TreasuriesSummary  `json:"summary"`
 	CurrentDB  string             `json:"currentDB"`
+	ActivePage string             `json:"activePage"`
 }
 
 type TreasuriesSummary struct {
@@ -198,10 +204,21 @@ type TreasuriesSummary struct {
 
 type OptionsData struct {
 	Symbols        []string                   `json:"symbols"`
+	AllSymbols     []string                   `json:"allSymbols"` // For navigation compatibility
 	OptionsSummary []*models.OptionSummary    `json:"options_summary"`
 	OpenPositions  []*models.OpenPositionData `json:"open_positions"`
 	SummaryTotals  *models.OptionSummary      `json:"summary_totals"`
 	CurrentDB      string                     `json:"currentDB"`
+	ActivePage     string                     `json:"activePage"`
+}
+
+// AllOptionsData holds data for the all options template
+type AllOptionsData struct {
+	Symbols    []string         `json:"symbols"`
+	AllSymbols []string         `json:"allSymbols"` // For navigation compatibility
+	AllOptions []*models.Option `json:"all_options"`
+	CurrentDB  string           `json:"currentDB"`
+	ActivePage string           `json:"activePage"`
 }
 
 // SymbolMonthlyResult represents monthly results for a specific symbol
@@ -239,6 +256,7 @@ type SymbolData struct {
 	LongPositionsList []*models.LongPosition `json:"longPositionsList"`
 	MonthlyResults    []SymbolMonthlyResult  `json:"monthlyResults"`
 	CurrentDB         string                 `json:"currentDB"`
+	ActivePage        string                 `json:"activePage"`
 }
 
 type OptionRequest struct {
@@ -342,4 +360,38 @@ type TutorialIncomeData struct {
 	Amount     float64 `json:"amount"`     // Dollar amount
 	Percentage float64 `json:"percentage"` // Percentage of total
 	Color      string  `json:"color"`      // Chart color
+}
+
+// MetricsData holds data for the metrics template
+type MetricsData struct {
+	PageTitle  string            `json:"pageTitle"`
+	Symbols    []string          `json:"symbols"`
+	AllSymbols []string          `json:"allSymbols"` // For navigation compatibility
+	Metrics    []*models.Metric  `json:"metrics"`
+	CurrentDB  string            `json:"currentDB"`
+	ActivePage string            `json:"activePage"`
+}
+
+// HelpData holds data for the help template
+type HelpData struct {
+	AllSymbols []string `json:"allSymbols"`
+	CurrentDB  string   `json:"currentDB"`
+	ActivePage string   `json:"activePage"`
+}
+
+// ImportData holds data for the import template
+type ImportData struct {
+	Symbols    []string `json:"symbols"`
+	AllSymbols []string `json:"allSymbols"` // For navigation compatibility
+	CurrentDB  string   `json:"currentDB"`
+	ActivePage string   `json:"activePage"`
+}
+
+// BackupData holds data for the backup template
+type BackupData struct {
+	AllSymbols  []string `json:"allSymbols"`
+	DbFiles     []string `json:"dbFiles"`
+	BackupFiles []string `json:"backupFiles"`
+	CurrentDB   string   `json:"currentDB"`
+	ActivePage  string   `json:"activePage"`
 }

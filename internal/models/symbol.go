@@ -191,6 +191,49 @@ func (o *Option) CalculateMultiplier() float64 {
 	return o.CalculatePercentOfProfit() / percentTime
 }
 
+// CalculateAROI calculates the Annualized Return on Investment (AROI) for the option
+// This extrapolates the profit to an annual basis based on time in trade
+func (o *Option) CalculateAROI() float64 {
+	// Calculate days the trade has been active
+	var endDate time.Time
+	if o.Closed == nil {
+		endDate = time.Now()
+	} else {
+		endDate = *o.Closed
+	}
+	
+	daysInTrade := endDate.Sub(o.Opened).Hours() / 24
+	if daysInTrade <= 0 {
+		daysInTrade = 1 // Minimum 1 day to avoid division by zero
+	}
+	
+	// Calculate total profit
+	profit := o.CalculateTotalProfit()
+	
+	// Calculate the capital base (exposure for puts, long value for calls)
+	var capitalBase float64
+	if o.Type == "Put" {
+		// For puts, use strike * contracts * 100 as the exposure/capital at risk
+		capitalBase = o.Strike * float64(o.Contracts) * 100
+	} else if o.Type == "Call" {
+		// For calls, we need the underlying stock value, but we don't have current price here
+		// Use strike as approximation for now - this should be enhanced with current price
+		capitalBase = o.Strike * float64(o.Contracts) * 100
+	}
+	
+	if capitalBase <= 0 {
+		return 0
+	}
+	
+	// Calculate return percentage for the period
+	periodReturn := (profit / capitalBase) * 100
+	
+	// Annualize the return: (period return) * (365.25 days per year / days in trade)
+	aroi := periodReturn * (365.25 / daysInTrade)
+	
+	return aroi
+}
+
 func (o *Option) GetExitPriceValue() float64 {
 	if o.ExitPrice != nil {
 		return *o.ExitPrice

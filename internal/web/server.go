@@ -259,6 +259,9 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/options", s.optionsHandler)
 	log.Printf("[SERVER] Route registered: /options -> optionsHandler")
 
+	http.HandleFunc("/all-options", s.allOptionsHandler)
+	log.Printf("[SERVER] Route registered: /all-options -> allOptionsHandler")
+
 	http.HandleFunc("/treasuries", s.treasuriesHandler)
 	log.Printf("[SERVER] Route registered: /treasuries -> treasuriesHandler")
 

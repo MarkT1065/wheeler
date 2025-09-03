@@ -28,12 +28,11 @@ func (s *Server) HandleImport(w http.ResponseWriter, r *http.Request) {
 		symbols = []string{}
 	}
 
-	data := struct {
-		Symbols   []string
-		CurrentDB string
-	}{
-		Symbols:   symbols,
-		CurrentDB: s.getCurrentDatabaseName(),
+	data := ImportData{
+		Symbols:    symbols,
+		AllSymbols: symbols, // For navigation compatibility
+		CurrentDB:  s.getCurrentDatabaseName(),
+		ActivePage: "import",
 	}
 
 	s.renderTemplate(w, "import.html", data)
@@ -72,16 +71,12 @@ func (s *Server) HandleBackup(w http.ResponseWriter, r *http.Request) {
 	// Get current database name
 	currentDB := s.getCurrentDatabaseName()
 
-	data := struct {
-		AllSymbols  []string
-		DbFiles     []string
-		BackupFiles []string
-		CurrentDB   string
-	}{
+	data := BackupData{
 		AllSymbols:  symbols,
 		DbFiles:     dbFiles,
 		BackupFiles: backupFiles,
 		CurrentDB:   currentDB,
+		ActivePage:  "backup",
 	}
 
 	if err := s.templates.ExecuteTemplate(w, "backup.html", data); err != nil {

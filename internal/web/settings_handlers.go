@@ -15,6 +15,7 @@ type SettingsData struct {
 	AllSymbols []string          `json:"allSymbols"`
 	CurrentDB  string            `json:"currentDB"`
 	ApiKey     string            `json:"apiKey"`
+	ActivePage string            `json:"activePage"`
 }
 
 // settingsHandler serves the settings management page
@@ -43,6 +44,7 @@ func (s *Server) settingsHandler(w http.ResponseWriter, r *http.Request) {
 		AllSymbols: symbols,
 		CurrentDB:  s.getCurrentDatabaseName(),
 		ApiKey:     apiKey,
+		ActivePage: "settings",
 	}
 
 	s.renderTemplate(w, "settings.html", data)

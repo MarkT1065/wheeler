@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS metrics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created DATETIME DEFAULT CURRENT_TIMESTAMP,
-    type TEXT NOT NULL CHECK (type IN ('treasury_value', 'long_value', 'long_count', 'put_exposure', 'open_call_premium', 'open_call_count', 'open_put_premium', 'open_put_count')),
+    type TEXT NOT NULL CHECK (type IN ('treasury_value', 'long_value', 'long_count', 'put_exposure', 'open_call_premium', 'open_call_count', 'open_put_premium', 'open_put_count', 'total_value')),
     value REAL NOT NULL
 );
 

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Options - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
+    <style>
+        /* Sortable table styling */
+        .sortable-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        
+        .sortable-table th.sortable:hover {
+            background-color: #404040;
+        }
+        
+        .sortable-table th.sortable i {
+            margin-left: 5px;
+            opacity: 0.5;
+        }
+        
+        .sortable-table th.sortable.asc i:before {
+            content: "\f0de";
+            opacity: 1;
+        }
+        
+        .sortable-table th.sortable.desc i:before {
+            content: "\f0dd"; 
+            opacity: 1;
+        }
+        
+        /* Status badges */
+        .status-open {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .status-closed {
+            color: #95a5a6;
+            font-weight: bold;
+        }
+        
+        .text-muted {
+            color: #95a5a6;
+            font-style: italic;
+        }
+        
+        /* Full-screen table styling */
+        .all-options-fullscreen-panel {
+            height: calc(100vh - 100px) !important;
+            margin-bottom: 0 !important;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .all-options-fullscreen-panel .section-title {
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+        
+        .all-options-fullscreen-panel .table-container-scrollable {
+            flex: 1 !important;
+            height: calc(100% - 60px) !important;
+            max-height: none !important;
+            overflow: auto !important;
+            border: 1px solid #404040 !important;
+        }
+        
+        .all-options-fullscreen-panel .table-container-scrollable table {
+            width: 100% !important;
+            min-width: 1200px;
+            height: 100% !important;
+        }
+    </style>
+</head>
+<body class="all-options-page">
+    <div class="app-container">
+        {{template "_navigation.html" .}}
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- All Options Panel -->
+            <div class="content-section all-options-fullscreen-panel">
+                <div class="section-title">All Options</div>
+                <div class="table-container-scrollable">
+                    {{if .AllOptions}}
+                        <table class="financial-table sortable-table" id="allOptionsTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" data-sort="symbol">Symbol <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="type">Type <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="strike">Strike <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="opened">Opened <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="closed">Closed <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="contracts">Contracts <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="premium">Premium <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="profit">Total Profit <i class="fas fa-sort"></i></th>
+                                    <th class="sortable" data-sort="status">Status <i class="fas fa-sort"></i></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .AllOptions}}
+                                <tr>
+                                    <td class="ticker-col"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
+                                    <td>
+                                        <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
+                                            {{if eq .Type "Put"}}P{{else}}C{{end}}
+                                        </span>
+                                    </td>
+                                    <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
+                                    <td>{{.Expiration.Format "01/02/2006"}}</td>
+                                    <td>{{.Opened.Format "01/02/2006"}}</td>
+                                    <td>{{if .Closed}}{{.Closed.Format "01/02/2006"}}{{else}}<span class="text-muted">Open</span>{{end}}</td>
+                                    <td>{{.Contracts}}</td>
+                                    <td class="neutral-currency">${{printf "%.2f" .Premium}}</td>
+                                    <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .CalculateTotalProfit}}</td>
+                                    <td>
+                                        {{if .Closed}}
+                                            <span class="status-closed">Closed</span>
+                                        {{else}}
+                                            <span class="status-open">Open</span>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    {{else}}
+                        <div style="text-align: center; color: #a0a0a0; padding: 40px;">
+                            <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
+                            <div style="font-size: 18px; margin-bottom: 10px;">No Options Found</div>
+                            <div style="font-size: 14px;">No option positions have been recorded.</div>
+                        </div>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <script>
+        // Apply profit/loss coloring and formatting to options tables
+        function applyOptionsTableColoring() {
+            const tables = document.querySelectorAll('.financial-table');
+            tables.forEach(table => {
+                // Process all rows in tbody and tfoot
+                const rows = table.querySelectorAll('tbody tr, tfoot tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    cells.forEach((cell, columnIndex) => {
+                        const text = cell.textContent.trim();
+                        
+                        // Handle premium-column cells (Total Profit) with special formatting
+                        if (cell.classList.contains('premium-column')) {
+                            // Check if it's a monetary value - handle both $123 and $-123 formats
+                            if (text.match(/^\\$-?[\\d,]*\\.?\\d*$/)) {
+                                const value = parseFloat(text.replace(/[\\$,]/g, ''));
+                                
+                                if (!isNaN(value)) {
+                                    // Remove any existing color classes
+                                    cell.classList.remove('positive', 'negative', 'neutral-currency');
+                                    
+                                    if (value < 0) {
+                                        // Format negative values as -$1,234 (minus before dollar sign)
+                                        const formattedValue = Math.round(Math.abs(value)).toLocaleString();
+                                        cell.innerHTML = '-$' + formattedValue;
+                                        cell.classList.add('negative');
+                                    } else if (value > 0) {
+                                        // Format positive values as $1,234
+                                        const formattedValue = Math.round(value).toLocaleString();
+                                        cell.innerHTML = '$' + formattedValue;
+                                        cell.classList.add('positive');
+                                    } else {
+                                        cell.innerHTML = '$0';
+                                        cell.classList.add('neutral-currency');
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                        
+                        // Skip cells with neutral-currency class
+                        if (cell.classList.contains('neutral-currency')) {
+                            return;
+                        }
+                        
+                        // Check if it's a monetary value (with or without decimal places)
+                        if (text.match(/^\\$-?[\\d,]*\\.?\\d*$/)) {
+                            // Extract numeric value
+                            const value = parseFloat(text.replace(/[\\$,]/g, ''));
+                            
+                            // Skip if it's not a valid number
+                            if (isNaN(value)) return;
+                            
+                            // Format as currency with comma separators
+                            const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
+                            
+                            if (value < 0) {
+                                cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
+                            } else if (value > 0) {
+                                cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
+                            } else {
+                                cell.innerHTML = '$0';
+                            }
+                        }
+                    });
+                });
+            });
+        }
+        
+        // Initialize All Options table sorting with FontAwesome icons
+        function initializeAllOptionsTableSorting() {
+            const table = document.getElementById('allOptionsTable');
+            if (!table) return;
+            
+            const headers = table.querySelectorAll('th.sortable');
+            headers.forEach((header, index) => {
+                header.addEventListener('click', function() {
+                    sortAllOptionsTable(table, index, header);
+                });
+            });
+        }
+        
+        function sortAllOptionsTable(table, columnIndex, clickedHeader) {
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const isAscending = clickedHeader.classList.contains('asc');
+            
+            // Clear all headers
+            table.querySelectorAll('th.sortable').forEach(header => {
+                header.classList.remove('asc', 'desc');
+            });
+            
+            // Set new direction
+            clickedHeader.classList.add(isAscending ? 'desc' : 'asc');
+            
+            rows.sort((a, b) => {
+                const aCell = a.cells[columnIndex];
+                const bCell = b.cells[columnIndex];
+                
+                if (!aCell || !bCell) return 0;
+                
+                let aValue = getCellSortValue(aCell);
+                let bValue = getCellSortValue(bCell);
+                
+                const comparison = compareSortValues(aValue, bValue);
+                return isAscending ? -comparison : comparison;
+            });
+            
+            // Remove and re-add sorted rows
+            rows.forEach(row => row.remove());
+            rows.forEach(row => tbody.appendChild(row));
+        }
+        
+        function getCellSortValue(cell) {
+            let value = cell.textContent.trim();
+            
+            // Handle special values
+            if (value === '' || value === '-' || value === 'N/A' || value === 'Open') {
+                return value === 'Open' ? 'zzz_open' : ''; // Put "Open" at end
+            }
+            
+            // Remove currency symbols and commas
+            return value.replace(/[$,%]/g, '');
+        }
+        
+        function compareSortValues(a, b) {
+            if (a === '' && b === '') return 0;
+            if (a === '') return 1;
+            if (b === '') return -1;
+            
+            // Try numeric comparison
+            const numA = parseFloat(a);
+            const numB = parseFloat(b);
+            
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return numA - numB;
+            }
+            
+            // Try date comparison (MM/DD/YYYY format)
+            if (a.match(/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/) && b.match(/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/)) {
+                const dateA = new Date(a);
+                const dateB = new Date(b);
+                return dateA.getTime() - dateB.getTime();
+            }
+            
+            // String comparison
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applyOptionsTableColoring();
+            initializeAllOptionsTableSorting();
+        });
+        
+        // Also apply immediately in case DOMContentLoaded already fired
+        applyOptionsTableColoring();
+        
+        // Apply formatting to All Options table as well
+        setTimeout(() => {
+            initializeAllOptionsTableSorting();
+        }, 100);
+
+        console.log('All Options page loaded');
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+    <script src="/static/js/table-sort.js"></script>
+</body>
+</html>

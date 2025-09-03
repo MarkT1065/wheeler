@@ -43,9 +43,11 @@ func (s *Server) treasuriesHandler(w http.ResponseWriter, r *http.Request) {
 
 	data := TreasuriesData{
 		Symbols:    symbols,
+		AllSymbols: symbols, // For navigation compatibility
 		Treasuries: treasuries,
 		Summary:    summary,
 		CurrentDB:  s.getCurrentDatabaseName(),
+		ActivePage: "treasuries",
 	}
 
 	log.Printf("[TREASURIES PAGE] Rendering treasuries.html template with %d treasuries", len(treasuries))

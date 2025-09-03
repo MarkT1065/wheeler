@@ -12,86 +12,7 @@
 <body class="symbol-page">
     <div class="app-container">
         <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <div class="main-title">
-                    <i class="fas fa-chart-line"></i>
-                    Wheeler
-                </div>
-                <div class="current-db">{{.CurrentDB}}</div>
-            </div>
-            
-            <nav>
-                <a href="/" class="nav-item">
-                    <i class="fas fa-tachometer-alt"></i>
-                    Dashboard
-                </a>
-                <a href="/monthly" class="nav-item">
-                    <i class="fas fa-calendar-alt"></i>
-                    Monthly
-                </a>
-                <a href="/options" class="nav-item">
-                    <i class="fas fa-chart-bar"></i>
-                    Options
-                </a>
-                <a href="/treasuries" class="nav-item">
-                    <i class="fas fa-university"></i>
-                    Treasuries
-                </a>
-                <a href="/metrics" class="nav-item">
-                    <i class="fas fa-chart-pie"></i>
-                    Metrics
-                </a>
-                
-                <!-- Collapsible Symbols Section -->
-                <div class="symbols-section">
-                    <button class="symbols-toggle expanded" id="symbolsToggle">
-                        <i class="fas fa-chart-line"></i>
-                        Symbols
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="symbols-list expanded" id="symbolsList">
-                        <a href="#" class="symbol-nav-item new-symbol-link" id="newSymbolBtn">
-                            <i class="fas fa-plus"></i>
-                            New Symbol
-                        </a>
-                        {{range .AllSymbols}}
-                        <a href="/symbol/{{.}}" class="symbol-nav-item {{if eq . $.Symbol}}active{{end}}">
-                            {{.}}
-                        </a>
-                        {{end}}
-                    </div>
-                </div>
-                
-                <!-- Collapsible Admin Section -->
-                <div class="admin-section">
-                    <button class="admin-toggle" id="adminToggle">
-                        <i class="fas fa-cog"></i>
-                        Admin
-                        <i class="fas fa-chevron-right chevron"></i>
-                    </button>
-                    <div class="admin-list" id="adminList">
-                        <a href="/import" class="nav-item admin-nav-item">
-                            <i class="fas fa-upload"></i>
-                            Import
-                        </a>
-                        <a href="/backup" class="nav-item admin-nav-item">
-                            <i class="fas fa-database"></i>
-                            Database
-                        </a>
-                        <a href="/settings" class="nav-item admin-nav-item">
-                            <i class="fas fa-chart-line"></i>
-                            Polygon
-                        </a>
-                    </div>
-                </div>
-            </nav>
-            
-            <a href="/help" class="nav-item">
-                <i class="fas fa-question-circle"></i>
-                Help
-            </a>
-        </div>
+        {{template "_navigation.html" .}}
         
         <!-- Main Content -->
         <div class="main-content">
@@ -120,7 +41,7 @@
                     <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Price</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Price}}</div>
+                            <div id="current-price" style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Price}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Div</div>
@@ -199,6 +120,7 @@
                     <table>
                         <thead>
                             <tr>
+                                <th>Call/Put</th>
                                 <th>Date Sold</th>
                                 <th>Closed Date</th>
                                 <th>Strike</th>
@@ -207,15 +129,15 @@
                                 <th>Remaining</th>
                                 <th>DTE</th>
                                 <th>DTC</th>
-                                <th>Premium</th>
                                 <th>Contracts</th>
+                                <th>Premium</th>
                                 <th>Exit Price</th>
                                 <th>Commission</th>
-                                <th>Call/Put</th>
+                                <th>Total</th>
                                 <th>% of Profit</th>
                                 <th>% of Time</th>
                                 <th>Multiplier</th>
-                                <th>Total</th>
+                                <th>AROI %</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -223,6 +145,11 @@
                             {{if .OptionsList}}
                                 {{range .OptionsList}}
                                 <tr>
+                                    <td>
+                                        <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
+                                            {{if eq .Type "Put"}}P{{else}}C{{end}}
+                                        </span>
+                                    </td>
                                     <td>{{.Opened.Format "1/2/2006"}}</td>
                                     <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
                                     <td>{{printf "%.0f" .Strike}}</td>
@@ -237,15 +164,13 @@
                                     </td>
                                     <td>{{.CalculateDTE}}</td>
                                     <td>{{.CalculateDTC}}</td>
-                                    <td>{{printf "%.2f" .Premium}}</td>
                                     <td>{{.Contracts}}</td>
+                                    <td>{{printf "%.2f" .Premium}}</td>
                                     <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
                                     <td>{{printf "%.2f" .Commission}}</td>
                                     <td>
-                                        <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
-                                            <i class="fas fa-caret-up"></i>
-                                            {{.Type}}
-                                        </span>
+                                        {{$totalProfit := .CalculateTotalProfit}}
+                                        <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
                                     </td>
                                     <td>
                                         {{$percentProfit := .CalculatePercentOfProfit}}
@@ -254,8 +179,8 @@
                                     <td>{{printf "%.0f" (.CalculatePercentOfTime)}}%</td>
                                     <td>{{printf "%.2f" (.CalculateMultiplier)}}</td>
                                     <td>
-                                        {{$totalProfit := .CalculateTotalProfit}}
-                                        <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
+                                        {{$aroi := .CalculateAROI}}
+                                        <span class="{{if lt $aroi 0.0}}negative{{else if gt $aroi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.1f" $aroi}}%</span>
                                     </td>
                                     <td>
                                         <button class="btn btn-secondary edit-option-btn" 
@@ -289,7 +214,7 @@
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="16" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                    <td colspan="19" style="text-align: center; color: #a0a0a0; padding: 20px;">
                                         No options trades recorded for {{.Symbol}}
                                     </td>
                                 </tr>
@@ -789,7 +714,10 @@
                 // Check if we're creating a new symbol or editing current one
                 if (data.symbol === currentSymbol) {
                     // Editing current symbol - update display
-                    document.querySelector('.stock-price').textContent = `$${data.price.toFixed(2)}`;
+                    const currentPriceElement = document.getElementById('current-price');
+                    if (currentPriceElement) {
+                        currentPriceElement.textContent = `$${data.price.toFixed(2)}`;
+                    }
                 } else {
                     // Creating new symbol - redirect to its page
                     window.location.href = `/symbol/${data.symbol}`;

@@ -10,11 +10,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize admin toggle functionality
     initializeAdminToggle();
     
+    // Initialize options toggle functionality
+    initializeOptionsToggle();
+    
     // Check localStorage for symbols section state and restore it
     restoreSymbolsState();
     
     // Check localStorage for admin section state and restore it
     restoreAdminState();
+    
+    // Check localStorage for options section state and restore it
+    restoreOptionsState();
 });
 
 function initializeSymbolsToggle() {
@@ -131,6 +137,63 @@ function restoreAdminState() {
     }
 }
 
+function initializeOptionsToggle() {
+    const optionsToggle = document.getElementById('optionsToggle');
+    const optionsList = document.getElementById('optionsList');
+    
+    if (!optionsToggle || !optionsList) {
+        return; // Elements not found, skip initialization
+    }
+    
+    optionsToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        toggleOptionsSection();
+    });
+}
+
+function toggleOptionsSection() {
+    const optionsToggle = document.getElementById('optionsToggle');
+    const optionsList = document.getElementById('optionsList');
+    
+    if (!optionsToggle || !optionsList) {
+        return;
+    }
+    
+    const isExpanded = optionsList.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // Collapse
+        optionsList.classList.remove('expanded');
+        optionsToggle.classList.remove('expanded');
+        localStorage.setItem('optionsExpanded', 'false');
+    } else {
+        // Expand
+        optionsList.classList.add('expanded');
+        optionsToggle.classList.add('expanded');
+        localStorage.setItem('optionsExpanded', 'true');
+    }
+}
+
+function restoreOptionsState() {
+    const optionsToggle = document.getElementById('optionsToggle');
+    const optionsList = document.getElementById('optionsList');
+    
+    if (!optionsToggle || !optionsList) {
+        return;
+    }
+    
+    // Default to expanded if no preference is stored (like symbols)
+    const isExpanded = localStorage.getItem('optionsExpanded') !== 'false';
+    
+    if (isExpanded) {
+        optionsList.classList.add('expanded');
+        optionsToggle.classList.add('expanded');
+    } else {
+        optionsList.classList.remove('expanded');
+        optionsToggle.classList.remove('expanded');
+    }
+}
+
 // Export functions for testing or external use
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -139,6 +202,9 @@ if (typeof module !== 'undefined' && module.exports) {
         restoreSymbolsState,
         initializeAdminToggle,
         toggleAdminSection,
-        restoreAdminState
+        restoreAdminState,
+        initializeOptionsToggle,
+        toggleOptionsSection,
+        restoreOptionsState
     };
 }
