@@ -81,13 +81,14 @@ func (s *Service) UpdateSymbolPrice(ctx context.Context, symbol string) error {
 }
 
 // UpdateAllSymbolPrices updates prices for all symbols in the database
+// Uses prioritized order: active positions first, inactive symbols last
 func (s *Service) UpdateAllSymbolPrices(ctx context.Context) error {
-	symbols, err := s.symbolService.GetDistinctSymbols()
+	symbols, err := s.symbolService.GetPrioritizedSymbols()
 	if err != nil {
-		return fmt.Errorf("failed to get symbols: %w", err)
+		return fmt.Errorf("failed to get prioritized symbols: %w", err)
 	}
 
-	log.Printf("[POLYGON] Starting bulk price update for %d symbols", len(symbols))
+	log.Printf("[POLYGON] Starting prioritized bulk price update for %d symbols", len(symbols))
 
 	var updated, failed int
 	for _, symbol := range symbols {
@@ -102,7 +103,7 @@ func (s *Service) UpdateAllSymbolPrices(ctx context.Context) error {
 		time.Sleep(12 * time.Second)
 	}
 
-	log.Printf("[POLYGON] Bulk price update complete: %d updated, %d failed", updated, failed)
+	log.Printf("[POLYGON] Prioritized bulk price update complete: %d updated, %d failed", updated, failed)
 	return nil
 }
 

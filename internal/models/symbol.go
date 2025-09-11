@@ -359,6 +359,41 @@ func (s *SymbolService) GetAll() ([]*Symbol, error) {
 	return symbols, nil
 }
 
+// GetActivePositionSymbols returns only symbols with open positions (long or options)
+// Use this for high-priority quick updates that focus on active trading
+func (s *SymbolService) GetActivePositionSymbols() ([]string, error) {
+	query := `
+		SELECT DISTINCT symbol FROM (
+			-- Symbols with open long positions
+			SELECT symbol FROM long_positions WHERE closed IS NULL
+			UNION
+			-- Symbols with open options positions
+			SELECT symbol FROM options WHERE closed IS NULL
+		) ORDER BY symbol
+	`
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get active position symbols: %w", err)
+	}
+	defer rows.Close()
+
+	var symbols []string
+	for rows.Next() {
+		var symbol string
+		if err := rows.Scan(&symbol); err != nil {
+			return nil, fmt.Errorf("failed to scan symbol: %w", err)
+		}
+		symbols = append(symbols, symbol)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating symbols: %w", err)
+	}
+
+	return symbols, nil
+}
+
 func (s *SymbolService) Update(symbol string, price float64, dividend float64, exDividendDate *time.Time, peRatio *float64) (*Symbol, error) {
 	symbol = strings.TrimSpace(strings.ToUpper(symbol))
 	if symbol == "" {
@@ -413,6 +448,67 @@ func (s *SymbolService) GetDistinctSymbols() ([]string, error) {
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get distinct symbols: %w", err)
+	}
+	defer rows.Close()
+
+	var symbols []string
+	for rows.Next() {
+		var symbol string
+		if err := rows.Scan(&symbol); err != nil {
+			return nil, fmt.Errorf("failed to scan symbol: %w", err)
+		}
+		symbols = append(symbols, symbol)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating symbols: %w", err)
+	}
+
+	return symbols, nil
+}
+
+// GetPrioritizedSymbols returns symbols ordered by importance:
+// 1. Symbols with open long positions (highest priority)
+// 2. Symbols with open options positions
+// 3. All other symbols in the database (lowest priority)
+func (s *SymbolService) GetPrioritizedSymbols() ([]string, error) {
+	query := `
+		WITH symbol_priorities AS (
+			-- Priority 1: Symbols with open long positions
+			SELECT DISTINCT symbol, 1 as priority
+			FROM long_positions 
+			WHERE closed IS NULL
+			
+			UNION
+			
+			-- Priority 2: Symbols with open options positions
+			SELECT DISTINCT symbol, 2 as priority
+			FROM options 
+			WHERE closed IS NULL
+			
+			UNION
+			
+			-- Priority 3: All other symbols (from any table)
+			SELECT DISTINCT symbol, 3 as priority
+			FROM (
+				SELECT symbol FROM symbols
+				UNION
+				SELECT symbol FROM options
+				UNION
+				SELECT symbol FROM long_positions
+				UNION
+				SELECT symbol FROM dividends
+			) all_symbols
+		)
+		SELECT symbol
+		FROM symbol_priorities
+		GROUP BY symbol
+		ORDER BY MIN(priority), symbol
+	`
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get prioritized symbols: %w", err)
 	}
 	defer rows.Close()
 

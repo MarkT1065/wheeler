@@ -70,15 +70,15 @@ func (s *Server) polygonUpdatePricesHandler(w http.ResponseWriter, r *http.Reque
 	var errors []string
 
 	if request.All || len(request.Symbols) == 0 {
-		// Update all symbols
-		symbols, err := s.symbolService.GetDistinctSymbols()
+		// Update all symbols (prioritized: active positions first)
+		symbols, err := s.symbolService.GetPrioritizedSymbols()
 		if err != nil {
-			log.Printf("[POLYGON API] Error getting symbols: %v", err)
+			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
 			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("[POLYGON API] Updating prices for %d symbols", len(symbols))
+		log.Printf("[POLYGON API] Updating prices for %d symbols (prioritized order)", len(symbols))
 
 		for _, symbol := range symbols {
 			if err := s.polygonService.UpdateSymbolPrice(ctx, symbol); err != nil {
@@ -255,15 +255,15 @@ func (s *Server) polygonFetchDividendsHandler(w http.ResponseWriter, r *http.Req
 	var errors []string
 
 	if request.All || len(request.Symbols) == 0 {
-		// Fetch dividends for all symbols
-		symbols, err := s.symbolService.GetDistinctSymbols()
+		// Fetch dividends for all symbols (prioritized: active positions first)
+		symbols, err := s.symbolService.GetPrioritizedSymbols()
 		if err != nil {
-			log.Printf("[POLYGON API] Error getting symbols: %v", err)
+			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
 			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("[POLYGON API] Fetching dividends for %d symbols", len(symbols))
+		log.Printf("[POLYGON API] Fetching dividends for %d symbols (prioritized order)", len(symbols))
 
 		for _, symbol := range symbols {
 			dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, request.Limit)
