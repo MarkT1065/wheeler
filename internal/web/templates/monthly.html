@@ -127,11 +127,11 @@
                 </div>
             </div>
             
-            <!-- Monthly Premiums by Symbol Stacked Bar Chart -->
+            <!-- Monthly Premiums by Symbol Grouped by Open/Closed -->
             <div class="content-section" style="margin-bottom: 30px;">
-                <div class="section-title">Monthly Premiums by Symbol</div>
+                <div class="section-title">Monthly Premiums by Symbol (Open/Closed)</div>
                 <div class="chart-container-large">
-                    <canvas id="monthlyPremiumsStackedChart"></canvas>
+                    <canvas id="monthlyPremiumsGroupedChart"></canvas>
                 </div>
             </div>
             
@@ -226,20 +226,20 @@
             };
         }
         
-        // Get current month index (0-11) to filter future data points
+        // Get current month index (0-11) to filter future data points for some charts
         const currentMonth = new Date().getMonth();
         const currentMonthIndex = currentMonth; // 0 = January, 11 = December
         
-        // Month labels for charts
+        // Month labels for charts - show all 12 months
         const fullMonthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonthLabels = fullMonthLabels.slice(0, currentMonthIndex + 1);
+        const currentMonthLabels = fullMonthLabels; // Show all 12 months instead of limiting to current
 
         // Puts - By Month Chart (with cumulative line)
         const putsMonthCtx = document.getElementById('putsMonthChart').getContext('2d');
         const putsMonthDataFull = [
             {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const putsMonthData = putsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const putsMonthData = putsMonthDataFull; // Show all 12 months
         
         // Calculate cumulative puts data for individual chart
         let putsIndividualCumulativeData = [];
@@ -422,7 +422,7 @@
         const callsMonthDataFull = [
             {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const callsMonthData = callsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const callsMonthData = callsMonthDataFull; // Show all 12 months
         
         // Calculate cumulative calls data for individual chart
         let callsIndividualCumulativeData = [];
@@ -588,7 +588,7 @@
         const capGainsMonthDataFull = [
             {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const capGainsMonthData = capGainsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const capGainsMonthData = capGainsMonthDataFull; // Show all 12 months
         
         // Calculate cumulative capital gains data
         let capGainsIndividualCumulativeData = [];
@@ -693,18 +693,19 @@
 
         // Capital Gains - By Ticker Chart
         const capGainsTickerCtx = document.getElementById('capGainsTickerChart').getContext('2d');
-        const capGainsTickerLabels = [
+        const capGainsTickerLabelsRaw = [
             {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
         ];
-        const capGainsTickerData = [
+        const capGainsTickerDataRaw = [
             {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
+        const capGainsTickerSorted = sortTickerData(capGainsTickerLabelsRaw, capGainsTickerDataRaw);
         new Chart(capGainsTickerCtx, {
             type: 'pie',
             data: {
-                labels: capGainsTickerLabels,
+                labels: capGainsTickerSorted.labels,
                 datasets: [{
-                    data: capGainsTickerData,
+                    data: capGainsTickerSorted.data,
                     backgroundColor: chartColors,
                     borderWidth: 0.7,
                     borderColor: '#ccc'
@@ -751,7 +752,7 @@
         const dividendsMonthDataFull = [
             {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const dividendsMonthData = dividendsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const dividendsMonthData = dividendsMonthDataFull; // Show all 12 months
         
         // Calculate cumulative dividends data
         let dividendsIndividualCumulativeData = [];
@@ -856,18 +857,19 @@
 
         // Dividends - By Ticker Chart
         const dividendsTickerCtx = document.getElementById('dividendsTickerChart').getContext('2d');
-        const dividendsTickerLabels = [
+        const dividendsTickerLabelsRaw = [
             {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
         ];
-        const dividendsTickerData = [
+        const dividendsTickerDataRaw = [
             {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
+        const dividendsTickerSorted = sortTickerData(dividendsTickerLabelsRaw, dividendsTickerDataRaw);
         new Chart(dividendsTickerCtx, {
             type: 'pie',
             data: {
-                labels: dividendsTickerLabels,
+                labels: dividendsTickerSorted.labels,
                 datasets: [{
-                    data: dividendsTickerData,
+                    data: dividendsTickerSorted.data,
                     backgroundColor: chartColors,
                     borderWidth: 0.7,
                     borderColor: '#ccc'
@@ -914,28 +916,28 @@
         const monthLabelsFull = [
             {{range $index, $data := .TotalsByMonth}}{{if $index}}, {{end}}"{{$data.Month}}"{{end}}
         ];
-        const monthLabels = monthLabelsFull.slice(0, currentMonthIndex + 1);
+        const monthLabels = monthLabelsFull; // Show all 12 months
         
         // Get individual category data by month for cumulative chart
         const cumulativePutsMonthDataFull = [
             {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const cumulativePutsMonthData = cumulativePutsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const cumulativePutsMonthData = cumulativePutsMonthDataFull; // Show all 12 months
         
         const cumulativeCallsMonthDataFull = [
             {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const cumulativeCallsMonthData = cumulativeCallsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const cumulativeCallsMonthData = cumulativeCallsMonthDataFull; // Show all 12 months
         
         const cumulativeCapGainsMonthDataFull = [
             {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const cumulativeCapGainsMonthData = cumulativeCapGainsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const cumulativeCapGainsMonthData = cumulativeCapGainsMonthDataFull; // Show all 12 months
         
         const cumulativeDividendsMonthDataFull = [
             {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
-        const cumulativeDividendsMonthData = cumulativeDividendsMonthDataFull.slice(0, currentMonthIndex + 1);
+        const cumulativeDividendsMonthData = cumulativeDividendsMonthDataFull; // Show all 12 months
         
         // Calculate cumulative data for each category
         let putsCumulativeData = [];
@@ -1133,55 +1135,122 @@
         // Also apply coloring immediately in case DOMContentLoaded already fired
         applyMonthlyTableColoring();
 
-        // Monthly Premiums Stacked Bar Chart with Backend Data
-        function createMonthlyPremiumsChart() {
-            const ctx = document.getElementById('monthlyPremiumsStackedChart');
+        // Monthly Premiums Grouped Bar Chart using Options Index
+        function createMonthlyPremiumsGroupedChart() {
+            const ctx = document.getElementById('monthlyPremiumsGroupedChart');
             if (!ctx) return;
 
-            // Get data from backend
-            const monthlyPremiumsData = {{.MonthlyPremiumsBySymbol}};
+            // Get options index from template data
+            let optionsIndex;
+            try {
+                optionsIndex = {{.OptionsIndexJSON}};
+                console.log('Monthly: Options index loaded:', optionsIndex);
+            } catch (e) {
+                console.error('Monthly: Failed to parse options index:', e);
+                return;
+            }
+
+            if (!optionsIndex || !optionsIndex.id) {
+                console.warn('Monthly: No options data available');
+                return;
+            }
+
+            // Get all options as array
+            const allOptions = Object.values(optionsIndex.id);
             
-            // Extract all unique symbols
-            const allSymbols = new Set();
-            monthlyPremiumsData.forEach(monthData => {
-                monthData.symbols.forEach(symbolData => {
-                    allSymbols.add(symbolData.symbol);
-                });
+            // Process options by month and group by symbol and open/closed status
+            const monthlyData = {};
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            allOptions.forEach(option => {
+                // Use opened date for premium realization (when premium was received)
+                const openedDate = new Date(option.opened);
+                const month = openedDate.getMonth(); // 0-11
+                const monthName = monthNames[month];
+                
+                if (!monthlyData[monthName]) {
+                    monthlyData[monthName] = {};
+                }
+                
+                if (!monthlyData[monthName][option.symbol]) {
+                    monthlyData[monthName][option.symbol] = { open: 0, closed: 0 };
+                }
+                
+                // Calculate total profit for this option
+                let totalProfit = option.premium * option.contracts * 100;
+                if (option.closed && option.exit_price) {
+                    totalProfit -= option.exit_price * option.contracts * 100;
+                }
+                if (option.commission) {
+                    totalProfit -= option.commission;
+                }
+                
+                // Group by open/closed status
+                if (option.closed) {
+                    monthlyData[monthName][option.symbol].closed += totalProfit;
+                } else {
+                    monthlyData[monthName][option.symbol].open += totalProfit;
+                }
             });
+
+            // Show all 12 months
+            const currentMonthLabels = monthNames;
             
-            // Colors for symbols (consistent with other charts)
-            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
-            const symbolsArray = Array.from(allSymbols).sort();
+            // Extract all symbols that appear in the data
+            const allSymbols = new Set();
+            Object.values(monthlyData).forEach(monthData => {
+                Object.keys(monthData).forEach(symbol => allSymbols.add(symbol));
+            });
+            const sortedSymbols = Array.from(allSymbols).sort();
             
-            // Build datasets for Chart.js
-            const datasets = symbolsArray.map((symbol, index) => {
-                const data = monthlyPremiumsData.map(monthData => {
-                    const symbolData = monthData.symbols.find(s => s.symbol === symbol);
-                    return symbolData ? symbolData.amount : 0;
+            // Build datasets - one stack for Open positions, one stack for Closed positions
+            // Within each stack, aggregate all symbols
+            const datasets = [];
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF8C00', '#32CD32'];
+            
+            sortedSymbols.forEach((symbol, index) => {
+                const baseColor = colors[index % colors.length];
+                
+                // Dataset for this symbol's closed positions (will be stacked together)
+                const closedData = currentMonthLabels.map(month => {
+                    return monthlyData[month] && monthlyData[month][symbol] ? monthlyData[month][symbol].closed : 0;
                 });
                 
-                return {
-                    label: symbol,
-                    data: data,
-                    backgroundColor: colors[index % colors.length],
-                    borderColor: colors[index % colors.length],
-                    borderWidth: 1
-                };
-            });
-            
-            // Calculate monthly totals for labels
-            const monthlyTotals = monthlyPremiumsData.map(monthData => {
-                return monthData.symbols.reduce((sum, symbolData) => sum + symbolData.amount, 0);
+                datasets.push({
+                    label: symbol + ' (Closed)',
+                    data: closedData,
+                    backgroundColor: baseColor,
+                    borderColor: baseColor,
+                    borderWidth: 1,
+                    stack: 'closed', // All closed positions in one stack
+                    order: 1 // Closed stack first
+                });
+                
+                // Dataset for this symbol's open positions (will be stacked together)
+                const openData = currentMonthLabels.map(month => {
+                    return monthlyData[month] && monthlyData[month][symbol] ? monthlyData[month][symbol].open : 0;
+                });
+                
+                // Use same color but with transparency to distinguish from closed
+                const openColor = baseColor + '80'; // Add alpha for transparency
+                
+                datasets.push({
+                    label: symbol + ' (Open)',
+                    data: openData,
+                    backgroundColor: openColor,
+                    borderColor: baseColor,
+                    borderWidth: 1,
+                    stack: 'open', // All open positions in one stack
+                    order: 2 // Open stack second
+                });
             });
 
-            const chartData = {
-                labels: monthlyPremiumsData.map(d => d.month),
-                datasets: datasets
-            };
-
-            const chart = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'bar',
-                data: chartData,
+                data: {
+                    labels: currentMonthLabels,
+                    datasets: datasets
+                },
                 plugins: [ChartDataLabels],
                 options: {
                     responsive: true,
@@ -1192,7 +1261,6 @@
                     },
                     scales: {
                         x: {
-                            stacked: true,
                             grid: {
                                 color: '#404040'
                             },
@@ -1201,7 +1269,7 @@
                             }
                         },
                         y: {
-                            stacked: true,
+                            beginAtZero: true,
                             grid: {
                                 color: '#404040'
                             },
@@ -1210,6 +1278,11 @@
                                 callback: function(value) {
                                     return '$' + Math.round(value).toLocaleString();
                                 }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Monthly Premiums ($)',
+                                color: '#e0e0e0'
                             }
                         }
                     },
@@ -1221,94 +1294,295 @@
                             labels: {
                                 color: '#e0e0e0',
                                 font: {
-                                    size: 12
+                                    size: 11
                                 },
-                                padding: 10,
+                                padding: 8,
                                 usePointStyle: false,
-                                boxWidth: 12
+                                boxWidth: 12,
+                                filter: function(legendItem, chartData) {
+                                    // Only show legend items for datasets that have data
+                                    const dataset = chartData.datasets[legendItem.datasetIndex];
+                                    return dataset.data.some(value => value > 0);
+                                }
                             }
                         },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return context.dataset.label + ': $' + Math.round(context.parsed.y).toLocaleString();
+                            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#007acc',
+                            borderWidth: 2,
+                            cornerRadius: 8,
+                            padding: 16,
+                            displayColors: false,
+                            titleFont: {
+                                size: 16,
+                                weight: 'bold',
+                                family: 'monospace'
+                            },
+                            bodyFont: {
+                                size: 13,
+                                family: 'monospace'
+                            },
+                            caretSize: 8,
+                            position: 'nearest',
+                            enabled: false, // Disable default tooltip
+                            external: function(context) {
+                                // Custom tooltip implementation for table layout
+                                const {chart, tooltip} = context;
+                                
+                                // Remove existing custom tooltip
+                                let tooltipEl = document.getElementById('chartjs-tooltip');
+                                if (!tooltipEl) {
+                                    tooltipEl = document.createElement('div');
+                                    tooltipEl.id = 'chartjs-tooltip';
+                                    document.body.appendChild(tooltipEl);
                                 }
+                                
+                                // Hide tooltip if no data
+                                if (tooltip.opacity === 0) {
+                                    tooltipEl.style.opacity = 0;
+                                    tooltipEl.style.visibility = 'hidden';
+                                    return;
+                                }
+                                
+                                if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                                    const monthIndex = tooltip.dataPoints[0].dataIndex;
+                                    const monthName = currentMonthLabels[monthIndex];
+                                    
+                                    if (!monthName || !monthlyData[monthName]) {
+                                        tooltipEl.style.opacity = 0;
+                                        return;
+                                    }
+                                    
+                                    // Calculate comprehensive summary for the month
+                                    let openTotal = 0;
+                                    let closedTotal = 0;
+                                    const symbolSummary = {};
+                                    
+                                    sortedSymbols.forEach(symbol => {
+                                        const monthData = monthlyData[monthName] && monthlyData[monthName][symbol];
+                                        if (monthData) {
+                                            const symbolOpen = monthData.open || 0;
+                                            const symbolClosed = monthData.closed || 0;
+                                            const symbolTotal = symbolOpen + symbolClosed;
+                                            
+                                            // Include all symbols with non-zero values (positive or negative)
+                                            if (symbolTotal !== 0) {
+                                                symbolSummary[symbol] = {
+                                                    open: symbolOpen,
+                                                    closed: symbolClosed,
+                                                    total: symbolTotal
+                                                };
+                                                
+                                                openTotal += symbolOpen;
+                                                closedTotal += symbolClosed;
+                                            }
+                                        }
+                                    });
+                                    
+                                    const grandTotal = openTotal + closedTotal;
+                                    const symbolKeys = Object.keys(symbolSummary).sort();
+                                    
+                                    // Build HTML table content
+                                    let html = `
+                                        <div style="
+                                            background: rgba(20, 20, 20, 0.95);
+                                            border: 2px solid #007acc;
+                                            border-radius: 8px;
+                                            padding: 16px;
+                                            font-family: monospace;
+                                            color: #ffffff;
+                                            width: 600px;
+                                            max-width: 90vw;
+                                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                                        ">
+                                            <div style="
+                                                font-size: 16px;
+                                                font-weight: bold;
+                                                text-align: center;
+                                                margin-bottom: 16px;
+                                                padding-bottom: 8px;
+                                                border-bottom: 1px solid #007acc;
+                                                color: #007acc;
+                                            ">
+                                                ${monthName} Monthly Premiums Summary
+                                            </div>
+                                            
+                                            <!-- Summary Totals Table -->
+                                            <table style="
+                                                width: 100%;
+                                                margin-bottom: 16px;
+                                                border-collapse: collapse;
+                                                background: rgba(0, 122, 204, 0.1);
+                                                border-radius: 4px;
+                                            ">
+                                                <tr>
+                                                    <td style="padding: 8px 12px; font-weight: bold; width: 25%;">TOTAL MONTH:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${grandTotal < 0 ? '#e74c3c' : '#27ae60'};">${grandTotal < 0 ? '-' : ''}$${Math.round(Math.abs(grandTotal)).toLocaleString()}</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; width: 25%;">CLOSED:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${closedTotal < 0 ? '#e74c3c' : '#ffffff'};">${closedTotal < 0 ? '-' : ''}$${Math.round(Math.abs(closedTotal)).toLocaleString()}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 8px 12px; font-weight: bold;">SYMBOLS:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: #ffffff;">${symbolKeys.length}</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold;">OPEN:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${openTotal < 0 ? '#e74c3c' : '#ffffff'};">${openTotal < 0 ? '-' : ''}$${Math.round(Math.abs(openTotal)).toLocaleString()}</td>
+                                                </tr>
+                                            </table>
+                                            
+                                            <!-- Detailed Breakdown Table -->
+                                            <div style="
+                                                font-size: 14px;
+                                                font-weight: bold;
+                                                margin-bottom: 8px;
+                                                color: #007acc;
+                                            ">BREAKDOWN BY SYMBOL</div>
+                                            
+                                            <table style="
+                                                width: 100%;
+                                                border-collapse: collapse;
+                                                font-size: 12px;
+                                                background: rgba(255, 255, 255, 0.05);
+                                            ">
+                                                <thead>
+                                                    <tr style="background: rgba(0, 122, 204, 0.3);">
+                                                        <th style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #404040;">SYMBOL</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">TOTAL</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">CLOSED</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">OPEN</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">% OF MONTH</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>`;
+                                    
+                                    symbolKeys.forEach((symbol, index) => {
+                                        const data = symbolSummary[symbol];
+                                        const percentage = grandTotal !== 0 ? ((Math.abs(data.total) / Math.abs(grandTotal)) * 100).toFixed(1) : '0.0';
+                                        const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent';
+                                        
+                                        // Color coding for positive/negative values
+                                        const totalColor = data.total < 0 ? '#e74c3c' : '#27ae60';
+                                        const closedColor = data.closed < 0 ? '#e74c3c' : '#ffffff';
+                                        const openColor = data.open < 0 ? '#e74c3c' : '#ffffff';
+                                        
+                                        // Format values properly with negative signs
+                                        const formatValue = (value) => {
+                                            const absValue = Math.abs(value);
+                                            return value < 0 ? `-$${Math.round(absValue).toLocaleString()}` : `$${Math.round(absValue).toLocaleString()}`;
+                                        };
+                                        
+                                        html += `
+                                            <tr style="background: ${rowBg};">
+                                                <td style="padding: 4px 8px; font-weight: bold;">${symbol}</td>
+                                                <td style="padding: 4px 8px; text-align: right; font-weight: bold; color: ${totalColor};">${formatValue(data.total)}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: ${closedColor};">${formatValue(data.closed)}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: ${openColor};">${formatValue(data.open)}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: #ffa500;">${percentage}%</td>
+                                            </tr>`;
+                                    });
+                                    
+                                    html += `
+                                                </tbody>
+                                            </table>
+                                        </div>`;
+                                    
+                                    tooltipEl.innerHTML = html;
+                                }
+                                
+                                // Position tooltip
+                                const canvasRect = chart.canvas.getBoundingClientRect();
+                                
+                                tooltipEl.style.opacity = 1;
+                                tooltipEl.style.visibility = 'visible';
+                                tooltipEl.style.position = 'absolute';
+                                tooltipEl.style.left = (canvasRect.left + window.scrollX + tooltip.caretX - 300) + 'px'; // Center tooltip
+                                tooltipEl.style.top = (canvasRect.top + window.scrollY + tooltip.caretY - 50) + 'px';
+                                tooltipEl.style.pointerEvents = 'none';
+                                tooltipEl.style.zIndex = '9999';
                             }
                         },
                         datalabels: {
-                            display: true,
-                            color: '#e0e0e0',
-                            font: {
-                                size: 9,
-                                weight: 'normal'
-                            },
-                            formatter: function(value, context) {
-                                if (value < 100) return '';
-                                return Math.round(value).toLocaleString();
-                            },
-                            anchor: 'center',
-                            align: 'center'
+                            display: false // Disable for grouped bars to avoid clutter
                         }
                     }
-                }
-            });
-
-            // Add custom drawing for month totals after chart is rendered
-            Chart.register({
-                id: 'monthTotalLabels',
-                afterDraw: function(chart) {
-                    if (chart.canvas.id !== 'monthlyPremiumsStackedChart') return;
-                    
-                    const ctx = chart.ctx;
-                    ctx.save();
-                    
-                    // Set font for month totals
-                    ctx.font = 'bold 11px Arial';
-                    ctx.fillStyle = '#27ae60';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    
-                    // Draw total for each month at the top of each stacked bar
-                    chart.data.labels.forEach((label, index) => {
-                        const total = monthlyTotals[index];
-                        if (total > 0) {
-                            // Find the top of the stacked bar
-                            let topY = chart.chartArea.bottom;
+                },
+                plugins: [{
+                    id: 'stackTotals',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        ctx.save();
+                        
+                        // Set font for stack totals
+                        ctx.font = 'bold 12px Arial';
+                        ctx.fillStyle = '#27ae60';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        // Calculate totals for each month and stack
+                        chart.data.labels.forEach((label, monthIndex) => {
+                            const monthName = currentMonthLabels[monthIndex];
                             
-                            // Get the top-most point from all datasets
-                            chart.data.datasets.forEach(dataset => {
-                                if (dataset.data[index] > 0) {
-                                    const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(dataset));
-                                    if (meta.data[index]) {
-                                        const barTop = meta.data[index].y;
-                                        if (barTop < topY) {
-                                            topY = barTop;
+                            // Calculate totals for this month
+                            let openTotal = 0;
+                            let closedTotal = 0;
+                            
+                            sortedSymbols.forEach(symbol => {
+                                const monthData = monthlyData[monthName] && monthlyData[monthName][symbol];
+                                if (monthData) {
+                                    openTotal += monthData.open;
+                                    closedTotal += monthData.closed;
+                                }
+                            });
+                            
+                            // Find the top of each stack
+                            let openStackTop = chart.chartArea.bottom;
+                            let closedStackTop = chart.chartArea.bottom;
+                            let openStackX = null;
+                            let closedStackX = null;
+                            
+                            // Get the positions from the chart metadata
+                            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                                const meta = chart.getDatasetMeta(datasetIndex);
+                                if (meta.data[monthIndex] && dataset.data[monthIndex] > 0) {
+                                    const bar = meta.data[monthIndex];
+                                    
+                                    if (dataset.stack === 'open') {
+                                        if (bar.y < openStackTop) {
+                                            openStackTop = bar.y;
+                                            openStackX = bar.x;
+                                        }
+                                    } else if (dataset.stack === 'closed') {
+                                        if (bar.y < closedStackTop) {
+                                            closedStackTop = bar.y;
+                                            closedStackX = bar.x;
                                         }
                                     }
                                 }
                             });
                             
-                            // Get x position from the first dataset's bar
-                            const meta = chart.getDatasetMeta(0);
-                            if (meta.data[index]) {
-                                const x = meta.data[index].x;
-                                const formattedTotal = '$' + Math.round(total).toLocaleString();
-                                
-                                // Draw the total label above the bar
-                                ctx.fillText(formattedTotal, x, topY - 5);
+                            // Draw the totals above each stack
+                            if (closedTotal > 0 && closedStackX !== null) {
+                                const formattedClosedTotal = '$' + Math.round(closedTotal).toLocaleString();
+                                ctx.fillText(formattedClosedTotal, closedStackX, closedStackTop - 5);
                             }
-                        }
-                    });
-                    
-                    ctx.restore();
-                }
+                            
+                            if (openTotal > 0 && openStackX !== null) {
+                                const formattedOpenTotal = '$' + Math.round(openTotal).toLocaleString();
+                                ctx.fillText(formattedOpenTotal, openStackX, openStackTop - 5);
+                            }
+                        });
+                        
+                        ctx.restore();
+                    }
+                }]
             });
         }
 
-        // Create the stacked bar chart when page loads
-        document.addEventListener('DOMContentLoaded', createMonthlyPremiumsChart);
+        // Create the grouped bar chart when page loads
+        document.addEventListener('DOMContentLoaded', createMonthlyPremiumsGroupedChart);
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
@@ -1358,6 +1632,6 @@
         });
     </script>
     <script src="/static/js/table-sort.js"></script>
-    <script src="/static/js/tutorial.js"></script>
+
 </body>
 </html>

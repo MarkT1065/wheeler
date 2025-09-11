@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zen - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="zen-page">
+    <div class="app-container">
+        {{template "_navigation.html" .}}
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section zen-container">
+                <div class="zen-header">
+                    <div class="section-title">
+                        <i class="fas fa-leaf zen-icon"></i>
+                        Zen Market Flow
+                    </div>
+                    <div class="zen-info" id="zenInfo">
+                        <div class="zen-header-row">
+                            <div class="zen-date" id="currentDate">Starting simulation...</div>
+                            <div class="zen-daily-change">
+                                <span id="dailyChange" class="daily-change-value">+$0 (0.00%)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="zen-main-metrics">
+                            <div class="zen-portfolio-section">
+                                <div class="portfolio-value-item">
+                                    <span class="value-label">Starting</span>
+                                    <span id="startingValue" class="value-amount">$---,---</span>
+                                </div>
+                                <div class="portfolio-value-item primary-value">
+                                    <span class="value-label">Current</span>
+                                    <span id="currentValue" class="value-amount primary">$---,---</span>
+                                </div>
+                                <div class="portfolio-value-item">
+                                    <span class="value-label">ROI</span>
+                                    <span id="totalROI" class="value-amount roi">+0.00%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="zen-stock-prices">
+                                <div class="stock-price-item tech">
+                                    <span class="stock-symbol">NVDA</span>
+                                    <span id="nvdaPrice" class="stock-price">$---.--</span>
+                                </div>
+                                <div class="stock-price-item energy">
+                                    <span class="stock-symbol">CVX</span>
+                                    <span id="cvxPrice" class="stock-price">$---.--</span>
+                                </div>
+                                <div class="stock-price-item health">
+                                    <span class="stock-symbol">VZ</span>
+                                    <span id="vzPrice" class="stock-price">$---.--</span>
+                                </div>
+                                <div class="stock-price-item finance">
+                                    <span class="stock-symbol">SOFI</span>
+                                    <span id="sofiPrice" class="stock-price">$---.--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="zen-chart-container">
+                    <canvas id="zenChart"></canvas>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let zenChart;
+        let animationId;
+        let isPaused = false;
+        let currentIndex = 0;
+        let startDate = new Date('2024-09-09');
+        let currentDate = new Date(startDate);
+        
+        // Real historical data from parsed files (most recent first, so reverse for chronological order)
+        const historicalData = [
+            // VZ data
+            {"date": "2024-09-09", "vz": 41.26},
+            {"date": "2024-09-10", "vz": 42.79},
+            {"date": "2024-09-11", "vz": 43.21},
+            {"date": "2024-09-12", "vz": 43.23},
+            {"date": "2024-09-13", "vz": 43.15},
+            {"date": "2024-09-16", "vz": 44.61},
+            {"date": "2024-09-17", "vz": 44.75},
+            {"date": "2024-09-18", "vz": 44.10},
+            {"date": "2024-09-19", "vz": 43.96},
+            {"date": "2024-09-20", "vz": 43.78},
+            {"date": "2024-09-23", "vz": 44.35},
+            {"date": "2024-09-24", "vz": 44.80},
+            {"date": "2024-09-25", "vz": 44.60},
+            {"date": "2024-09-26", "vz": 44.72},
+            {"date": "2024-09-27", "vz": 45.13},
+            {"date": "2024-09-30", "vz": 44.96},
+            {"date": "2024-10-01", "vz": 45.13},
+            {"date": "2024-10-02", "vz": 44.93},
+            {"date": "2024-10-03", "vz": 44.77},
+            {"date": "2024-10-04", "vz": 43.88},
+            {"date": "2024-10-07", "vz": 44.08},
+            {"date": "2024-10-08", "vz": 44.00},
+            {"date": "2024-10-09", "vz": 44.06},
+            {"date": "2024-10-11", "vz": 43.15},
+            {"date": "2024-10-14", "vz": 43.00},
+            {"date": "2024-10-15", "vz": 43.47},
+            {"date": "2024-10-16", "vz": 43.74},
+            {"date": "2024-10-17", "vz": 43.83},
+            {"date": "2024-10-18", "vz": 44.05},
+            {"date": "2024-10-21", "vz": 44.05},
+            {"date": "2024-10-22", "vz": 41.86},
+            {"date": "2024-10-23", "vz": 41.90},
+            {"date": "2024-10-24", "vz": 42.38},
+            {"date": "2024-10-25", "vz": 41.90},
+            {"date": "2024-10-28", "vz": 41.45},
+            {"date": "2024-10-29", "vz": 41.32},
+            {"date": "2024-10-30", "vz": 41.33},
+            {"date": "2024-10-31", "vz": 41.26},
+            {"date": "2024-11-01", "vz": 42.12},
+            {"date": "2024-11-04", "vz": 41.65},
+            {"date": "2024-11-05", "vz": 41.01},
+            {"date": "2024-11-06", "vz": 41.44},
+            {"date": "2024-11-07", "vz": 41.08},
+            {"date": "2024-11-08", "vz": 40.74},
+            {"date": "2024-11-11", "vz": 40.47},
+            {"date": "2024-11-12", "vz": 40.50},
+            {"date": "2024-11-13", "vz": 40.40},
+            {"date": "2024-11-14", "vz": 41.14},
+            {"date": "2024-11-15", "vz": 40.80},
+            {"date": "2024-11-18", "vz": 41.67},
+            {"date": "2024-11-19", "vz": 42.21},
+            {"date": "2024-11-20", "vz": 42.00},
+            {"date": "2024-11-21", "vz": 42.22},
+            {"date": "2024-11-22", "vz": 42.60},
+            {"date": "2024-11-25", "vz": 43.34},
+            {"date": "2024-11-26", "vz": 43.98},
+            {"date": "2024-11-27", "vz": 44.48},
+            {"date": "2024-11-29", "vz": 44.38},
+            {"date": "2024-12-02", "vz": 44.27},
+            {"date": "2024-12-03", "vz": 43.91},
+            {"date": "2024-12-04", "vz": 43.73},
+            {"date": "2024-12-05", "vz": 42.59},
+            {"date": "2024-12-06", "vz": 42.53},
+            {"date": "2024-12-09", "vz": 42.47},
+            {"date": "2024-12-10", "vz": 42.37},
+            {"date": "2024-12-11", "vz": 42.19},
+            {"date": "2024-12-12", "vz": 42.06},
+            {"date": "2024-12-13", "vz": 42.00},
+            {"date": "2024-12-16", "vz": 42.16},
+            {"date": "2024-12-17", "vz": 40.66},
+            {"date": "2024-12-18", "vz": 40.70},
+            {"date": "2024-12-19", "vz": 40.05},
+            {"date": "2024-12-20", "vz": 39.93},
+            {"date": "2024-12-23", "vz": 39.93},
+            {"date": "2024-12-24", "vz": 39.90},
+            {"date": "2024-12-26", "vz": 39.83},
+            {"date": "2024-12-27", "vz": 39.86},
+            {"date": "2024-12-30", "vz": 39.80},
+            {"date": "2024-12-31", "vz": 39.64},
+            {"date": "2025-01-02", "vz": 40.03},
+            {"date": "2025-01-03", "vz": 40.32},
+            {"date": "2025-01-06", "vz": 40.29},
+            {"date": "2025-01-07", "vz": 39.71},
+            {"date": "2025-01-08", "vz": 38.91},
+            {"date": "2025-01-13", "vz": 37.94},
+            {"date": "2025-01-14", "vz": 38.33},
+            {"date": "2025-01-15", "vz": 38.30},
+            {"date": "2025-01-16", "vz": 38.13},
+            {"date": "2025-01-17", "vz": 38.42},
+            {"date": "2025-01-21", "vz": 38.87},
+            {"date": "2025-01-22", "vz": 38.89},
+            {"date": "2025-01-23", "vz": 39.24},
+            {"date": "2025-01-24", "vz": 40.11},
+            {"date": "2025-01-27", "vz": 40.15},
+            {"date": "2025-01-28", "vz": 40.60},
+            {"date": "2025-01-29", "vz": 40.82},
+            {"date": "2025-01-30", "vz": 40.35},
+            {"date": "2025-01-31", "vz": 39.57}
+        ].reverse(); // Reverse to get chronological order
+
+        // Parse historical data and create full dataset
+        function parseHistoricalData() {
+            const data = [];
+            
+            // Complete year of VZ data (from Sept 2024 to Sept 2025)
+            const vzData = [
+                {date: '2024-09-09', close: 41.26}, {date: '2024-09-10', close: 42.79}, {date: '2024-09-11', close: 43.21}, {date: '2024-09-12', close: 43.23}, {date: '2024-09-13', close: 43.15},
+                {date: '2024-09-16', close: 44.61}, {date: '2024-09-17', close: 44.75}, {date: '2024-09-18', close: 44.10}, {date: '2024-09-19', close: 43.96}, {date: '2024-09-20', close: 43.78},
+                {date: '2024-09-23', close: 44.35}, {date: '2024-09-24', close: 44.80}, {date: '2024-09-25', close: 44.60}, {date: '2024-09-26', close: 44.72}, {date: '2024-09-27', close: 45.13},
+                {date: '2024-09-30', close: 44.96}, {date: '2024-10-01', close: 45.13}, {date: '2024-10-02', close: 44.93}, {date: '2024-10-03', close: 44.77}, {date: '2024-10-04', close: 43.88},
+                {date: '2024-10-07', close: 44.08}, {date: '2024-10-08', close: 44.00}, {date: '2024-10-09', close: 44.06}, {date: '2024-10-11', close: 43.15}, {date: '2024-10-14', close: 43.00},
+                {date: '2024-10-15', close: 43.47}, {date: '2024-10-16', close: 43.74}, {date: '2024-10-17', close: 43.83}, {date: '2024-10-18', close: 44.05}, {date: '2024-10-21', close: 44.05},
+                {date: '2024-10-22', close: 41.86}, {date: '2024-10-23', close: 41.90}, {date: '2024-10-24', close: 42.38}, {date: '2024-10-25', close: 41.90}, {date: '2024-10-28', close: 41.45},
+                {date: '2024-10-29', close: 41.32}, {date: '2024-10-30', close: 41.33}, {date: '2024-10-31', close: 41.26}, {date: '2024-11-01', close: 42.12}, {date: '2024-11-04', close: 41.65},
+                {date: '2024-11-05', close: 41.01}, {date: '2024-11-06', close: 41.44}, {date: '2024-11-07', close: 41.08}, {date: '2024-11-08', close: 40.74}, {date: '2024-11-11', close: 40.47},
+                {date: '2024-11-12', close: 40.50}, {date: '2024-11-13', close: 40.40}, {date: '2024-11-14', close: 41.14}, {date: '2024-11-15', close: 40.80}, {date: '2024-11-18', close: 41.67},
+                {date: '2024-11-19', close: 42.21}, {date: '2024-11-20', close: 42.00}, {date: '2024-11-21', close: 42.22}, {date: '2024-11-22', close: 42.60}, {date: '2024-11-25', close: 43.34},
+                {date: '2024-11-26', close: 43.98}, {date: '2024-11-27', close: 44.48}, {date: '2024-11-29', close: 44.38}, {date: '2024-12-02', close: 44.27}, {date: '2024-12-03', close: 43.91},
+                {date: '2024-12-04', close: 43.73}, {date: '2024-12-05', close: 42.59}, {date: '2024-12-06', close: 42.53}, {date: '2024-12-09', close: 42.47}, {date: '2024-12-10', close: 42.37},
+                {date: '2024-12-11', close: 42.19}, {date: '2024-12-12', close: 42.06}, {date: '2024-12-13', close: 42.00}, {date: '2024-12-16', close: 42.16}, {date: '2024-12-17', close: 40.66},
+                {date: '2024-12-18', close: 40.70}, {date: '2024-12-19', close: 40.05}, {date: '2024-12-20', close: 39.93}, {date: '2024-12-23', close: 39.93}, {date: '2024-12-24', close: 39.90},
+                {date: '2024-12-26', close: 39.83}, {date: '2024-12-27', close: 39.86}, {date: '2024-12-30', close: 39.80}, {date: '2024-12-31', close: 39.64}, {date: '2025-01-02', close: 40.03},
+                {date: '2025-01-03', close: 40.32}, {date: '2025-01-06', close: 40.29}, {date: '2025-01-07', close: 39.71}, {date: '2025-01-08', close: 38.91}, {date: '2025-01-13', close: 37.94},
+                {date: '2025-01-14', close: 38.33}, {date: '2025-01-15', close: 38.30}, {date: '2025-01-16', close: 38.13}, {date: '2025-01-17', close: 38.42}, {date: '2025-01-21', close: 38.87},
+                {date: '2025-01-22', close: 38.89}, {date: '2025-01-23', close: 39.24}, {date: '2025-01-24', close: 40.11}, {date: '2025-01-27', close: 40.15}, {date: '2025-01-28', close: 40.60},
+                {date: '2025-01-29', close: 40.82}, {date: '2025-01-30', close: 40.35}, {date: '2025-01-31', close: 39.57}, {date: '2025-02-03', close: 39.31}, {date: '2025-02-04', close: 39.78},
+                {date: '2025-02-05', close: 40.13}, {date: '2025-02-06', close: 40.23}, {date: '2025-02-07', close: 39.96}, {date: '2025-02-10', close: 40.02}, {date: '2025-02-11', close: 39.98},
+                {date: '2025-02-12', close: 40.49}, {date: '2025-02-13', close: 40.61}, {date: '2025-02-14', close: 41.14}, {date: '2025-02-18', close: 40.92}, {date: '2025-02-19', close: 41.35},
+                {date: '2025-02-20', close: 42.00}, {date: '2025-02-21', close: 42.43}, {date: '2025-02-24', close: 42.75}, {date: '2025-02-25', close: 43.58}, {date: '2025-02-26', close: 43.54},
+                {date: '2025-02-27', close: 43.08}, {date: '2025-02-28', close: 43.43}, {date: '2025-03-03', close: 42.96}, {date: '2025-03-04', close: 44.00}, {date: '2025-03-05', close: 42.78},
+                {date: '2025-03-06', close: 43.00}, {date: '2025-03-07', close: 44.30}, {date: '2025-03-10', close: 46.06}, {date: '2025-03-11', close: 43.24}, {date: '2025-03-12', close: 42.10},
+                {date: '2025-03-13', close: 42.77}, {date: '2025-03-14', close: 43.16}, {date: '2025-03-17', close: 43.59}, {date: '2025-03-18', close: 43.72}, {date: '2025-03-19', close: 44.30},
+                {date: '2025-03-20', close: 43.96}, {date: '2025-03-21', close: 43.79}, {date: '2025-03-24', close: 43.63}, {date: '2025-03-25', close: 43.50}, {date: '2025-03-26', close: 43.71},
+                {date: '2025-03-27', close: 44.48}, {date: '2025-03-28', close: 45.13}, {date: '2025-03-31', close: 45.30}, {date: '2025-04-01', close: 45.49}, {date: '2025-04-02', close: 45.37},
+                {date: '2025-04-03', close: 45.49}, {date: '2025-04-04', close: 44.76}, {date: '2025-04-07', close: 41.53}, {date: '2025-04-08', close: 43.00}, {date: '2025-04-09', close: 41.68},
+                {date: '2025-04-11', close: 43.85}, {date: '2025-04-14', close: 43.90}, {date: '2025-04-15', close: 44.50}, {date: '2025-04-16', close: 44.74}, {date: '2025-04-17', close: 43.76},
+                {date: '2025-04-21', close: 44.20}, {date: '2025-04-22', close: 41.99}, {date: '2025-04-23', close: 42.55}, {date: '2025-04-24', close: 42.71}, {date: '2025-04-25', close: 42.53},
+                {date: '2025-04-28', close: 42.00}, {date: '2025-04-29', close: 42.31}, {date: '2025-04-30', close: 43.55}, {date: '2025-05-01', close: 43.77}, {date: '2025-05-02', close: 43.46},
+                {date: '2025-05-05', close: 43.81}, {date: '2025-05-06', close: 43.57}, {date: '2025-05-07', close: 44.01}, {date: '2025-05-08', close: 43.80}, {date: '2025-05-09', close: 43.52},
+                {date: '2025-05-12', close: 43.05}, {date: '2025-05-13', close: 43.21}, {date: '2025-05-14', close: 42.78}, {date: '2025-05-15', close: 42.60}, {date: '2025-05-16', close: 43.49},
+                {date: '2025-05-20', close: 44.26}, {date: '2025-05-21', close: 44.04}, {date: '2025-05-22', close: 43.75}, {date: '2025-05-23', close: 43.47}, {date: '2025-05-27', close: 43.28},
+                {date: '2025-05-28', close: 43.45}, {date: '2025-05-29', close: 43.15}, {date: '2025-05-30', close: 43.37}, {date: '2025-06-02', close: 43.80}, {date: '2025-06-03', close: 43.93},
+                {date: '2025-06-04', close: 43.91}, {date: '2025-06-05', close: 43.35}, {date: '2025-06-06', close: 43.40}, {date: '2025-06-09', close: 43.65}, {date: '2025-06-10', close: 43.65},
+                {date: '2025-06-11', close: 44.19}, {date: '2025-06-12', close: 43.88}, {date: '2025-06-13', close: 42.99}, {date: '2025-06-16', close: 42.96}, {date: '2025-06-17', close: 42.80},
+                {date: '2025-06-18', close: 41.95}, {date: '2025-06-20', close: 41.81}, {date: '2025-06-23', close: 41.81}, {date: '2025-06-24', close: 42.38}, {date: '2025-06-25', close: 42.40},
+                {date: '2025-06-26', close: 42.17}, {date: '2025-06-27', close: 42.15}, {date: '2025-06-30', close: 42.31}, {date: '2025-07-01', close: 43.42}, {date: '2025-07-02', close: 43.82},
+                {date: '2025-07-03', close: 43.74}, {date: '2025-07-07', close: 43.70}, {date: '2025-07-08', close: 42.80}, {date: '2025-07-09', close: 42.99}, {date: '2025-07-10', close: 41.87},
+                {date: '2025-07-11', close: 41.98}, {date: '2025-07-14', close: 41.59}, {date: '2025-07-15', close: 41.44}, {date: '2025-07-16', close: 41.27}, {date: '2025-07-17', close: 41.29},
+                {date: '2025-07-18', close: 40.98}, {date: '2025-07-21', close: 41.95}, {date: '2025-07-22', close: 42.75}, {date: '2025-07-23', close: 42.40}, {date: '2025-07-24', close: 42.90},
+                {date: '2025-07-25', close: 43.02}, {date: '2025-07-28', close: 43.02}, {date: '2025-07-29', close: 42.42}, {date: '2025-07-30', close: 42.67}, {date: '2025-07-31', close: 42.29},
+                {date: '2025-08-01', close: 43.29}, {date: '2025-08-04', close: 42.80}, {date: '2025-08-05', close: 42.95}, {date: '2025-08-06', close: 42.80}, {date: '2025-08-07', close: 42.50},
+                {date: '2025-08-08', close: 43.10}, {date: '2025-08-11', close: 43.23}, {date: '2025-08-12', close: 43.34}, {date: '2025-08-13', close: 43.20}, {date: '2025-08-14', close: 43.76},
+                {date: '2025-08-15', close: 43.57}, {date: '2025-08-18', close: 44.35}, {date: '2025-08-19', close: 44.51}, {date: '2025-08-20', close: 45.08}, {date: '2025-08-21', close: 44.98},
+                {date: '2025-08-22', close: 45.15}, {date: '2025-08-25', close: 44.44}, {date: '2025-08-26', close: 44.11}, {date: '2025-08-27', close: 44.02}, {date: '2025-08-28', close: 44.10},
+                {date: '2025-08-29', close: 43.97}, {date: '2025-09-02', close: 44.16}, {date: '2025-09-03', close: 43.50}, {date: '2025-09-04', close: 44.07}, {date: '2025-09-05', close: 44.10}
+            ];
+
+            // Complete year of NVDA data (from Sept 2024 to Sept 2025)
+            const nvdaData = [
+                {date: '2024-09-09', close: 104.88}, {date: '2024-09-10', close: 107.81}, {date: '2024-09-11', close: 109.39}, {date: '2024-09-12', close: 116.84}, {date: '2024-09-13', close: 119.08},
+                {date: '2024-09-16', close: 116.79}, {date: '2024-09-17', close: 118.17}, {date: '2024-09-18', close: 115.89}, {date: '2024-09-19', close: 117.35}, {date: '2024-09-20', close: 117.06},
+                {date: '2024-09-23', close: 116.55}, {date: '2024-09-24', close: 120.87}, {date: '2024-09-25', close: 123.51}, {date: '2024-09-26', close: 124.04}, {date: '2024-09-27', close: 121.40},
+                {date: '2024-09-30', close: 121.44}, {date: '2024-10-01', close: 121.77}, {date: '2024-10-02', close: 116.44}, {date: '2024-10-03', close: 120.92}, {date: '2024-10-04', close: 124.94},
+                {date: '2024-10-07', close: 124.99}, {date: '2024-10-08', close: 130.26}, {date: '2024-10-09', close: 134.11}, {date: '2024-10-11', close: 134.01}, {date: '2024-10-14', close: 136.47},
+                {date: '2024-10-15', close: 137.87}, {date: '2024-10-16', close: 133.98}, {date: '2024-10-17', close: 139.34}, {date: '2024-10-18', close: 138.67}, {date: '2024-10-21', close: 138.13},
+                {date: '2024-10-22', close: 142.91}, {date: '2024-10-23', close: 142.03}, {date: '2024-10-24', close: 140.82}, {date: '2024-10-25', close: 140.93}, {date: '2024-10-28', close: 143.00},
+                {date: '2024-10-29', close: 140.29}, {date: '2024-10-30', close: 139.54}, {date: '2024-10-31', close: 137.60}, {date: '2024-11-01', close: 134.70}, {date: '2024-11-04', close: 137.21},
+                {date: '2024-11-05', close: 137.45}, {date: '2024-11-06', close: 142.96}, {date: '2024-11-07', close: 146.39}, {date: '2024-11-08', close: 148.77}, {date: '2024-11-11', close: 148.68},
+                {date: '2024-11-12', close: 146.78}, {date: '2024-11-13', close: 149.07}, {date: '2024-11-14', close: 147.64}, {date: '2024-11-15', close: 144.87}, {date: '2024-11-18', close: 139.50},
+                {date: '2024-11-19', close: 141.32}, {date: '2024-11-20', close: 147.41}, {date: '2024-11-21', close: 149.35}, {date: '2024-11-22', close: 145.93}, {date: '2024-11-25', close: 141.99},
+                {date: '2024-11-26', close: 137.70}, {date: '2024-11-27', close: 135.01}, {date: '2024-11-29', close: 136.78}, {date: '2024-12-02', close: 138.83}, {date: '2024-12-03', close: 138.26},
+                {date: '2024-12-04', close: 142.00}, {date: '2024-12-05', close: 145.11}, {date: '2024-12-06', close: 144.60}, {date: '2024-12-09', close: 138.97}, {date: '2024-12-10', close: 139.01},
+                {date: '2024-12-11', close: 137.36}, {date: '2024-12-12', close: 137.08}, {date: '2024-12-13', close: 138.94}, {date: '2024-12-16', close: 134.18}, {date: '2024-12-17', close: 129.09},
+                {date: '2024-12-18', close: 133.86}, {date: '2024-12-19', close: 131.76}, {date: '2024-12-20', close: 129.81}, {date: '2024-12-23', close: 136.28}, {date: '2024-12-24', close: 140.00},
+                {date: '2024-12-26', close: 139.70}, {date: '2024-12-27', close: 138.55}, {date: '2024-12-30', close: 134.83}, {date: '2024-12-31', close: 138.03}, {date: '2025-01-02', close: 136.00},
+                {date: '2025-01-03', close: 140.01}, {date: '2025-01-06', close: 148.59}, {date: '2025-01-07', close: 153.03}, {date: '2025-01-08', close: 142.58}, {date: '2025-01-10', close: 137.45},
+                {date: '2025-01-13', close: 129.99}, {date: '2025-01-14', close: 136.05}, {date: '2025-01-15', close: 133.65}, {date: '2025-01-16', close: 138.64}, {date: '2025-01-17', close: 136.69},
+                {date: '2025-01-21', close: 139.16}, {date: '2025-01-22', close: 144.66}, {date: '2025-01-23', close: 145.05}, {date: '2025-01-24', close: 148.37}, {date: '2025-01-27', close: 124.80},
+                {date: '2025-01-28', close: 121.81}, {date: '2025-01-29', close: 126.50}, {date: '2025-01-30', close: 123.10}, {date: '2025-01-31', close: 123.78}, {date: '2025-02-03', close: 114.75},
+                {date: '2025-02-04', close: 116.96}, {date: '2025-02-05', close: 121.76}, {date: '2025-02-06', close: 127.42}, {date: '2025-02-07', close: 129.22}, {date: '2025-02-10', close: 130.09},
+                {date: '2025-02-11', close: 132.58}, {date: '2025-02-12', close: 130.02}, {date: '2025-02-13', close: 131.56}, {date: '2025-02-14', close: 136.48}, {date: '2025-02-18', close: 141.27},
+                {date: '2025-02-19', close: 139.51}, {date: '2025-02-20', close: 140.03}, {date: '2025-02-21', close: 140.04}, {date: '2025-02-24', close: 136.56}, {date: '2025-02-25', close: 129.98},
+                {date: '2025-02-26', close: 129.99}, {date: '2025-02-27', close: 135.00}, {date: '2025-02-28', close: 118.02}, {date: '2025-03-03', close: 123.51}, {date: '2025-03-04', close: 110.65},
+                {date: '2025-03-05', close: 117.58}, {date: '2025-03-06', close: 113.53}, {date: '2025-03-07', close: 111.25}, {date: '2025-03-10', close: 109.90}, {date: '2025-03-11', close: 106.99},
+                {date: '2025-03-12', close: 114.12}, {date: '2025-03-13', close: 117.03}, {date: '2025-03-14', close: 118.61}, {date: '2025-03-17', close: 122.74}, {date: '2025-03-18', close: 118.00},
+                {date: '2025-03-19', close: 117.27}, {date: '2025-03-20', close: 116.55}, {date: '2025-03-21', close: 116.94}, {date: '2025-03-24', close: 119.88}, {date: '2025-03-25', close: 120.55},
+                {date: '2025-03-26', close: 118.73}, {date: '2025-03-27', close: 111.35}, {date: '2025-03-28', close: 111.49}, {date: '2025-03-31', close: 105.13}, {date: '2025-04-01', close: 108.52},
+                {date: '2025-04-02', close: 107.29}, {date: '2025-04-03', close: 103.51}, {date: '2025-04-04', close: 98.91}, {date: '2025-04-07', close: 87.46}, {date: '2025-04-08', close: 103.81},
+                {date: '2025-04-09', close: 98.89}, {date: '2025-04-10', close: 109.37}, {date: '2025-04-11', close: 108.50}, {date: '2025-04-14', close: 114.11}, {date: '2025-04-15', close: 110.97},
+                {date: '2025-04-16', close: 104.55}, {date: '2025-04-17', close: 104.45}, {date: '2025-04-21', close: 98.77}, {date: '2025-04-22', close: 98.78}, {date: '2025-04-23', close: 104.52},
+                {date: '2025-04-24', close: 103.48}, {date: '2025-04-25', close: 106.85}, {date: '2025-04-28', close: 109.69}, {date: '2025-04-29', close: 107.67}, {date: '2025-04-30', close: 104.47},
+                {date: '2025-05-01', close: 113.08}, {date: '2025-05-02', close: 114.18}, {date: '2025-05-05', close: 112.91}, {date: '2025-05-06', close: 111.48}, {date: '2025-05-07', close: 113.05},
+                {date: '2025-05-08', close: 118.25}, {date: '2025-05-09', close: 117.35}, {date: '2025-05-12', close: 121.97}, {date: '2025-05-13', close: 124.98}, {date: '2025-05-14', close: 133.20},
+                {date: '2025-05-15', close: 134.29}, {date: '2025-05-16', close: 136.22}, {date: '2025-05-19', close: 132.39}, {date: '2025-05-20', close: 134.29}, {date: '2025-05-21', close: 133.06},
+                {date: '2025-05-22', close: 132.23}, {date: '2025-05-23', close: 130.00}, {date: '2025-05-27', close: 134.15}, {date: '2025-05-28', close: 136.03}, {date: '2025-05-29', close: 142.25},
+                {date: '2025-05-30', close: 138.72}, {date: '2025-06-02', close: 135.49}, {date: '2025-06-03', close: 138.78}, {date: '2025-06-04', close: 142.19}, {date: '2025-06-05', close: 142.17},
+                {date: '2025-06-06', close: 142.51}, {date: '2025-06-09', close: 143.19}, {date: '2025-06-10', close: 142.69}, {date: '2025-06-11', close: 144.61}, {date: '2025-06-12', close: 141.97},
+                {date: '2025-06-13', close: 142.48}, {date: '2025-06-16', close: 143.35}, {date: '2025-06-17', close: 144.49}, {date: '2025-06-18', close: 144.01}, {date: '2025-06-20', close: 145.45},
+                {date: '2025-06-23', close: 142.50}, {date: '2025-06-24', close: 145.56}, {date: '2025-06-25', close: 149.27}, {date: '2025-06-26', close: 155.98}, {date: '2025-06-27', close: 156.04},
+                {date: '2025-06-30', close: 158.40}, {date: '2025-07-01', close: 156.29}, {date: '2025-07-02', close: 152.98}, {date: '2025-07-03', close: 158.37}, {date: '2025-07-07', close: 158.20},
+                {date: '2025-07-08', close: 159.33}, {date: '2025-07-09', close: 161.22}, {date: '2025-07-10', close: 164.32}, {date: '2025-07-11', close: 163.72}, {date: '2025-07-14', close: 165.37},
+                {date: '2025-07-15', close: 171.19}, {date: '2025-07-16', close: 171.06}, {date: '2025-07-17', close: 172.02}, {date: '2025-07-18', close: 173.64}, {date: '2025-07-21', close: 172.75},
+                {date: '2025-07-22', close: 171.34}, {date: '2025-07-23', close: 169.53}, {date: '2025-07-24', close: 172.44}, {date: '2025-07-25', close: 173.61}, {date: '2025-07-28', close: 174.02},
+                {date: '2025-07-29', close: 177.96}, {date: '2025-07-30', close: 176.51}, {date: '2025-07-31', close: 182.90}, {date: '2025-08-01', close: 174.09}, {date: '2025-08-04', close: 175.16},
+                {date: '2025-08-05', close: 179.62}, {date: '2025-08-06', close: 176.33}, {date: '2025-08-07', close: 181.57}, {date: '2025-08-08', close: 181.55}, {date: '2025-08-11', close: 182.05},
+                {date: '2025-08-12', close: 182.96}, {date: '2025-08-13', close: 182.62}, {date: '2025-08-14', close: 179.75}, {date: '2025-08-15', close: 181.88}, {date: '2025-08-18', close: 180.60},
+                {date: '2025-08-19', close: 182.43}, {date: '2025-08-20', close: 175.17}, {date: '2025-08-21', close: 174.85}, {date: '2025-08-22', close: 172.61}, {date: '2025-08-25', close: 178.35},
+                {date: '2025-08-26', close: 180.06}, {date: '2025-08-27', close: 181.98}, {date: '2025-08-28', close: 180.82}, {date: '2025-08-29', close: 178.11}, {date: '2025-09-02', close: 170.00},
+                {date: '2025-09-03', close: 171.06}, {date: '2025-09-04', close: 170.57}, {date: '2025-09-05', close: 168.03}
+            ];
+
+            // Complete year of CVX data (from Sept 2024 to Sept 2025)
+            const cvxData = [
+                {date: '2024-09-09', close: 138.64}, {date: '2024-09-10', close: 140.90}, {date: '2024-09-11', close: 138.21}, {date: '2024-09-12', close: 138.23}, {date: '2024-09-13', close: 139.87},
+                {date: '2024-09-16', close: 141.69}, {date: '2024-09-17', close: 141.80}, {date: '2024-09-18', close: 143.32}, {date: '2024-09-19', close: 145.81}, {date: '2024-09-20', close: 145.23},
+                {date: '2024-09-23', close: 146.25}, {date: '2024-09-24', close: 148.88}, {date: '2024-09-25', close: 146.95}, {date: '2024-09-26', close: 140.90}, {date: '2024-09-27', close: 142.98},
+                {date: '2024-09-30', close: 145.37}, {date: '2024-10-01', close: 146.35}, {date: '2024-10-02', close: 151.68}, {date: '2024-10-03', close: 151.31}, {date: '2024-10-04', close: 152.48},
+                {date: '2024-10-07', close: 151.50}, {date: '2024-10-08', close: 149.20}, {date: '2024-10-09', close: 147.51}, {date: '2024-10-11', close: 150.38}, {date: '2024-10-14', close: 150.52},
+                {date: '2024-10-15', close: 148.80}, {date: '2024-10-16', close: 148.35}, {date: '2024-10-17', close: 149.26}, {date: '2024-10-18', close: 150.82}, {date: '2024-10-21', close: 152.00},
+                {date: '2024-10-22', close: 151.25}, {date: '2024-10-23', close: 150.36}, {date: '2024-10-24', close: 151.13}, {date: '2024-10-25', close: 151.39}, {date: '2024-10-28', close: 148.25},
+                {date: '2024-10-29', close: 150.04}, {date: '2024-10-30', close: 149.08}, {date: '2024-10-31', close: 148.76}, {date: '2024-11-01', close: 152.48}, {date: '2024-11-04', close: 154.42},
+                {date: '2024-11-05', close: 154.53}, {date: '2024-11-06', close: 157.10}, {date: '2024-11-07', close: 157.94}, {date: '2024-11-8', close: 156.60}, {date: '2024-11-11', close: 157.14},
+                {date: '2024-11-12', close: 157.30}, {date: '2024-11-13', close: 156.07}, {date: '2024-11-14', close: 159.84}, {date: '2024-11-15', close: 161.52}, {date: '2024-11-18', close: 160.56},
+                {date: '2024-11-19', close: 159.98}, {date: '2024-11-20', close: 159.91}, {date: '2024-11-21', close: 162.02}, {date: '2024-11-22', close: 161.51}, {date: '2024-11-25', close: 162.15},
+                {date: '2024-11-26', close: 162.31}, {date: '2024-11-27', close: 162.76}, {date: '2024-11-29', close: 162.25}, {date: '2024-12-02', close: 162.29}, {date: '2024-12-03', close: 162.98},
+                {date: '2024-12-04', close: 161.83}, {date: '2024-12-05', close: 159.29}, {date: '2024-12-06', close: 158.75}, {date: '2024-12-09', close: 157.00}, {date: '2024-12-10', close: 159.06},
+                {date: '2024-12-11', close: 156.86}, {date: '2024-12-12', close: 155.87}, {date: '2024-12-13', close: 154.87}, {date: '2024-12-16', close: 153.89}, {date: '2024-12-17', close: 148.00},
+                {date: '2024-12-18', close: 147.76}, {date: '2024-12-19', close: 144.57}, {date: '2024-12-20', close: 140.82}, {date: '2024-12-23', close: 142.48}, {date: '2024-12-24', close: 143.10},
+                {date: '2024-12-26', close: 143.67}, {date: '2024-12-27', close: 144.29}, {date: '2024-12-30', close: 143.79}, {date: '2024-12-31', close: 143.52}, {date: '2025-01-02', close: 145.48},
+                {date: '2025-01-03', close: 147.54}, {date: '2025-01-06', close: 148.40}, {date: '2025-01-7', close: 148.51}, {date: '2025-01-08', close: 148.04}, {date: '2025-01-10', close: 153.41},
+                {date: '2025-01-13', close: 154.10}, {date: '2025-01-14', close: 155.21}, {date: '2025-01-15', close: 156.88}, {date: '2025-01-16', close: 158.03}, {date: '2025-01-17', close: 159.13},
+                {date: '2025-01-21', close: 161.15}, {date: '2025-01-22', close: 157.68}, {date: '2025-01-23', close: 157.63}, {date: '2025-01-24', close: 156.46}, {date: '2025-01-27', close: 156.33},
+                {date: '2025-01-28', close: 157.71}, {date: '2025-01-29', close: 155.72}, {date: '2025-01-30', close: 156.56}, {date: '2025-01-31', close: 153.76}, {date: '2025-02-03', close: 149.00},
+                {date: '2025-02-04', close: 148.72}, {date: '2025-02-05', close: 152.99}, {date: '2025-02-6', close: 154.22}, {date: '2025-02-7', close: 152.48}, {date: '2025-02-10', close: 154.29},
+                {date: '2025-02-11', close: 156.35}, {date: '2025-02-12', close: 156.75}, {date: '2025-02-13', close: 154.78}, {date: '2025-02-14', close: 155.08}, {date: '2025-02-18', close: 155.34},
+                {date: '2025-02-19', close: 156.52}, {date: '2025-02-20', close: 157.50}, {date: '2025-02-21', close: 158.13}, {date: '2025-02-24', close: 157.09}, {date: '2025-02-25', close: 157.99},
+                {date: '2025-02-26', close: 156.62}, {date: '2025-02-27', close: 155.69}, {date: '2025-02-28', close: 156.70}, {date: '2025-03-03', close: 159.46}, {date: '2025-03-04', close: 151.21},
+                {date: '2025-03-05', close: 150.15}, {date: '2025-03-6', close: 150.51}, {date: '2025-03-7', close: 153.95}, {date: '2025-03-10', close: 157.19}, {date: '2025-03-11', close: 158.43},
+                {date: '2025-03-12', close: 153.64}, {date: '2025-03-13', close: 152.26}, {date: '2025-03-14', close: 153.99}, {date: '2025-03-17', close: 157.22}, {date: '2025-03-18', close: 159.74},
+                {date: '2025-03-19', close: 160.97}, {date: '2025-03-20', close: 163.13}, {date: '2025-03-21', close: 164.49}, {date: '2025-03-24', close: 164.69}, {date: '2025-03-25', close: 166.08},
+                {date: '2025-03-26', close: 167.37}, {date: '2025-03-27', close: 167.25}, {date: '2025-03-28', close: 166.70}, {date: '2025-03-31', close: 166.19}, {date: '2025-04-01', close: 167.29},
+                {date: '2025-04-02', close: 167.40}, {date: '2025-04-03', close: 160.12}, {date: '2025-04-4', close: 151.76}, {date: '2025-04-7', close: 138.73}, {date: '2025-04-8', close: 144.15},
+                {date: '2025-04-9', close: 135.02}, {date: '2025-04-10', close: 143.22}, {date: '2025-04-11', close: 135.01}, {date: '2025-04-14', close: 138.48}, {date: '2025-04-15', close: 134.32},
+                {date: '2025-04-16', close: 135.40}, {date: '2025-04-17', close: 136.69}, {date: '2025-04-21', close: 136.02}, {date: '2025-04-22', close: 135.26}, {date: '2025-04-23', close: 137.21},
+                {date: '2025-04-24', close: 137.92}, {date: '2025-04-25', close: 138.33}, {date: '2025-04-28', close: 138.97}, {date: '2025-04-29', close: 138.69}, {date: '2025-04-30', close: 138.00},
+                {date: '2025-05-01', close: 135.42}, {date: '2025-05-02', close: 137.88}, {date: '2025-05-5', close: 136.77}, {date: '2025-05-6', close: 136.35}, {date: '2025-05-7', close: 136.07},
+                {date: '2025-05-8', close: 136.69}, {date: '2025-05-9', close: 138.90}, {date: '2025-05-12', close: 142.45}, {date: '2025-05-13', close: 141.53}, {date: '2025-05-14', close: 141.76},
+                {date: '2025-05-15', close: 140.00}, {date: '2025-05-16', close: 142.70}, {date: '2025-05-19', close: 139.47}, {date: '2025-05-20', close: 138.29}, {date: '2025-05-21', close: 136.62},
+                {date: '2025-05-22', close: 134.99}, {date: '2025-05-23', close: 134.39}, {date: '2025-05-27', close: 137.38}, {date: '2025-05-28', close: 138.78}, {date: '2025-05-29', close: 136.50},
+                {date: '2025-05-30', close: 136.88}, {date: '2025-06-2', close: 138.49}, {date: '2025-06-3', close: 137.65}, {date: '2025-06-4', close: 139.42}, {date: '2025-06-5', close: 138.15},
+                {date: '2025-06-6', close: 138.09}, {date: '2025-06-9', close: 140.55}, {date: '2025-06-10', close: 142.22}, {date: '2025-06-11', close: 144.19}, {date: '2025-06-12', close: 144.50},
+                {date: '2025-06-13', close: 147.08}, {date: '2025-06-16', close: 145.73}, {date: '2025-06-17', close: 147.33}, {date: '2025-06-18', close: 149.44}, {date: '2025-06-20', close: 148.52},
+                {date: '2025-06-23', close: 152.12}, {date: '2025-06-24', close: 144.54}, {date: '2025-06-25', close: 143.41}, {date: '2025-06-26', close: 143.70}, {date: '2025-06-27', close: 144.55},
+                {date: '2025-06-30', close: 143.04}, {date: '2025-07-01', close: 143.34}, {date: '2025-07-02', close: 147.01}, {date: '2025-07-3', close: 147.84}, {date: '2025-07-7', close: 147.40},
+                {date: '2025-07-8', close: 147.32}, {date: '2025-07-9', close: 152.94}, {date: '2025-07-10', close: 152.79}, {date: '2025-07-11', close: 154.29}, {date: '2025-07-14', close: 154.90},
+                {date: '2025-07-15', close: 151.60}, {date: '2025-07-16', close: 150.76}, {date: '2025-07-17', close: 149.16}, {date: '2025-07-18', close: 155.02}, {date: '2025-07-21', close: 151.20},
+                {date: '2025-07-22', close: 149.26}, {date: '2025-07-23', close: 150.91}, {date: '2025-07-24', close: 152.69}, {date: '2025-07-25', close: 155.83}, {date: '2025-07-28', close: 155.40},
+                {date: '2025-07-29', close: 156.68}, {date: '2025-07-30', close: 156.14}, {date: '2025-07-31', close: 152.00}, {date: '2025-08-01', close: 152.54}, {date: '2025-08-4', close: 151.25},
+                {date: '2025-08-5', close: 151.03}, {date: '2025-08-6', close: 154.48}, {date: '2025-08-7', close: 153.79}, {date: '2025-08-8', close: 153.99}, {date: '2025-08-11', close: 155.34},
+                {date: '2025-08-12', close: 154.09}, {date: '2025-08-13', close: 154.57}, {date: '2025-08-14', close: 155.70}, {date: '2025-08-15', close: 155.48}, {date: '2025-08-18', close: 156.13},
+                {date: '2025-08-19', close: 153.46}, {date: '2025-08-20', close: 152.42}, {date: '2025-08-21', close: 152.82}, {date: '2025-08-22', close: 155.32}, {date: '2025-08-25', close: 157.90},
+                {date: '2025-08-26', close: 157.51}, {date: '2025-08-27', close: 157.40}, {date: '2025-08-28', close: 159.01}, {date: '2025-08-29', close: 159.70}, {date: '2025-09-02', close: 160.48},
+                {date: '2025-09-03', close: 160.00}, {date: '2025-09-4', close: 158.06}, {date: '2025-09-5', close: 156.06}
+            ];
+
+            // Complete year of SOFI data (from Sept 2024 to Sept 2025)
+            const sofiData = [
+                {date: '2024-09-09', close: 7.04}, {date: '2024-09-10', close: 7.16}, {date: '2024-09-11', close: 7.02}, {date: '2024-09-12', close: 7.29}, {date: '2024-09-13', close: 7.52},
+                {date: '2024-09-16', close: 7.74}, {date: '2024-09-17', close: 8.20}, {date: '2024-09-18', close: 8.10}, {date: '2024-09-19', close: 8.44}, {date: '2024-09-20', close: 8.14},
+                {date: '2024-09-23', close: 8.12}, {date: '2024-09-24', close: 7.96}, {date: '2024-09-25', close: 7.85}, {date: '2024-09-26', close: 7.83}, {date: '2024-09-27', close: 7.82},
+                {date: '2024-09-30', close: 7.90}, {date: '2024-10-01', close: 7.88}, {date: '2024-10-02', close: 7.60}, {date: '2024-10-03', close: 7.75}, {date: '2024-10-04', close: 8.03},
+                {date: '2024-10-07', close: 8.36}, {date: '2024-10-08', close: 8.32}, {date: '2024-10-09', close: 8.41}, {date: '2024-10-11', close: 8.65}, {date: '2024-10-14', close: 9.62},
+                {date: '2024-10-15', close: 10.16}, {date: '2024-10-16', close: 10.23}, {date: '2024-10-17', close: 10.01}, {date: '2024-10-18', close: 9.91}, {date: '2024-10-21', close: 10.26},
+                {date: '2024-10-22', close: 10.32}, {date: '2024-10-23', close: 10.55}, {date: '2024-10-24', close: 10.91}, {date: '2024-10-25', close: 11.21}, {date: '2024-10-28', close: 11.21},
+                {date: '2024-10-29', close: 10.75}, {date: '2024-10-30', close: 10.47}, {date: '2024-10-31', close: 11.16}, {date: '2024-11-01', close: 11.21}, {date: '2024-11-04', close: 10.88},
+                {date: '2024-11-05', close: 10.96}, {date: '2024-11-06', close: 12.07}, {date: '2024-11-07', close: 11.91}, {date: '2024-11-08', close: 12.00}, {date: '2024-11-11', close: 13.61},
+                {date: '2024-11-12', close: 13.49}, {date: '2024-11-13', close: 13.95}, {date: '2024-11-14', close: 13.61}, {date: '2024-11-15', close: 13.22}, {date: '2024-11-18', close: 13.80},
+                {date: '2024-11-19', close: 13.76}, {date: '2024-11-20', close: 14.65}, {date: '2024-11-21', close: 14.86}, {date: '2024-11-22', close: 15.27}, {date: '2024-11-25', close: 16.09},
+                {date: '2024-11-26', close: 15.50}, {date: '2024-11-27', close: 15.67}, {date: '2024-11-29', close: 16.36}, {date: '2024-12-02', close: 16.49}, {date: '2024-12-03', close: 15.89},
+                {date: '2024-12-04', close: 16.13}, {date: '2024-12-05', close: 16.01}, {date: '2024-12-06', close: 15.77}, {date: '2024-12-09', close: 15.68}, {date: '2024-12-10', close: 15.49},
+                {date: '2024-12-11', close: 15.50}, {date: '2024-12-12', close: 15.92}, {date: '2024-12-13', close: 16.04}, {date: '2024-12-16', close: 16.53}, {date: '2024-12-17', close: 17.15},
+                {date: '2024-12-18', close: 16.89}, {date: '2024-12-19', close: 15.72}, {date: '2024-12-20', close: 14.72}, {date: '2024-12-23', close: 15.50}, {date: '2024-12-24', close: 15.73},
+                {date: '2024-12-26', close: 15.98}, {date: '2024-12-27', close: 16.39}, {date: '2024-12-30', close: 15.57}, {date: '2024-12-31', close: 15.79}, {date: '2025-01-02', close: 15.00},
+                {date: '2025-01-03', close: 14.30}, {date: '2025-01-06', close: 15.20}, {date: '2025-01-07', close: 15.31}, {date: '2025-01-08', close: 14.64}, {date: '2025-01-10', close: 14.20},
+                {date: '2025-01-13', close: 13.64}, {date: '2025-01-14', close: 14.30}, {date: '2025-01-15', close: 15.36}, {date: '2025-01-16', close: 15.70}, {date: '2025-01-17', close: 16.42},
+                {date: '2025-01-21', close: 17.00}, {date: '2025-01-22', close: 18.06}, {date: '2025-01-23', close: 17.40}, {date: '2025-01-24', close: 18.15}, {date: '2025-01-27', close: 15.93},
+                {date: '2025-01-28', close: 16.12}, {date: '2025-01-29', close: 16.10}, {date: '2025-01-30', close: 16.25}, {date: '2025-01-31', close: 16.44}, {date: '2025-02-03', close: 14.98},
+                {date: '2025-02-04', close: 15.49}, {date: '2025-02-05', close: 15.24}, {date: '2025-02-06', close: 15.53}, {date: '2025-02-07', close: 14.90}, {date: '2025-02-10', close: 15.03},
+                {date: '2025-02-11', close: 14.99}, {date: '2025-02-12', close: 14.58}, {date: '2025-02-13', close: 14.96}, {date: '2025-02-14', close: 15.41}, {date: '2025-02-18', close: 16.47},
+                {date: '2025-02-19', close: 16.76}, {date: '2025-02-20', close: 16.01}, {date: '2025-02-21', close: 15.56}, {date: '2025-02-24', close: 14.80}, {date: '2025-02-25', close: 14.11},
+                {date: '2025-02-26', close: 14.18}, {date: '2025-02-27', close: 14.73}, {date: '2025-02-28', close: 13.80}, {date: '2025-03-03', close: 14.65}, {date: '2025-03-04', close: 13.00},
+                {date: '2025-03-05', close: 13.12}, {date: '2025-03-06', close: 13.00}, {date: '2025-03-07', close: 12.32}, {date: '2025-03-10', close: 12.07}, {date: '2025-03-11', close: 11.06},
+                {date: '2025-03-12', close: 11.86}, {date: '2025-03-13', close: 12.00}, {date: '2025-03-14', close: 11.69}, {date: '2025-03-17', close: 12.08}, {date: '2025-03-18', close: 12.10},
+                {date: '2025-03-19', close: 12.00}, {date: '2025-03-20', close: 12.64}, {date: '2025-03-21', close: 12.41}, {date: '2025-03-24', close: 13.30}, {date: '2025-03-25', close: 13.73},
+                {date: '2025-03-26', close: 13.53}, {date: '2025-03-27', close: 12.61}, {date: '2025-03-28', close: 12.02}, {date: '2025-03-31', close: 11.31}, {date: '2025-04-01', close: 11.59},
+                {date: '2025-04-02', close: 11.55}, {date: '2025-04-03', close: 11.14}, {date: '2025-04-04', close: 9.98}, {date: '2025-04-07', close: 8.74}, {date: '2025-04-08', close: 10.49},
+                {date: '2025-04-09', close: 9.40}, {date: '2025-04-10', close: 10.94}, {date: '2025-04-11', close: 10.48}, {date: '2025-04-14', close: 11.12}, {date: '2025-04-15', close: 10.82},
+                {date: '2025-04-16', close: 10.72}, {date: '2025-04-17', close: 10.68}, {date: '2025-04-21', close: 10.93}, {date: '2025-04-22', close: 10.87}, {date: '2025-04-23', close: 12.02},
+                {date: '2025-04-24', close: 11.80}, {date: '2025-04-25', close: 12.50}, {date: '2025-04-28', close: 13.24}, {date: '2025-04-29', close: 14.13}, {date: '2025-04-30', close: 12.78},
+                {date: '2025-05-01', close: 12.84}, {date: '2025-05-02', close: 12.69}, {date: '2025-05-05', close: 12.48}, {date: '2025-05-06', close: 12.57}, {date: '2025-05-07', close: 12.70},
+                {date: '2025-05-08', close: 13.32}, {date: '2025-05-09', close: 13.30}, {date: '2025-05-12', close: 14.04}, {date: '2025-05-13', close: 14.24}, {date: '2025-05-14', close: 14.44},
+                {date: '2025-05-15', close: 13.91}, {date: '2025-05-16', close: 13.70}, {date: '2025-05-19', close: 13.40}, {date: '2025-05-20', close: 13.66}, {date: '2025-05-21', close: 13.08},
+                {date: '2025-05-22', close: 12.80}, {date: '2025-05-23', close: 12.80}, {date: '2025-05-27', close: 13.41}, {date: '2025-05-28', close: 13.39}, {date: '2025-05-29', close: 13.50},
+                {date: '2025-05-30', close: 13.07}, {date: '2025-06-02', close: 13.28}, {date: '2025-06-03', close: 13.71}, {date: '2025-06-04', close: 13.67}, {date: '2025-06-05', close: 13.48},
+                {date: '2025-06-06', close: 14.00}, {date: '2025-06-09', close: 14.39}, {date: '2025-06-10', close: 14.17}, {date: '2025-06-11', close: 14.52}, {date: '2025-06-12', close: 14.87},
+                {date: '2025-06-13', close: 14.39}, {date: '2025-06-16', close: 14.30}, {date: '2025-06-17', close: 14.82}, {date: '2025-06-18', close: 14.38}, {date: '2025-06-20', close: 15.56},
+                {date: '2025-06-23', close: 15.02}, {date: '2025-06-24', close: 15.73}, {date: '2025-06-25', close: 16.02}, {date: '2025-06-26', close: 16.25}, {date: '2025-06-27', close: 16.92},
+                {date: '2025-06-30', close: 17.73}, {date: '2025-07-01', close: 18.00}, {date: '2025-07-02', close: 17.52}, {date: '2025-07-03', close: 18.31}, {date: '2025-07-07', close: 18.50},
+                {date: '2025-07-08', close: 19.80}, {date: '2025-07-09', close: 20.17}, {date: '2025-07-10', close: 20.39}, {date: '2025-07-11', close: 20.77}, {date: '2025-07-14', close: 21.37},
+                {date: '2025-07-15', close: 21.25}, {date: '2025-07-16', close: 20.97}, {date: '2025-07-17', close: 21.50}, {date: '2025-07-18', close: 22.31}, {date: '2025-07-21', close: 21.95},
+                {date: '2025-07-22', close: 20.79}, {date: '2025-07-23', close: 21.21}, {date: '2025-07-24', close: 21.75}, {date: '2025-07-25', close: 21.52}, {date: '2025-07-28', close: 21.22},
+                {date: '2025-07-29', close: 23.11}, {date: '2025-07-30', close: 20.83}, {date: '2025-07-31', close: 22.67}, {date: '2025-08-01', close: 21.70}, {date: '2025-08-04', close: 21.51},
+                {date: '2025-08-05', close: 22.00}, {date: '2025-08-06', close: 21.47}, {date: '2025-08-07', close: 21.79}, {date: '2025-08-08', close: 22.30}, {date: '2025-08-11', close: 22.10},
+                {date: '2025-08-12', close: 22.62}, {date: '2025-08-13', close: 24.18}, {date: '2025-08-14', close: 23.42}, {date: '2025-08-15', close: 23.29}, {date: '2025-08-18', close: 23.69},
+                {date: '2025-08-19', close: 24.61}, {date: '2025-08-20', close: 22.42}, {date: '2025-08-21', close: 22.44}, {date: '2025-08-22', close: 23.16}, {date: '2025-08-25', close: 25.18},
+                {date: '2025-08-26', close: 26.20}, {date: '2025-08-27', close: 25.61}, {date: '2025-08-28', close: 25.02}, {date: '2025-08-29', close: 26.16}, {date: '2025-09-02', close: 24.50},
+                {date: '2025-09-03', close: 25.06}, {date: '2025-09-04', close: 24.33}, {date: '2025-09-05', close: 25.77}
+            ];
+
+            // Combine all data by date
+            const minLength = Math.min(vzData.length, nvdaData.length, cvxData.length, sofiData.length);
+            for (let i = 0; i < minLength; i++) {
+                data.push({
+                    date: new Date(vzData[i].date),
+                    dateStr: vzData[i].date,
+                    nvdaPrice: nvdaData[i].close,
+                    cvxPrice: cvxData[i].close,
+                    vzPrice: vzData[i].close,
+                    sofiPrice: sofiData[i].close
+                });
+            }
+            
+            return data;
+        }
+        
+        let fullYearData = parseHistoricalData();
+        
+        function initZenChart() {
+            const ctx = document.getElementById('zenChart').getContext('2d');
+            
+            zenChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'NVDA (100 shares)',
+                        data: [],
+                        borderColor: 'rgb(255, 107, 107)', // Red for tech stock
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                    }, {
+                        label: 'CVX (100 shares)',
+                        data: [],
+                        borderColor: 'rgb(39, 174, 96)', // Green for energy
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                    }, {
+                        label: 'VZ (1,000 shares)',
+                        data: [],
+                        borderColor: 'rgb(52, 152, 219)', // Blue for telecom
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1', // Use secondary Y-axis
+                    }, {
+                        label: 'SOFI (1,000 shares)',
+                        data: [],
+                        borderColor: 'rgb(155, 89, 182)', // Purple for fintech
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1', // Use secondary Y-axis
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0 // Disable default animations for smoother custom animation
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 14,
+                                    family: 'system-ui'
+                                },
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#e0e0e0',
+                            bodyColor: '#e0e0e0',
+                            borderColor: 'rgba(39, 174, 96, 0.3)',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].parsed.x;
+                                },
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM'
+                                }
+                            },
+                            min: new Date('2024-09-09'),
+                            max: new Date('2025-09-05'),
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Historical Trading Data',
+                                color: '#999',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                color: '#999',
+                                maxTicksLimit: 12,
+                                source: 'auto'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'NVDA/CVX Price ($)',
+                                color: '#999',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                color: '#999',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            min: 0,
+                            max: 200
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'VZ/SOFI Price ($)',
+                                color: '#999',
+                                font: {
+                                    size: 12
+                                }
+                            },
+                            ticks: {
+                                color: '#999',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false, // Only show grid for primary axis
+                            },
+                            min: 0,
+                            max: 50
+                        }
+                    }
+                }
+            });
+        }
+        
+        let previousNetWorth = 0;
+        let startingPortfolioValue = 0;
+        
+        function animateChart() {
+            if (isPaused) return;
+            
+            if (currentIndex < fullYearData.length) {
+                const currentData = fullYearData[currentIndex];
+                
+                // Add new data points for all 4 stocks
+                zenChart.data.datasets[0].data.push({
+                    x: currentData.date,
+                    y: currentData.nvdaPrice
+                });
+                zenChart.data.datasets[1].data.push({
+                    x: currentData.date,
+                    y: currentData.cvxPrice
+                });
+                zenChart.data.datasets[2].data.push({
+                    x: currentData.date,
+                    y: currentData.vzPrice
+                });
+                zenChart.data.datasets[3].data.push({
+                    x: currentData.date,
+                    y: currentData.sofiPrice
+                });
+                
+                // Dynamic Y-axis scaling for both axes
+                const maxHighPrice = Math.max(currentData.nvdaPrice, currentData.cvxPrice);
+                const maxLowPrice = Math.max(currentData.vzPrice, currentData.sofiPrice);
+                
+                const currentYMax = zenChart.options.scales.y.max;
+                const currentY1Max = zenChart.options.scales.y1.max;
+                
+                // Scale primary Y-axis (NVDA/CVX)
+                if (maxHighPrice > currentYMax * 0.9) {
+                    zenChart.options.scales.y.max = Math.ceil(maxHighPrice * 1.2 / 25) * 25;
+                }
+                
+                // Scale secondary Y-axis (VZ/SOFI)
+                if (maxLowPrice > currentY1Max * 0.9) {
+                    zenChart.options.scales.y1.max = Math.ceil(maxLowPrice * 1.2 / 5) * 5;
+                }
+                
+                // Calculate portfolio value (different share amounts for realistic portfolio)
+                const portfolioValue = (currentData.nvdaPrice * 100) + 
+                                     (currentData.cvxPrice * 100) + 
+                                     (currentData.vzPrice * 1000) + 
+                                     (currentData.sofiPrice * 1000);
+                
+                // Set starting value on first day
+                if (currentIndex === 0) {
+                    startingPortfolioValue = portfolioValue;
+                    previousNetWorth = portfolioValue;
+                }
+                
+                // Calculate daily change and total ROI
+                const dailyChange = portfolioValue - previousNetWorth;
+                const dailyChangePercent = previousNetWorth > 0 ? (dailyChange / previousNetWorth) * 100 : 0;
+                const totalROI = startingPortfolioValue > 0 ? ((portfolioValue - startingPortfolioValue) / startingPortfolioValue) * 100 : 0;
+                
+                // Update display
+                document.getElementById('currentDate').textContent = currentData.date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                // Update portfolio values
+                document.getElementById('startingValue').textContent = 
+                    '$' + startingPortfolioValue.toLocaleString('en-US', {maximumFractionDigits: 0});
+                document.getElementById('currentValue').textContent = 
+                    '$' + portfolioValue.toLocaleString('en-US', {maximumFractionDigits: 0});
+                
+                // Update ROI with color coding
+                const roiClass = totalROI >= 0 ? 'positive' : 'negative';
+                const roiSign = totalROI >= 0 ? '+' : '';
+                document.getElementById('totalROI').innerHTML = 
+                    `<span class="${roiClass}">${roiSign}${totalROI.toFixed(2)}%</span>`;
+                
+                // Update individual stock prices
+                document.getElementById('nvdaPrice').textContent = '$' + currentData.nvdaPrice.toFixed(2);
+                document.getElementById('cvxPrice').textContent = '$' + currentData.cvxPrice.toFixed(2);
+                document.getElementById('vzPrice').textContent = '$' + currentData.vzPrice.toFixed(2);
+                document.getElementById('sofiPrice').textContent = '$' + currentData.sofiPrice.toFixed(2);
+                
+                // Format daily change
+                const changeSign = dailyChange >= 0 ? '+' : '';
+                const changeClass = dailyChange >= 0 ? 'positive' : 'negative';
+                document.getElementById('dailyChange').innerHTML = 
+                    `<span class="${changeClass}">${changeSign}$${dailyChange.toLocaleString('en-US', {maximumFractionDigits: 0})} (${dailyChangePercent >= 0 ? '+' : ''}${dailyChangePercent.toFixed(2)}%)</span>`;
+                
+                // Store for next calculation
+                previousNetWorth = portfolioValue;
+                
+                // Update chart with no animation for smooth progression
+                zenChart.update('none');
+                currentIndex++;
+                
+                // Restart when we reach the end of data
+                if (currentIndex >= fullYearData.length) {
+                    // Small pause before restarting
+                    setTimeout(() => {
+                        fullYearData = parseHistoricalData();
+                        currentIndex = 0;
+                        previousNetWorth = 0;
+                        startingPortfolioValue = 0;
+                        currentDate = new Date(startDate);
+                        
+                        // Reset Y-axes to reasonable ranges for our stocks
+                        zenChart.options.scales.y.max = 200;  // NVDA/CVX
+                        zenChart.options.scales.y1.max = 50;  // VZ/SOFI
+                        
+                        // Clear chart data for fresh start
+                        zenChart.data.datasets.forEach(dataset => {
+                            dataset.data = [];
+                        });
+                        zenChart.update('none');
+                        
+                        // Continue animation after brief pause
+                        if (!isPaused) {
+                            animationId = requestAnimationFrame(animateChart);
+                        }
+                    }, 2000); // 2 second pause before restart
+                    return;
+                }
+            }
+            
+            // Add one data point per "day" - animate every ~120ms for good visual flow
+            setTimeout(() => {
+                animationId = requestAnimationFrame(animateChart);
+            }, 120);
+        }
+        
+        function startAnimation() {
+            if (!isPaused) {
+                animationId = requestAnimationFrame(animateChart);
+            }
+        }
+        
+        
+        // Initialize when page loads
+        $(document).ready(function() {
+            initZenChart();
+            
+            // Start animation with a slight delay
+            setTimeout(() => {
+                startAnimation();
+            }, 500);
+            
+            // Auto-start animation
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        });
+    </script>
+</body>
+</html>

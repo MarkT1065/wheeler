@@ -58,9 +58,11 @@ func (s *Server) treasuriesHandler(w http.ResponseWriter, r *http.Request) {
 // calculateTreasuriesSummary calculates summary statistics for treasuries
 func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary {
 	var totalAmount, totalBuyPrice, totalProfitLoss, totalInterest float64
+	var currentlyHeld float64 // Only sum open positions for "Currently Held"
 	activePositions := 0
 
 	for _, treasury := range treasuries {
+		// Always include in totals for full portfolio view
 		totalAmount += treasury.Amount
 		totalBuyPrice += treasury.BuyPrice
 		totalProfitLoss += treasury.CalculateProfitLoss()
@@ -69,6 +71,7 @@ func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary
 		// Count as active if no exit price is set
 		if treasury.ExitPrice == nil {
 			activePositions++
+			currentlyHeld += treasury.BuyPrice // Only include open positions in "Currently Held"
 		}
 	}
 
@@ -80,7 +83,7 @@ func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary
 
 	return TreasuriesSummary{
 		TotalAmount:     totalAmount,
-		TotalBuyPrice:   totalBuyPrice,
+		TotalBuyPrice:   currentlyHeld, // Now represents "Currently Held" (open positions only)
 		TotalProfitLoss: totalProfitLoss,
 		TotalInterest:   totalInterest,
 		AverageReturn:   averageReturn,

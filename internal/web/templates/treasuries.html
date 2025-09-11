@@ -36,7 +36,7 @@
                         <div class="summary-value">{{printf "%.2f" .Summary.AverageReturn}}%</div>
                     </div>
                     <div class="summary-item">
-                        <div class="summary-label">Total Capital Invested</div>
+                        <div class="summary-label">Currently Held</div>
                         <div class="summary-value">${{printf "%.0f" .Summary.TotalBuyPrice}}</div>
                     </div>
                     <div class="summary-item">
@@ -99,10 +99,7 @@
                         <tfoot>
                             {{if .Treasuries}}
                             <tr class="table-totals-row">
-                                <td colspan="3"><strong>Total</strong></td>
-                                <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalAmount}}</strong></td>
-                                <td></td>
-                                <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalBuyPrice}}</strong></td>
+                                <td colspan="6"><strong>Total</strong></td>
                                 <td colspan="2"></td>
                                 <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalProfitLoss}}</strong></td>
                                 <td></td>
@@ -515,6 +512,6 @@
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
-    <script src="/static/js/tutorial.js"></script>
+
 </body>
 </html>

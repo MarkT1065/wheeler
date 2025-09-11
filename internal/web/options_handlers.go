@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"stonks/internal/models"
@@ -81,25 +82,39 @@ func (s *Server) allOptionsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[ALL OPTIONS PAGE] Retrieved %d symbols for navigation", len(symbols))
 	}
 
-	// Get all options for the All Options table
-	log.Printf("[ALL OPTIONS PAGE] Fetching all options data")
-	allOptions, err := s.optionService.GetAll()
+	// Create the options index using the OptionService Index method
+	log.Printf("[ALL OPTIONS PAGE] Creating options index")
+	optionsIndex, err := s.optionService.Index()
 	if err != nil {
-		log.Printf("[ALL OPTIONS PAGE] ERROR: Failed to get all options: %v", err)
-		allOptions = []*models.Option{}
+		log.Printf("[ALL OPTIONS PAGE] ERROR: Failed to create options index: %v", err)
+		optionsIndex = make(map[string]interface{})
 	} else {
-		log.Printf("[ALL OPTIONS PAGE] Retrieved %d total options", len(allOptions))
+		log.Printf("[ALL OPTIONS PAGE] Successfully created options index")
 	}
 
-	data := AllOptionsData{
-		Symbols:    symbols,
-		AllSymbols: symbols, // For navigation compatibility
-		AllOptions: allOptions,
-		CurrentDB:  s.getCurrentDatabaseName(),
-		ActivePage: "options",
+	// Count total options from index for logging
+	var totalOptions int
+	if idIndex, ok := optionsIndex["id"].(map[string]*models.Option); ok {
+		totalOptions = len(idIndex)
 	}
 
-	log.Printf("[ALL OPTIONS PAGE] Rendering all-options.html template with %d options", len(allOptions))
+	// Convert options index to JSON for template
+	indexJSON, err := json.Marshal(optionsIndex)
+	if err != nil {
+		log.Printf("[ALL OPTIONS PAGE] ERROR: Failed to marshal options index to JSON: %v", err)
+		indexJSON = []byte("{}")
+	}
+
+	data := AllOptionsDataWithJSON{
+		Symbols:         symbols,
+		AllSymbols:      symbols, // For navigation compatibility
+		OptionsIndex:    optionsIndex,
+		OptionsIndexJSON: template.JS(string(indexJSON)),
+		CurrentDB:       s.getCurrentDatabaseName(),
+		ActivePage:      "options",
+	}
+
+	log.Printf("[ALL OPTIONS PAGE] Rendering all-options.html template with index containing %d options", totalOptions)
 	s.renderTemplate(w, "all-options.html", data)
 	log.Printf("[ALL OPTIONS PAGE] Successfully completed all options page request")
 }
@@ -407,4 +422,46 @@ func (s *Server) deleteOption(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("[DELETE OPTION] Request completed successfully")
+}
+
+// optionsFilterHandler handles filtered queries on the options index
+func (s *Server) optionsFilterHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[OPTIONS FILTER API] %s %s - Processing options filter request", r.Method, r.URL.Path)
+
+	if r.Method != http.MethodPost {
+		log.Printf("[OPTIONS FILTER API] ERROR: Method not allowed: %s", r.Method)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var filters models.FilterOptions
+	if err := json.NewDecoder(r.Body).Decode(&filters); err != nil {
+		log.Printf("[OPTIONS FILTER API] ERROR: Invalid JSON payload: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[OPTIONS FILTER API] Filter request: %+v", filters)
+
+	// Get the options index
+	optionsIndex, err := s.optionService.Index()
+	if err != nil {
+		log.Printf("[OPTIONS FILTER API] ERROR: Failed to create options index: %v", err)
+		http.Error(w, "Failed to create index", http.StatusInternalServerError)
+		return
+	}
+
+	// Apply filters
+	filteredOptions := models.GetByFilters(optionsIndex, filters)
+	log.Printf("[OPTIONS FILTER API] Filtered results: %d options", len(filteredOptions))
+
+	// Return filtered results
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(filteredOptions); err != nil {
+		log.Printf("[OPTIONS FILTER API] ERROR: Failed to encode options to JSON: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[OPTIONS FILTER API] Successfully returned %d filtered options", len(filteredOptions))
 }

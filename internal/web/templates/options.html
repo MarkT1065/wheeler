@@ -148,11 +148,24 @@
         <!-- Main Content -->
         <div class="main-content">
             
-            <!-- Profit by Expiration Date Chart -->
+            <!-- Charts Container -->
             <div class="content-section">
-                <div class="section-title">Options by Expiration</div>
-                <div class="chart-container">
-                    <canvas id="expirationScatterChart"></canvas>
+                <div class="charts-wrapper" style="display: flex; gap: 20px;">
+                    <!-- Profit by Expiration Date Chart (75%) -->
+                    <div style="flex: 3;">
+                        <div class="section-title">Options by Expiration</div>
+                        <div class="chart-container">
+                            <canvas id="expirationScatterChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Put Exposure Pie Chart (25%) -->
+                    <div style="flex: 1;">
+                        <div class="section-title">Put Exposure</div>
+                        <div class="chart-container">
+                            <canvas id="putExposurePieChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -346,30 +359,200 @@
                 });
             });
             
-            // Open only the first accordion by default
-            if (accordionHeaders.length > 0) {
-                accordionHeaders[0].classList.add('active');
-                const firstTarget = accordionHeaders[0].getAttribute('data-target');
-                const firstContent = document.getElementById(firstTarget);
-                if (firstContent) {
-                    firstContent.classList.add('expanded');
+            // Close all accordions by default
+            accordionHeaders.forEach(header => {
+                header.classList.remove('active');
+                const targetId = header.getAttribute('data-target');
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) {
+                    targetContent.classList.remove('expanded');
                 }
-                
-                // Ensure all other accordions are closed
-                for (let i = 1; i < accordionHeaders.length; i++) {
-                    accordionHeaders[i].classList.remove('active');
-                    const targetId = accordionHeaders[i].getAttribute('data-target');
-                    const targetContent = document.getElementById(targetId);
-                    if (targetContent) {
-                        targetContent.classList.remove('expanded');
-                    }
-                }
-            }
+            });
         }
         
-        // Create scatter plot for profit by expiration date
+        // Create Put Exposure pie chart by expiration date
+        function createPutExposurePieChart() {
+            console.log('Creating Put Exposure pie chart...');
+            const ctx = document.getElementById('putExposurePieChart');
+            if (!ctx) {
+                console.error('Cannot find putExposurePieChart canvas element');
+                return;
+            }
+            
+            const context = ctx.getContext('2d');
+            
+            // Collect put exposure data by expiration date
+            const putExposureByExpiration = {};
+            const accordionGroups = document.querySelectorAll('.accordion-group');
+            
+            accordionGroups.forEach(group => {
+                const header = group.querySelector('.accordion-header');
+                const expirationText = header.querySelector('.expiration-section').textContent;
+                const table = group.querySelector('.financial-table tbody');
+                
+                // Extract expiration date
+                const expirationMatch = expirationText.match(/Expiration: (\d{2}\/\d{2}\/\d{4})/);
+                if (expirationMatch && table) {
+                    const expirationDateStr = expirationMatch[1];
+                    let putExposure = 0;
+                    
+                    // Process each position row in this expiration group
+                    const rows = table.querySelectorAll('tr');
+                    rows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 4) {
+                            const typeText = cells[1].textContent.trim();
+                            const type = typeText === 'P' ? 'Put' : typeText === 'C' ? 'Call' : typeText;
+                            
+                            if (type === 'Put') {
+                                const strike = parseFloat(cells[2].textContent.replace('$', ''));
+                                const quantity = parseInt(cells[3].textContent.trim());
+                                
+                                if (!isNaN(strike) && !isNaN(quantity)) {
+                                    putExposure += strike * quantity * 100;
+                                }
+                            }
+                        }
+                    });
+                    
+                    if (putExposure > 0) {
+                        putExposureByExpiration[expirationDateStr] = putExposure;
+                    }
+                }
+            });
+            
+            // Prepare data for pie chart
+            const labels = Object.keys(putExposureByExpiration).sort((a, b) => new Date(a) - new Date(b));
+            const data = labels.map(label => putExposureByExpiration[label]);
+            
+            // Generate colors for each slice
+            const colors = [
+                '#3498db', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6',
+                '#1abc9c', '#e67e22', '#34495e', '#95a5a6', '#2ecc71'
+            ];
+            
+            window.putExposureChart = new Chart(context, {
+                plugins: [ChartDataLabels],
+                type: 'bar',
+                data: {
+                    labels: labels.map(label => {
+                        // Format date to show month/day only
+                        const date = new Date(label);
+                        return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
+                    }),
+                    datasets: [{
+                        data: data,
+                        backgroundColor: '#3498db',
+                        borderColor: '#3498db',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    return `Put Exposure: $${value.toLocaleString()}`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#ffffff',
+                            font: {
+                                size: 9,
+                                weight: 'bold'
+                            },
+                            formatter: function(value) {
+                                return '$' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: {
+                                    size: 10
+                                }
+                            },
+                            grid: {
+                                color: '#3a3a3a'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: {
+                                    size: 10
+                                },
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            },
+                            grid: {
+                                color: '#3a3a3a'
+                            }
+                        }
+                    },
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            const dataIndex = elements[0].index;
+                            const clickedDateStr = Object.keys(putExposureByExpiration)[dataIndex];
+                            
+                            // Format the date to match the accordion target format
+                            const targetId = `exp-${clickedDateStr.replace(/\//g, '-')}`;
+                            
+                            console.log('Clicked bar for date:', clickedDateStr, 'Target ID:', targetId);
+                            
+                            // Find and open the corresponding accordion
+                            const targetAccordion = document.getElementById(targetId);
+                            const targetHeader = document.querySelector(`[data-target="${targetId}"]`);
+                            
+                            if (targetAccordion && targetHeader) {
+                                // Close all other accordions first
+                                const allHeaders = document.querySelectorAll('.accordion-header');
+                                allHeaders.forEach(header => {
+                                    header.classList.remove('active');
+                                    const target = header.getAttribute('data-target');
+                                    const content = document.getElementById(target);
+                                    if (content) {
+                                        content.classList.remove('expanded');
+                                    }
+                                });
+                                
+                                // Open the target accordion
+                                targetHeader.classList.add('active');
+                                targetAccordion.classList.add('expanded');
+                                
+                                // Scroll to the accordion
+                                targetHeader.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center'
+                                });
+                                
+                                console.log('Opened accordion for expiration:', clickedDateStr);
+                            } else {
+                                console.log('Could not find accordion elements for:', targetId);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Create bubble chart for profit by expiration date
         function createExpirationScatterChart() {
-            console.log('Creating profit by expiration scatter chart...');
+            console.log('Creating profit by expiration bubble chart...');
             const ctx = document.getElementById('expirationScatterChart');
             if (!ctx) {
                 console.error('Cannot find expirationScatterChart canvas element');
@@ -410,15 +593,31 @@
                             const totalProfit = parseFloat(totalProfitText.replace('$', ''));
                             
                             if (!isNaN(totalProfit) && !isNaN(quantity)) {
-                                // Total profit is already calculated by CalculateTotalProfit() method
+                                // Calculate nominal value (risk exposure)
+                                const nominalValue = strike * quantity * 100;
+                                
+                                // Apply risk scaling: Puts 50% higher than Calls
+                                const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
+                                
+                                // Scale radius from nominal value range $1000-$50000 to radius 4-20px
+                                const minNominal = 1000;
+                                const maxNominal = 50000;
+                                const minRadius = 4;
+                                const maxRadius = 20;
+                                const scaledRadius = Math.max(minRadius, Math.min(maxRadius, 
+                                    minRadius + (riskScaledValue - minNominal) * (maxRadius - minRadius) / (maxNominal - minNominal)
+                                ));
                                 
                                 scatterData.push({
                                     x: expirationDate,
                                     y: totalProfit,
+                                    r: scaledRadius, // Bubble radius based on nominal risk value
                                     symbol: symbol,
                                     type: type,
                                     strike: strike,
                                     quantity: quantity,
+                                    nominalValue: nominalValue,
+                                    riskScaledValue: riskScaledValue,
                                     totalProfitValue: totalProfit
                                 });
                                 
@@ -437,28 +636,36 @@
             
             // Store chart instance globally for resizing
             window.expirationChart = new Chart(context, {
-                type: 'scatter',
+                type: 'bubble',
                 data: {
                     datasets: [{
                         label: 'Individual Options',
                         data: scatterData,
                         backgroundColor: function(ctx) {
-                            // Color points by option type: green for puts, blue for calls
+                            // Color points by option type: blue for puts, green for calls
                             const point = scatterData[ctx.dataIndex];
                             if (point && point.type) {
-                                return point.type.toLowerCase().includes('put') ? '#27ae60' : '#3498db';
+                                return point.type.toLowerCase().includes('put') ? '#3498db' : '#27ae60';
                             }
-                            return '#27ae60';
+                            return '#3498db';
                         },
                         borderColor: function(ctx) {
                             const point = scatterData[ctx.dataIndex];
                             if (point && point.type) {
-                                return point.type.toLowerCase().includes('put') ? '#27ae60' : '#3498db';
+                                return point.type.toLowerCase().includes('put') ? '#3498db' : '#27ae60';
                             }
-                            return '#27ae60';
+                            return '#3498db';
                         },
-                        pointRadius: 8,
-                        pointHoverRadius: 12
+                        pointRadius: function(ctx) {
+                            // Use the 'r' property from data for dynamic bubble sizing
+                            const point = scatterData[ctx.dataIndex];
+                            return point ? point.r : 8;
+                        },
+                        pointHoverRadius: function(ctx) {
+                            // Increase hover radius proportionally
+                            const point = scatterData[ctx.dataIndex];
+                            return point ? point.r + 4 : 12;
+                        }
                     }]
                 },
                 options: {
@@ -481,16 +688,16 @@
                                     return [
                                         {
                                             text: 'Put Options',
-                                            fillStyle: '#27ae60',
-                                            strokeStyle: '#27ae60',
+                                            fillStyle: '#3498db',
+                                            strokeStyle: '#3498db',
                                             fontColor: '#ffffff',
                                             pointStyle: 'circle',
                                             rotation: 0
                                         },
                                         {
                                             text: 'Call Options',
-                                            fillStyle: '#3498db',
-                                            strokeStyle: '#3498db',
+                                            fillStyle: '#27ae60',
+                                            strokeStyle: '#27ae60',
                                             fontColor: '#ffffff',
                                             pointStyle: 'circle',
                                             rotation: 0
@@ -511,6 +718,8 @@
                                     const point = scatterData[context.dataIndex];
                                     return [
                                         'Contracts: ' + point.quantity,
+                                        'Nominal Value: $' + point.nominalValue.toLocaleString(),
+                                        'Risk Value: $' + point.riskScaledValue.toLocaleString() + ' (bubble size)',
                                         'Total Profit: $' + point.y.toLocaleString()
                                     ];
                                 }
@@ -550,7 +759,7 @@
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Individual Option Profit ($)',
+                                text: 'Individual Option Profit ($) - Bubble Size = Risk Value',
                                 color: '#e0e0e0',
                                 font: {
                                     size: 14
@@ -633,9 +842,10 @@
             applyOptionsTableColoring();
             initializeAccordions();
             
-            // Create scatter chart after everything is initialized
+            // Create both charts after everything is initialized
             setTimeout(() => {
                 createExpirationScatterChart();
+                createPutExposurePieChart();
             }, 100);
         });
         

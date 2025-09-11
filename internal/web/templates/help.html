@@ -210,197 +210,391 @@
                 <!-- Tutorial Tab Content -->
                 <div class="tab-content" id="tutorial">
                     <div class="tutorial-header">
-                        <h3><i class="fas fa-chart-line"></i> The Professional Wheel Strategy</h3>
-                        <p class="tutorial-subtitle">A detailed chronicle of implementing covered calls, cash-secured puts, and systematic position scaling</p>
+                        <h3><i class="fas fa-chart-line"></i> Diversified Portfolio Wheel Strategy</h3>
+                        <p class="tutorial-subtitle">A comprehensive demonstration of wheel strategies across four blue-chip dividend stocks</p>
                         
-                        <!-- Generate Test Data Button (Top) -->
+                        <!-- Generate Test Data Button -->
                         <div class="test-data-section">
                             <button class="generate-data-btn" id="generateDataTop">
                                 <i class="fas fa-database"></i>
                                 Generate Test Data
                             </button>
-                            <p class="test-data-info">Click to load a complete year of professional wheel strategy trading data</p>
+                            <p class="test-data-info">Click to load the complete 4-symbol diversified wheel strategy demonstration</p>
                         </div>
                     </div>
                     
-                    <div class="tutorial-content">
-                        <div class="tutorial-section">
-                            <h4>Executive Summary</h4>
-                            <p>This case study documents a professional implementation of the "wheel strategy" combined with systematic position scaling across four dividend aristocrats: Verizon (VZ), Chevron (CVX), Coca-Cola (KO), and 3M (MMM). The strategy demonstrates how to generate consistent income through options premiums while building long-term equity positions through disciplined compounding.</p>
-                            
+                    <div class="tutorial-story">
+                        <div class="story-intro">
+                            <h4>The Strategy</h4>
+                            <p>This tutorial demonstrates a sophisticated diversified wheel strategy across four blue-chip dividend stocks: CVX (Chevron), KO (Coca-Cola), VZ (Verizon), and MRK (Merck). Starting with $200,000 in Treasury securities as collateral, we allocate $50,000 to each symbol and systematically implement wheel strategies, showing how diversification reduces risk while maintaining strong returns.</p>
                             <div class="key-metrics">
                                 <div class="metric-card">
-                                    <div class="metric-value">$36,000</div>
-                                    <div class="metric-label">Initial Capital (Stock)</div>
-                                </div>
-                                <div class="metric-card">
-                                    <div class="metric-value">$50,000</div>
+                                    <div class="metric-value">$200,000</div>
                                     <div class="metric-label">Treasury Collateral</div>
                                 </div>
                                 <div class="metric-card">
-                                    <div class="metric-value">~$89,000</div>
-                                    <div class="metric-label">Final Portfolio Value</div>
+                                    <div class="metric-value">4 Symbols</div>
+                                    <div class="metric-label">CVX, KO, VZ, MRK</div>
                                 </div>
                                 <div class="metric-card">
-                                    <div class="metric-value">73%</div>
+                                    <div class="metric-value">$64,500</div>
+                                    <div class="metric-label">Net Profit</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-value">32.25%</div>
                                     <div class="metric-label">Annual Return</div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="tutorial-section">
-                            <h4>Strategy Framework</h4>
-                            <div class="strategy-components">
-                                <div class="component-card">
-                                    <h5><i class="fas fa-sync-alt"></i> The Wheel Mechanism</h5>
-                                    <ul>
-                                        <li>Sell cash-secured puts to generate income and acquire shares at favorable prices</li>
-                                        <li>Hold shares and collect dividends</li>
-                                        <li>Sell covered calls above cost basis for additional income</li>
-                                        <li>When called away, restart the cycle (the "wheel")</li>
-                                    </ul>
-                                </div>
-                                
-                                <div class="component-card">
-                                    <h5><i class="fas fa-chart-line"></i> Systematic Scaling</h5>
-                                    <ul>
-                                        <li>Use premium and dividend income to purchase additional shares</li>
-                                        <li>Scale in 100-share increments to enable additional covered call contracts</li>
-                                        <li>Compound returns through position size increases</li>
-                                    </ul>
-                                </div>
-                                
-                                <div class="component-card">
-                                    <h5><i class="fas fa-shield-alt"></i> Risk Management</h5>
-                                    <ul>
-                                        <li>Roll threatened positions to later expirations with adjusted strikes</li>
-                                        <li>Use Treasury securities as margin collateral</li>
-                                        <li>Maintain diversification across sectors (telecom, energy, consumer, industrial)</li>
-                                    </ul>
-                                </div>
-                            </div>
+                        <div class="story-table">
+                            <table class="transaction-story-table">
+                                <thead>
+                                    <tr>
+                                        <th>Story</th>
+                                        <th>SQL Transaction</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>🎯 Setting the Foundation</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>January 2nd:</strong> We start our diversified wheel strategy by investing $200,000 in Treasury securities as our collateral base across three different maturities. We initialize four blue-chip dividend stocks: CVX (energy), KO (consumer staples), VZ (telecom), and MRK (healthcare) - providing sector diversification.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>INSERT INTO symbols (symbol, price, dividend, ex_dividend_date, pe_ratio) VALUES 
+('CVX', 161.45, 6.84, '2025-02-12', 15.2),
+('KO', 62.85, 2.00, '2025-03-15', 26.1),
+('VZ', 41.20, 2.71, '2025-02-07', 9.8),
+('MRK', 98.75, 3.22, '2025-03-07', 16.7);
+
+INSERT INTO treasuries VALUES 
+('912797WH8', '2025-01-02', '2025-12-15', 100000.0, 4.5, 99750.00, 100000.0),
+('912797WH9', '2025-01-02', '2025-06-15', 50000.0, 4.4, 49850.00, 50000.0),
+('912797WI0', '2025-01-02', '2026-01-15', 50000.0, 4.6, 49725.00, 50000.0);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>📉 Week 1: Diversified Put Strategy Launch</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>January 3-8:</strong> We launch our diversified strategy with $50,000 allocated to each symbol. CVX at $158, KO at $61.50, VZ at $40.80, MRK at $97.25. We sell puts below current prices across all four positions, balancing exposure and premium collection.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- CVX positions (25% allocation = $50K)
+('CVX', 'Put', '2025-01-03', 150.0, '2025-01-17', 0.85, 3, 1.95),  -- $255 premium, $45K exposure
+('CVX', 'Put', '2025-01-06', 155.0, '2025-01-17', 1.95, 2, 1.30),  -- $390 premium, $31K exposure
+-- KO positions (25% allocation = $50K) 
+('KO', 'Put', '2025-01-03', 60.0, '2025-01-17', 1.15, 8, 5.20),   -- $920 premium, $48K exposure
+-- VZ positions (25% allocation = $50K)
+('VZ', 'Put', '2025-01-03', 39.0, '2025-01-17', 0.65, 12, 7.80),  -- $780 premium, $46.8K exposure
+-- MRK positions (25% allocation = $50K)
+('MRK', 'Put', '2025-01-03', 95.0, '2025-01-17', 1.45, 5, 3.25);  -- $725 premium, $47.5K exposure</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>📈 Week 3: First Success (Stock at $156)</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>January 17:</strong> Great news! CVX rallied to $156, so our January 17 puts expire worthless. We keep the full premium collected ($730 total) and immediately sell new puts for February expiration.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>UPDATE options SET closed = '2025-01-17', exit_price = 0.05 
+WHERE strike = 150.0 AND expiration = '2025-01-17' AND type = 'Put';
+
+UPDATE options SET closed = '2025-01-17', exit_price = 0.10 
+WHERE strike = 155.0 AND expiration = '2025-01-17' AND type = 'Put';
+
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Put', '2025-01-17', 152.0, '2025-02-07', 1.35, 3, 3.50);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>⚠️ Week 4: Diversification Benefits (Mixed Results)</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>January 24:</strong> Market selloff demonstrates diversification value. CVX drops to $149 (puts expire worthless), KO stable at $60.75 (puts expire worthless), VZ dips to $39.95 (gets assigned at $40), MRK at $95.80 (puts expire worthless). Only VZ gets assigned - 300 shares at $40.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- ASSIGNMENT: Only VZ gets assigned (300 shares at $40)
+INSERT INTO long_positions (symbol, opened, shares, buy_price) VALUES ('VZ', '2025-01-24', 300, 40.0);
+
+-- Adjust treasuries for VZ purchase ($12,000)
+UPDATE treasuries SET 
+    current_value = 38000.0,
+    amount = 38000.0
+WHERE cuspid = '912797WH9';
+
+-- Other symbols' puts expire worthless - keep premium
+UPDATE options SET closed = '2025-01-24', exit_price = 0.12 
+WHERE symbol = 'CVX' AND expiration = '2025-01-24';</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>January 27:</strong> With VZ assigned, we start covered calls on the 300 shares at $42 strike. Meanwhile, we continue selling puts on the other three symbols since they weren't assigned. Diversification keeps us active across all positions.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- Start covered calls on VZ assignment
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('VZ', 'Call', '2025-01-27', 42.0, '2025-02-14', 1.25, 3, 1.95),  -- $375 premium on VZ stock
+
+-- Continue puts on non-assigned symbols  
+('CVX', 'Put', '2025-01-27', 145.0, '2025-02-14', 1.15, 3, 1.95),
+('KO', 'Put', '2025-01-27', 58.5, '2025-02-14', 1.05, 4, 2.60),
+('MRK', 'Put', '2025-01-27', 93.0, '2025-02-14', 1.35, 3, 1.95);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>💰 Week 7: Wheel Completion (Stock rallies to $157)</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>February 14:</strong> Excellent! CVX rallied to $157 and our covered calls get exercised. We sell our 300 shares at $155 each, making $7 per share profit ($2,100) plus we collected $513 in dividends while holding the stock.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>UPDATE options SET closed = '2025-02-14', exit_price = 0.05 
+WHERE type = 'Call' AND strike = 155.0 AND expiration = '2025-02-14';
+
+UPDATE long_positions SET 
+    closed = '2025-02-14',
+    exit_price = 155.0 
+WHERE symbol = 'CVX' AND opened = '2025-01-24';
+
+INSERT INTO dividends (symbol, received, amount) VALUES ('CVX', '2025-02-12', 513.0);
+
+-- Buy back treasuries with stock sale proceeds
+INSERT INTO treasuries (cuspid, purchased, maturity, amount, yield, buy_price, current_value) VALUES ('912797WI6', '2025-02-14', '2026-01-15', 46500.0, 4.3, 46275.00, 46500.0);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>🔄 Second Wheel Cycle Begins</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>March 7:</strong> History repeats! Our March puts get assigned again, this time at $155 strike for 200 shares. We adjust our treasury holdings and immediately start selling covered calls on our new stock position.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- SECOND ASSIGNMENT: Buy 200 shares at $155
+INSERT INTO long_positions (symbol, opened, shares, buy_price) VALUES ('CVX', '2025-03-07', 200, 155.0);
+
+-- Adjust treasuries for stock purchase
+UPDATE treasuries SET 
+    current_value = 15500.0,
+    amount = 15500.0 
+WHERE cuspid = '912797WI6';
+
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Call', '2025-03-10', 160.0, '2025-03-21', 1.85, 2, 2.50);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>📊 Current Status: Profitable Position</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>April (Current):</strong> We continue the wheel with open positions. Currently holding 200 shares at $155 cost basis (stock now at $161.45), with open puts and calls.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- Current open positions
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Put', '2025-04-07', 150.0, '2025-04-25', 1.25, 2, 2.50),  -- $250 premium
+('CVX', 'Put', '2025-04-09', 155.0, '2025-04-25', 1.95, 1, 1.50),  -- $195 premium
+('CVX', 'Call', '2025-04-10', 165.0, '2025-04-25', 1.75, 2, 2.50); -- $350 premium
+
+-- Quarterly dividend received
+INSERT INTO dividends (symbol, received, amount) VALUES ('CVX', '2025-03-15', 342.0);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>🌟 May-June: Expansion & Major Profit Realization</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>May:</strong> Market volatility increases our position to 300 shares after another assignment. We collect our third quarterly dividend ($513) and continue selling covered calls on the expanded position.
+                                            <br><br>
+                                            <strong>June 20 - Major Win!</strong> CVX surges to $167 and our covered calls get exercised. We sell all 300 shares at $165 - realizing substantial profits from the expanded wheel strategy.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- MAY: Third assignment expands position to 300 shares
+INSERT INTO long_positions (symbol, opened, shares, buy_price) VALUES ('CVX', '2025-04-25', 100, 155.0);
+
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Call', '2025-05-02', 162.0, '2025-05-16', 2.45, 3, 4.00),  -- $735 premium
+
+-- Third quarterly dividend
+INSERT INTO dividends (symbol, received, amount) VALUES ('CVX', '2025-05-15', 513.0);
+
+-- JUNE 20: Market rallies - CALLS EXERCISED!
+UPDATE long_positions SET closed = '2025-06-20', exit_price = 165.0 WHERE symbol = 'CVX' AND closed IS NULL;</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>☀️ July-August: Pure Put Strategy</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>Summer Strategy Shift:</strong> With no stock positions after the profitable June sale, we focus purely on selling cash-secured puts. The strong summer market means most puts expire worthless, generating consistent income with minimal assignment risk.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- JULY-AUGUST: Pure put selling strategy
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Put', '2025-07-01', 155.0, '2025-07-18', 2.15, 3, 3.50),   -- $645 premium
+('CVX', 'Put', '2025-07-08', 160.0, '2025-07-25', 2.85, 2, 2.50),   -- $570 premium
+('CVX', 'Put', '2025-07-15', 158.0, '2025-08-15', 2.45, 3, 3.50),   -- $735 premium
+('CVX', 'Put', '2025-08-01', 152.0, '2025-08-15', 1.95, 2, 2.50),   -- $390 premium
+
+-- Most expire worthless in strong market
+UPDATE options SET closed = '2025-08-15', exit_price = 0.18 WHERE expiration = '2025-08-15';</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>🍂 September-November: Fourth Wheel Cycle</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>September 20:</strong> Market volatility returns and we get our fourth assignment - 200 shares at $158. We immediately start our final wheel cycle of the year.
+                                            <br><br>
+                                            <strong>November 15:</strong> Another successful completion! CVX surges to $170 and our calls get exercised at $168. We sell the 200 shares for a $2,000 gain plus collect our final dividend of the year.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- SEPTEMBER 20: Fourth assignment
+INSERT INTO long_positions (symbol, opened, shares, buy_price) VALUES ('CVX', '2025-09-20', 200, 158.0);
+
+-- OCTOBER-NOVEMBER: Final wheel cycle
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Call', '2025-11-01', 168.0, '2025-11-15', 3.15, 2, 2.50);  -- $630 premium
+
+-- NOVEMBER 15: Final profitable exit
+UPDATE long_positions SET closed = '2025-11-15', exit_price = 168.0 WHERE opened = '2025-09-20';
+
+-- Year-end dividend
+INSERT INTO dividends (symbol, received, amount) VALUES ('CVX', '2025-11-12', 342.0);</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>🎄 December: Year-End Positioning</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>December:</strong> We end the year by selling puts with strikes extending into 2026, positioning for continued success. CVX finishes the year at $172.35, validating our bullish wheel strategy throughout 2025.
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- DECEMBER: Position for next year
+INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) VALUES
+('CVX', 'Put', '2025-12-01', 160.0, '2025-12-20', 3.25, 3, 3.50),   -- $975 premium
+('CVX', 'Put', '2025-12-10', 165.0, '2025-12-20', 4.15, 2, 2.50),   -- $830 premium
+('CVX', 'Put', '2025-12-15', 158.0, '2026-01-17', 2.85, 2, 2.50);   -- $570 premium
+
+-- Final stock price update
+UPDATE symbols SET price = 172.35 WHERE symbol = 'CVX';</code>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="story-section-header">
+                                        <td colspan="2"><h4>💰 Annual Profit Analysis</h4></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="story-cell">
+                                            <strong>Complete Year Results:</strong> Our diversified 4-symbol wheel strategy generated <strong>$54,500 in net profits</strong> over 12 months:
+                                            <br><br>
+                                            <strong>Options Premiums Collected (All Symbols): $42,850</strong><br>
+                                            • CVX: $12,500 (puts + calls across 4 wheel cycles)<br>
+                                            • KO: $11,200 (puts + calls, 3 assignments + exits)<br>
+                                            • VZ: $9,750 (puts + calls, 5 wheel cycles)<br>
+                                            • MRK: $9,400 (puts + calls, 3 wheel cycles)<br>
+                                            <br><br>
+                                            <strong>Stock Trading Profits: $8,900</strong><br>
+                                            • CVX: $3,200 (net across multiple cycles)<br>
+                                            • KO: $2,400 (net across multiple cycles)<br>
+                                            • VZ: $1,800 (net across multiple cycles)<br>
+                                            • MRK: $1,500 (net across multiple cycles)<br>
+                                            <br><br>
+                                            <strong>Dividend Income (All Symbols): $4,583</strong><br>
+                                            • CVX: $1,710 (energy sector dividends)<br>
+                                            • KO: $800 (consumer staples dividends)<br>
+                                            • VZ: $812 (telecom dividends)<br>
+                                            • MRK: $965 (healthcare dividends)<br>
+                                            <br><br>
+                                            <strong>Treasury Interest: $9,000</strong><br>
+                                            • Annual 4.5-4.6% on rolling $200K collateral<br>
+                                            <br><br>
+                                            <strong>Total: $65,333 gross - $833 commissions = $64,500 net</strong><br>
+                                            <strong>Annual Return: 32.25% on $200K capital</strong>
+                                        </td>
+                                        <td class="sql-cell">
+                                            <code>-- COMPREHENSIVE ANNUAL PROFIT ANALYSIS
+
+-- Total options premiums by quarter:
+SELECT 
+  CASE 
+    WHEN strftime('%m', opened) BETWEEN '01' AND '03' THEN 'Q1'
+    WHEN strftime('%m', opened) BETWEEN '04' AND '06' THEN 'Q2'
+    WHEN strftime('%m', opened) BETWEEN '07' AND '09' THEN 'Q3'
+    ELSE 'Q4'
+  END as quarter,
+  type,
+  SUM(premium * contracts * 100) as premium_collected,
+  COUNT(*) as trades
+FROM options
+GROUP BY quarter, type
+ORDER BY quarter, type;
+
+-- Stock trading profits by cycle:
+SELECT 'Stock Profits' as source,
+       SUM((exit_price - buy_price) * shares) as total_gains,
+       COUNT(*) as completed_cycles
+FROM long_positions 
+WHERE exit_price IS NOT NULL;
+
+-- Annual dividend income:
+SELECT 'Dividend Income' as source,
+       SUM(amount) as annual_dividends
+FROM dividends;
+
+-- Treasury interest earned:
+SELECT 'Treasury Interest' as source,
+       SUM(amount * yield / 100) as annual_interest
+FROM treasuries;</code>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                         
-                        <div class="tutorial-section">
-                            <h4>Month-by-Month Journey</h4>
-                            <div class="timeline">
-                                <div class="timeline-item">
-                                    <div class="timeline-marker">Jan</div>
-                                    <div class="timeline-content">
-                                        <h5>Foundation Building</h5>
-                                        <p><strong>Initial Positions:</strong> 100 shares each of VZ ($40), CVX ($160), KO ($60), MMM ($100)</p>
-                                        <p><strong>First Strangle Setup:</strong> Covered calls and cash-secured puts generating $1,040 in premium</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="timeline-item">
-                                    <div class="timeline-marker">Feb</div>
-                                    <div class="timeline-content">
-                                        <h5>First Assignment</h5>
-                                        <p><strong>MMM Put Assigned:</strong> Acquired 100 additional shares at $95 strike</p>
-                                        <p><strong>Key Insight:</strong> Assignment was favorable - MMM traded to $97, so $95 strike provided better entry</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="timeline-item">
-                                    <div class="timeline-marker">Mar</div>
-                                    <div class="timeline-content">
-                                        <h5>Dividend Collection & Calls</h5>
-                                        <p><strong>Q1 Dividends:</strong> $554.50 total across all positions</p>
-                                        <p><strong>Assignments:</strong> VZ and MMM called away, generating substantial profits</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="timeline-item">
-                                    <div class="timeline-marker">Apr-Jun</div>
-                                    <div class="timeline-content">
-                                        <h5>Strategic Scaling</h5>
-                                        <p><strong>Capital Redeployment:</strong> Used profits to rebuild positions at better prices</p>
-                                        <p><strong>KO Scaling:</strong> Built position from 100 to 200 shares systematically</p>
-                                    </div>
-                                </div>
-                                
-                                <div class="timeline-item">
-                                    <div class="timeline-marker">Jul-Dec</div>
-                                    <div class="timeline-content">
-                                        <h5>Compounding Acceleration</h5>
-                                        <p><strong>Position Growth:</strong> Scaled all positions using accumulated profits</p>
-                                        <p><strong>Final Result:</strong> 900 total shares (vs 400 initial), generating 9 covered calls monthly</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="tutorial-section">
-                            <h4>Financial Analysis</h4>
-                            <div class="income-breakdown">
-                                <div class="income-chart">
-                                    <div class="income-item" style="width: 70%">
-                                        <span class="income-label">Options Premiums</span>
-                                        <span class="income-value">$18,400 (70%)</span>
-                                    </div>
-                                    <div class="income-item" style="width: 12%">
-                                        <span class="income-label">Assignment Profits</span>
-                                        <span class="income-value">$3,200 (12%)</span>
-                                    </div>
-                                    <div class="income-item" style="width: 10%">
-                                        <span class="income-label">Treasury Interest</span>
-                                        <span class="income-value">$2,625 (10%)</span>
-                                    </div>
-                                    <div class="income-item" style="width: 8%">
-                                        <span class="income-label">Dividends</span>
-                                        <span class="income-value">$2,100 (8%)</span>
-                                    </div>
-                                </div>
-                                <div class="total-income">
-                                    <strong>Total Income: $26,325</strong>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="tutorial-section">
-                            <h4>Key Success Factors</h4>
-                            <div class="success-factors">
-                                <div class="factor-card">
-                                    <i class="fas fa-clock"></i>
-                                    <h5>Discipline</h5>
-                                    <p>Mechanical execution without emotional interference</p>
-                                </div>
-                                <div class="factor-card">
-                                    <i class="fas fa-hourglass-half"></i>
-                                    <h5>Patience</h5>
-                                    <p>Allowing assignments and compounding to work</p>
-                                </div>
-                                <div class="factor-card">
-                                    <i class="fas fa-star"></i>
-                                    <h5>Quality</h5>
-                                    <p>Focusing on dividend aristocrats with strong fundamentals</p>
-                                </div>
-                                <div class="factor-card">
+                        <div class="story-summary">
+                            <h4>Key Insights</h4>
+                            <div class="insight-cards">
+                                <div class="insight-card">
                                     <i class="fas fa-shield-alt"></i>
-                                    <h5>Risk Management</h5>
-                                    <p>Rolling positions rather than taking losses</p>
+                                    <h5>Diversification Power</h5>
+                                    <p>Spreading $200K across four blue-chip sectors (energy, consumer, telecom, healthcare) reduces single-stock risk while maintaining strong wheel strategy returns.</p>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div class="tutorial-section">
-                            <h4>Conclusion</h4>
-                            <p>This year-long implementation demonstrates the wheel strategy's effectiveness for systematic wealth building. By combining income generation with strategic position scaling, the approach delivered exceptional risk-adjusted returns while building substantial equity positions.</p>
-                            <p>The strategy's true power lies not in any single trade, but in the systematic application of proven principles over time. Each monthly cycle builds upon the previous, creating a compounding effect that accelerates wealth accumulation while providing steady income.</p>
-                            
-                            <div class="conclusion-stats">
-                                <div class="stat-highlight">
-                                    <span class="stat-number">73%</span>
-                                    <span class="stat-text">Annual Return</span>
+                                <div class="insight-card">
+                                    <i class="fas fa-university"></i>
+                                    <h5>Scalable Treasury Base</h5>
+                                    <p>$200K Treasury collateral across three maturities provides $9K annual interest while backing multiple simultaneous wheel strategies on different symbols.</p>
                                 </div>
-                                <div class="stat-highlight">
-                                    <span class="stat-number">2.8x</span>
-                                    <span class="stat-text">Max Leverage</span>
-                                </div>
-                                <div class="stat-highlight">
-                                    <span class="stat-number">&lt;5%</span>
-                                    <span class="stat-text">Max Drawdown</span>
+                                <div class="insight-card">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <h5>Multi-Symbol Wheel Cycles</h5>
+                                    <p>Different symbols cycle at different times, creating steady income flow. When one symbol gets assigned, others continue generating put premiums.</p>
                                 </div>
                             </div>
                         </div>
@@ -412,7 +606,7 @@
                             <i class="fas fa-database"></i>
                             Generate Test Data
                         </button>
-                        <p class="test-data-info">Load this complete wheel strategy example into your Wheeler database</p>
+                        <p class="test-data-info">Load this complete 4-symbol diversified portfolio into your Wheeler database</p>
                     </div>
                 </div>
             </div>

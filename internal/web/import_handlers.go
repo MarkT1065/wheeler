@@ -1445,7 +1445,7 @@ func (s *Server) HandleGenerateTestData(w http.ResponseWriter, r *http.Request) 
 	log.Printf("[GENERATE_TEST_DATA] Database connection OK, current symbols count: %d", testCount)
 
 	// Read the SQL file content from internal/database
-	sqlContent, err := os.ReadFile("internal/database/wheel_strategy_example.sql")
+	sqlContent, err := os.ReadFile("internal/database/wheel_strategy_example_clean.sql")
 	if err != nil {
 		log.Printf("[GENERATE_TEST_DATA] ERROR: Failed to read SQL file: %v", err)
 		http.Error(w, "Failed to read test data file", http.StatusInternalServerError)

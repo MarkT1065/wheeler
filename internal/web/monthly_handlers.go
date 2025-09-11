@@ -1,6 +1,9 @@
 package web
 
 import (
+	"encoding/json"
+	"html/template"
+	"log"
 	"net/http"
 	"stonks/internal/models"
 )
@@ -18,6 +21,12 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 		options = []*models.Option{}
 	}
 
+	// Create options index for advanced filtering
+	optionsIndex, err := s.optionService.Index()
+	if err != nil {
+		optionsIndex = make(map[string]interface{})
+	}
+
 	// Get all dividends for calculations
 	dividends, err := s.dividendService.GetAll()
 	if err != nil {
@@ -31,13 +40,13 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build monthly data
-	data := s.buildMonthlyData(symbols, options, dividends, longPositions)
+	data := s.buildMonthlyData(symbols, options, dividends, longPositions, optionsIndex)
 
 	s.renderTemplate(w, "monthly.html", data)
 }
 
 // buildMonthlyData creates comprehensive monthly financial data based on transaction dates
-func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition) MonthlyData {
+func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition, optionsIndex map[string]interface{}) MonthlyData {
 	// Initialize data structures
 	putsByMonth := make(map[int]float64)          // month -> total
 	callsByMonth := make(map[int]float64)         // month -> total
@@ -273,6 +282,12 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		}
 	}
 	
+	// Convert options index to JSON for template
+	indexJSON, err := json.Marshal(optionsIndex)
+	if err != nil {
+		log.Printf("[MONTHLY PAGE] ERROR: Failed to marshal options index to JSON: %v", err)
+		indexJSON = []byte("{}")
+	}
 
 	return MonthlyData{
 		Symbols:    symbols,
@@ -296,6 +311,8 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		TableData:               tableData,
 		TotalsByMonth:           totalsByMonth,
 		MonthlyPremiumsBySymbol: monthlyPremiumsBySymbol,
+		OptionsIndex:            optionsIndex,
+		OptionsIndexJSON:        template.JS(string(indexJSON)),
 		GrandTotal:              grandTotal,
 		CurrentDB:               s.getCurrentDatabaseName(),
 		ActivePage:              "monthly",

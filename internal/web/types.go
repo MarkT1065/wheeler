@@ -1,6 +1,7 @@
 package web
 
 import (
+	"html/template"
 	"stonks/internal/models"
 	"time"
 )
@@ -136,6 +137,8 @@ type MonthlyData struct {
 	TableData                []MonthlyTableRow             `json:"tableData"`
 	TotalsByMonth            []MonthlyTotal                `json:"totalsByMonth"`
 	MonthlyPremiumsBySymbol  []MonthlyPremiumsBySymbol     `json:"monthlyPremiumsBySymbol"`
+	OptionsIndex             map[string]interface{}        `json:"options_index"`
+	OptionsIndexJSON         template.JS                   `json:"-"` // JSON-encoded for template
 	GrandTotal               float64                       `json:"grandTotal"`
 	CurrentDB                string                        `json:"currentDB"`
 	ActivePage               string                        `json:"activePage"`
@@ -214,11 +217,21 @@ type OptionsData struct {
 
 // AllOptionsData holds data for the all options template
 type AllOptionsData struct {
-	Symbols    []string         `json:"symbols"`
-	AllSymbols []string         `json:"allSymbols"` // For navigation compatibility
-	AllOptions []*models.Option `json:"all_options"`
-	CurrentDB  string           `json:"currentDB"`
-	ActivePage string           `json:"activePage"`
+	Symbols       []string                    `json:"symbols"`
+	AllSymbols    []string                    `json:"allSymbols"` // For navigation compatibility
+	OptionsIndex  map[string]interface{}      `json:"options_index"`
+	CurrentDB     string                      `json:"currentDB"`
+	ActivePage    string                      `json:"activePage"`
+}
+
+// AllOptionsDataWithJSON includes JSON-encoded version for JavaScript
+type AllOptionsDataWithJSON struct {
+	Symbols          []string                    `json:"symbols"`
+	AllSymbols       []string                    `json:"allSymbols"` // For navigation compatibility
+	OptionsIndex     map[string]interface{}      `json:"options_index"`
+	OptionsIndexJSON template.JS                 `json:"-"` // JSON-encoded for template
+	CurrentDB        string                      `json:"currentDB"`
+	ActivePage       string                      `json:"activePage"`
 }
 
 // SymbolMonthlyResult represents monthly results for a specific symbol
@@ -394,4 +407,11 @@ type BackupData struct {
 	BackupFiles []string `json:"backupFiles"`
 	CurrentDB   string   `json:"currentDB"`
 	ActivePage  string   `json:"activePage"`
+}
+
+// ZenData holds data for the zen template
+type ZenData struct {
+	AllSymbols []string `json:"allSymbols"`
+	CurrentDB  string   `json:"currentDB"`
+	ActivePage string   `json:"activePage"`
 }

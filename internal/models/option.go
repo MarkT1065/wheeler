@@ -32,7 +32,7 @@ func (s *OptionService) CreateWithCommission(symbol, optionType string, opened t
 	query := `INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) 
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
 			  RETURNING id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at`
-	
+
 	var option Option
 	err := s.db.QueryRow(query, symbol, optionType, opened, strike, expiration, premium, contracts, commission).Scan(
 		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed, &option.Strike,
@@ -49,7 +49,7 @@ func (s *OptionService) CreateWithCommission(symbol, optionType string, opened t
 func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at 
 			  FROM options WHERE symbol = ? ORDER BY expiration DESC, opened DESC`
-	
+
 	rows, err := s.db.Query(query, symbol)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get options: %w", err)
@@ -77,7 +77,7 @@ func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 func (s *OptionService) GetAll() ([]*Option, error) {
 	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at 
 			  FROM options ORDER BY expiration DESC, opened DESC`
-	
+
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get options: %w", err)
@@ -105,7 +105,7 @@ func (s *OptionService) GetAll() ([]*Option, error) {
 func (s *OptionService) GetOpen() ([]*Option, error) {
 	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at 
 			  FROM options WHERE closed IS NULL ORDER BY expiration ASC`
-	
+
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get open options: %w", err)
@@ -133,11 +133,11 @@ func (s *OptionService) GetOpen() ([]*Option, error) {
 func (s *OptionService) Close(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, closed time.Time, exitPrice float64) error {
 	// Calculate closing commission: $0.65 per contract
 	closingCommission := OptionCommissionPerContract * float64(contracts)
-	
+
 	query := `UPDATE options 
 			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
 			  WHERE symbol = ? AND type = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
-	
+
 	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, symbol, optionType, opened, strike, expiration, premium, contracts)
 	if err != nil {
 		return fmt.Errorf("failed to close option: %w", err)
@@ -178,7 +178,7 @@ func (s *OptionService) Delete(symbol, optionType string, opened time.Time, stri
 func (s *OptionService) GetByID(id int) (*Option, error) {
 	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at 
 			  FROM options WHERE id = ?`
-	
+
 	var option Option
 	err := s.db.QueryRow(query, id).Scan(
 		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
@@ -205,7 +205,7 @@ func (s *OptionService) UpdateByID(id int, symbol, optionType string, opened tim
 			  SET symbol = ?, type = ?, opened = ?, strike = ?, expiration = ?, premium = ?, contracts = ?, commission = ?, closed = ?, exit_price = ?, updated_at = CURRENT_TIMESTAMP 
 			  WHERE id = ? 
 			  RETURNING id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, created_at, updated_at`
-	
+
 	var option Option
 	err := s.db.QueryRow(query, symbol, optionType, opened, strike, expiration, premium, contracts, commission, closed, exitPrice, id).Scan(
 		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
@@ -249,14 +249,14 @@ func (s *OptionService) CloseByID(id int, closed time.Time, exitPrice float64) e
 	if err != nil {
 		return fmt.Errorf("failed to get option for commission calculation: %w", err)
 	}
-	
+
 	// Calculate closing commission: $0.65 per contract
 	closingCommission := OptionCommissionPerContract * float64(option.Contracts)
-	
+
 	query := `UPDATE options 
 			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
 			  WHERE id = ?`
-	
+
 	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, id)
 	if err != nil {
 		return fmt.Errorf("failed to close option: %w", err)
@@ -304,8 +304,8 @@ type OptionSummary struct {
 // OpenPositionData represents an open option position with additional calculated fields
 type OpenPositionData struct {
 	*Option
-	DaysToExpiration int    `json:"days_to_expiration"`
-	Status           string `json:"status"`
+	DaysToExpiration int       `json:"days_to_expiration"`
+	Status           string    `json:"status"`
 	EntryDate        time.Time `json:"entry_date"`
 }
 
@@ -325,7 +325,7 @@ func (s *OptionService) GetOptionsSummaryBySymbol() ([]*OptionSummary, error) {
 		WHERE closed IS NULL
 		GROUP BY symbol 
 		ORDER BY symbol`
-	
+
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get options summary: %w", err)
@@ -360,12 +360,12 @@ func (s *OptionService) GetOpenPositionsWithDetails() ([]*OpenPositionData, erro
 
 	var openPositions []*OpenPositionData
 	now := time.Now()
-	
+
 	for _, option := range options {
 		// Calculate days to expiration - use ceiling to avoid off-by-one error
 		// An option expiring tomorrow should show 1 day, not 0
 		daysToExp := int(math.Ceil(option.Expiration.Sub(now).Hours() / 24))
-		
+
 		// Determine status based on days to expiration
 		status := "Active"
 		if daysToExp < 0 {
@@ -375,7 +375,7 @@ func (s *OptionService) GetOpenPositionsWithDetails() ([]*OpenPositionData, erro
 		} else if daysToExp <= 30 {
 			status = "Warning"
 		}
-		
+
 		openPosition := &OpenPositionData{
 			Option:           option,
 			DaysToExpiration: daysToExp,
@@ -401,10 +401,10 @@ func (s *OptionService) GetOptionsSummaryTotals() (*OptionSummary, error) {
 			SUM(premium) as net_premium
 		FROM options 
 		WHERE closed IS NULL`
-	
+
 	var totals OptionSummary
 	totals.Symbol = "Total"
-	
+
 	err := s.db.QueryRow(query).Scan(
 		&totals.TotalPositions, &totals.PutPositions, &totals.CallPositions,
 		&totals.TotalPremium, &totals.PutPremium, &totals.CallPremium, &totals.NetPremium,
@@ -414,4 +414,14 @@ func (s *OptionService) GetOptionsSummaryTotals() (*OptionSummary, error) {
 	}
 
 	return &totals, nil
+}
+
+// Index creates a nested index structure for all options
+func (s *OptionService) Index() (map[string]interface{}, error) {
+	options, err := s.GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all options: %w", err)
+	}
+
+	return Index(options)
 }

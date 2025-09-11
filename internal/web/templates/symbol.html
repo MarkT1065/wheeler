@@ -176,8 +176,14 @@
                                         {{$percentProfit := .CalculatePercentOfProfit}}
                                         <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.0f" $percentProfit}}%</span>
                                     </td>
-                                    <td>{{printf "%.0f" (.CalculatePercentOfTime)}}%</td>
-                                    <td>{{printf "%.2f" (.CalculateMultiplier)}}</td>
+                                    <td>
+                                        {{$percentTime := .CalculatePercentOfTime}}
+                                        <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.0f" $percentTime}}%</span>
+                                    </td>
+                                    <td>
+                                        {{$multiplier := .CalculateMultiplier}}
+                                        <span class="{{if lt $multiplier 0.0}}negative{{else if gt $multiplier 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $multiplier}}</span>
+                                    </td>
                                     <td>
                                         {{$aroi := .CalculateAROI}}
                                         <span class="{{if lt $aroi 0.0}}negative{{else if gt $aroi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.1f" $aroi}}%</span>
@@ -262,8 +268,14 @@
                                         <td>{{.Shares}}</td>
                                         <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
                                         <td>{{if .ExitPrice}}{{formatCurrencyWithDecimals (.GetExitPriceValue)}}{{else}}-{{end}}</td>
-                                        <td><span>{{formatCurrencyWithDecimals (.CalculateProfitLoss $.Price)}}</span></td>
-                                        <td><span>{{printf "%.2f" (.CalculateROI $.Price)}}%</span></td>
+                                        <td>
+                                            {{$profitLoss := .CalculateProfitLoss $.Price}}
+                                            <span class="{{if lt $profitLoss 0.0}}negative{{else if gt $profitLoss 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals $profitLoss}}</span>
+                                        </td>
+                                        <td>
+                                            {{$roi := .CalculateROI $.Price}}
+                                            <span class="{{if lt $roi 0.0}}negative{{else if gt $roi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $roi}}%</span>
+                                        </td>
                                         <td>{{formatCurrencyWithDecimals (.CalculateAmount)}}</td>
                                         <td>{{formatCurrencyWithDecimals (.CalculateTotalInvested)}}</td>
                                         <td>
@@ -375,9 +387,15 @@
                                     <td>{{.Month}}</td>
                                     <td>{{.PutsCount}}</td>
                                     <td>{{.CallsCount}}</td>
-                                    <td>{{formatCurrencyWithDecimals .PutsTotal}}</td>
-                                    <td>{{formatCurrencyWithDecimals .CallsTotal}}</td>
-                                    <td>{{formatCurrencyWithDecimals .Total}}</td>
+                                    <td>
+                                        <span class="{{if lt .PutsTotal 0.0}}negative{{else if gt .PutsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .PutsTotal}}</span>
+                                    </td>
+                                    <td>
+                                        <span class="{{if lt .CallsTotal 0.0}}negative{{else if gt .CallsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .CallsTotal}}</span>
+                                    </td>
+                                    <td>
+                                        <span class="{{if lt .Total 0.0}}negative{{else if gt .Total 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .Total}}</span>
+                                    </td>
                                 </tr>
                                 {{end}}
                                 {{end}}

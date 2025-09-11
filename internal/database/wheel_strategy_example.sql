@@ -90,7 +90,7 @@ INSERT INTO options (symbol, type, opened, expiration, strike, premium, contract
 
 -- Q1 Dividend payments
 INSERT INTO dividends (symbol, amount, received) VALUES
-('VZ', 66.50, '2025-03-01');,
+('VZ', 66.50, '2025-03-01'),
 ('CVX', 142.00, '2025-03-01'),
 ('KO', 46.00, '2025-03-01'),
 ('MMM', 300.00, '2025-03-01');

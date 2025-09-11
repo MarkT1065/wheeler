@@ -268,6 +268,9 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/metrics", s.metricsHandler)
 	log.Printf("[SERVER] Route registered: /metrics -> metricsHandler")
 
+	http.HandleFunc("/zen", s.zenHandler)
+	log.Printf("[SERVER] Route registered: /zen -> zenHandler")
+
 	http.HandleFunc("/symbol/", s.symbolHandler)
 	log.Printf("[SERVER] Route registered: /symbol/ -> symbolHandler")
 
@@ -279,6 +282,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/api/options/", s.individualOptionAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/options/ -> individualOptionAPIHandler")
+
+	http.HandleFunc("/api/options/filter", s.optionsFilterHandler)
+	log.Printf("[SERVER] Route registered: /api/options/filter -> optionsFilterHandler")
 
 	http.HandleFunc("/api/symbols/", s.symbolAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/symbols/ -> symbolAPIHandler")

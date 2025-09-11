@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>All Options - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css?v=2">
     <style>
@@ -52,10 +54,12 @@
         
         /* Full-screen table styling */
         .all-options-fullscreen-panel {
-            height: calc(100vh - 100px) !important;
-            margin-bottom: 0 !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 20px !important;
             display: flex;
             flex-direction: column;
+            box-sizing: border-box;
         }
         
         .all-options-fullscreen-panel .section-title {
@@ -63,18 +67,306 @@
             margin-bottom: 20px;
         }
         
+        .all-options-fullscreen-panel .filters-container {
+            flex-shrink: 0;
+        }
+        
+        .all-options-fullscreen-panel #resultsInfo {
+            flex-shrink: 0;
+        }
+        
         .all-options-fullscreen-panel .table-container-scrollable {
             flex: 1 !important;
-            height: calc(100% - 60px) !important;
+            min-height: 0 !important;
             max-height: none !important;
             overflow: auto !important;
             border: 1px solid #404040 !important;
+            display: flex;
+            flex-direction: column;
         }
         
         .all-options-fullscreen-panel .table-container-scrollable table {
             width: 100% !important;
-            min-width: 1200px;
-            height: 100% !important;
+            min-width: 1000px;
+            flex: 1;
+        }
+        
+        .all-options-fullscreen-panel .table-container-scrollable tbody {
+            min-height: 200px;
+        }
+        
+        /* Summary footer styling */
+        .summary-footer {
+            background: #2a2a2a;
+            border-top: 2px solid #007acc;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        .summary-footer td {
+            font-weight: bold;
+            color: #ffffff;
+            border-top: 2px solid #007acc;
+            padding: 12px 8px;
+        }
+        
+        .summary-footer .summary-label {
+            color: #007acc;
+            font-size: 14px;
+        }
+        
+        /* Summary header panel styling */
+        .summary-header-panel {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #404040;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Filters panel styling */
+        .filters-panel {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #404040;
+        }
+        
+        /* Legacy header panel styling (can be removed later) */
+        .header-panel {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #404040;
+        }
+        
+        .header-title-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .header-summary-large {
+            font-size: 22px;
+            font-weight: normal;
+            color: #b0b0b0;
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        .header-summary-large .summary-item {
+            margin-right: 30px;
+            font-size: 22px;
+        }
+        
+        .header-summary-large .summary-profit {
+            font-weight: bold;
+            font-size: 26px;
+        }
+        
+        .header-summary-large .summary-profit.positive {
+            color: #27ae60;
+        }
+        
+        .header-summary-large .summary-profit.negative {
+            color: #e74c3c;
+        }
+        
+        /* Tab styling */
+        .tab-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .tab-nav {
+            display: flex;
+            background: #1a1a1a;
+            border-bottom: 1px solid #404040;
+            margin-bottom: 0;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #b0b0b0;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .tab-button:hover {
+            color: #ffffff;
+            background: #2a2a2a;
+        }
+        
+        .tab-button.active {
+            color: #007acc;
+            border-bottom-color: #007acc;
+            background: #2a2a2a;
+        }
+        
+        .tab-content {
+            display: none;
+            flex: 1;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Data tab styling */
+        .data-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .data-header {
+            margin-bottom: 20px;
+        }
+        
+        .data-header h3 {
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+        
+        .data-header p {
+            color: #b0b0b0;
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        .json-container {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        
+        .json-content {
+            margin: 0;
+            padding: 20px;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        /* Filter controls styling */
+        .filters-container-header {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filters-container {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .filter-group label {
+            font-size: 12px;
+            color: #b0b0b0;
+            font-weight: 500;
+        }
+        
+        .filter-select, .filter-input {
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border: 1px solid #404040;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #007acc;
+            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+        
+        .filter-btn {
+            padding: 8px 16px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: #005a9e;
+        }
+        
+        .filter-btn.secondary {
+            background: #404040;
+        }
+        
+        .filter-btn.secondary:hover {
+            background: #505050;
+        }
+        
+        /* Header summary styling */
+        .header-summary {
+            font-size: 16px;
+            font-weight: normal;
+            color: #b0b0b0;
+            margin-left: 20px;
+            white-space: nowrap;
+        }
+        
+        .header-summary .summary-item {
+            margin-right: 15px;
+        }
+        
+        .header-summary .summary-profit {
+            font-weight: bold;
+        }
+        
+        .header-summary .summary-profit.positive {
+            color: #27ae60;
+        }
+        
+        .header-summary .summary-profit.negative {
+            color: #e74c3c;
         }
     </style>
 </head>
@@ -85,60 +377,158 @@
         <!-- Main Content -->
         <div class="main-content">
             
-            <!-- All Options Panel -->
-            <div class="content-section all-options-fullscreen-panel">
-                <div class="section-title">All Options</div>
-                <div class="table-container-scrollable">
-                    {{if .AllOptions}}
-                        <table class="financial-table sortable-table" id="allOptionsTable">
-                            <thead>
-                                <tr>
-                                    <th class="sortable" data-sort="symbol">Symbol <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="type">Type <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="strike">Strike <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="opened">Opened <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="closed">Closed <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="contracts">Contracts <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="premium">Premium <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="profit">Total Profit <i class="fas fa-sort"></i></th>
-                                    <th class="sortable" data-sort="status">Status <i class="fas fa-sort"></i></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{range .AllOptions}}
-                                <tr>
-                                    <td class="ticker-col"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
-                                    <td>
-                                        <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
-                                            {{if eq .Type "Put"}}P{{else}}C{{end}}
-                                        </span>
-                                    </td>
-                                    <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
-                                    <td>{{.Expiration.Format "01/02/2006"}}</td>
-                                    <td>{{.Opened.Format "01/02/2006"}}</td>
-                                    <td>{{if .Closed}}{{.Closed.Format "01/02/2006"}}{{else}}<span class="text-muted">Open</span>{{end}}</td>
-                                    <td>{{.Contracts}}</td>
-                                    <td class="neutral-currency">${{printf "%.2f" .Premium}}</td>
-                                    <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .CalculateTotalProfit}}</td>
-                                    <td>
-                                        {{if .Closed}}
-                                            <span class="status-closed">Closed</span>
-                                        {{else}}
-                                            <span class="status-open">Open</span>
-                                        {{end}}
-                                    </td>
-                                </tr>
-                                {{end}}
-                            </tbody>
-                        </table>
-                    {{else}}
-                        <div style="text-align: center; color: #a0a0a0; padding: 40px;">
-                            <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
-                            <div style="font-size: 18px; margin-bottom: 10px;">No Options Found</div>
-                            <div style="font-size: 14px;">No option positions have been recorded.</div>
+            <!-- Summary Header Panel -->
+            <div class="content-section" style="margin-bottom: 20px;">
+                <div class="summary-header-panel">
+                    <div id="headerSummary" class="header-summary-large" style="display: none;"></div>
+                </div>
+            </div>
+            
+            <!-- Filter Controls Panel -->
+            <div class="content-section" style="margin-bottom: 20px;">
+                <div class="filters-panel">
+                    <!-- Filter Controls -->
+                    <div class="filters-container-header">
+                        <div class="filter-group">
+                            <label>Symbol</label>
+                            <select id="symbolFilter" class="filter-select">
+                                <option value="">All Symbols</option>
+                            </select>
                         </div>
-                    {{end}}
+                        
+                        <div class="filter-group">
+                            <label>Type</label>
+                            <select id="typeFilter" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="Put">Puts</option>
+                                <option value="Call">Calls</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Status</label>
+                            <select id="statusFilter" class="filter-select">
+                                <option value="all">All</option>
+                                <option value="open">Open Only</option>
+                                <option value="closed">Closed Only</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Expiration From</label>
+                            <input type="date" id="expirationStartFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Expiration To</label>
+                            <input type="date" id="expirationEndFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Opened From</label>
+                            <input type="date" id="openedStartFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Opened To</label>
+                            <input type="date" id="openedEndFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Closed From</label>
+                            <input type="date" id="closedStartFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Closed To</label>
+                            <input type="date" id="closedEndFilter" class="filter-input">
+                        </div>
+                        
+                        <div class="filter-buttons">
+                            <button id="clearFiltersBtn" class="filter-btn secondary">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Monthly Premiums by Symbol Chart Panel -->
+            <div class="content-section" style="margin-bottom: 20px;">
+                <div class="chart-container-large">
+                    <canvas id="monthlyPremiumsBySymbolChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Tabbed Panel -->
+            <div class="content-section all-options-fullscreen-panel">
+                <!-- Tab Navigation -->
+                <div class="tab-container">
+                    <div class="tab-nav">
+                        <button class="tab-button active" data-tab="options">Options</button>
+                        <button class="tab-button" data-tab="data">Data</button>
+                    </div>
+                    
+                    <!-- Options Tab Content -->
+                    <div id="optionsTab" class="tab-content active">
+                        <!-- Results Summary -->
+                        <div id="resultsInfo" style="color: #b0b0b0; margin-bottom: 15px; font-size: 14px;">
+                            Loading options...
+                        </div>
+                        
+                        <div class="table-container-scrollable">
+                            <table class="financial-table sortable-table" id="allOptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-sort="symbol">Symbol <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="type">Type <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="strike">Strike <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="opened">Opened <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="closed">Closed <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="contracts">Contracts <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="premium">Premium <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="maxprofit">Max Profit <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="profit">Actual <i class="fas fa-sort"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="optionsTableBody">
+                                    <!-- Options will be populated via JavaScript -->
+                                </tbody>
+                                <tfoot id="optionsSummaryFooter" class="summary-footer" style="display: none;">
+                                    <tr>
+                                        <td class="summary-label">Summary</td>
+                                        <td id="summaryType"></td>
+                                        <td id="summaryStrike"></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td id="summaryContracts"></td>
+                                        <td id="summaryPremium"></td>
+                                        <td id="summaryMaxProfit"></td>
+                                        <td id="summaryTotalProfit"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            
+                            <div id="noOptionsMessage" style="display: none; text-align: center; color: #a0a0a0; padding: 40px;">
+                                <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
+                                <div style="font-size: 18px; margin-bottom: 10px;">No Options Found</div>
+                                <div style="font-size: 14px;">No option positions match the current filters.</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Tab Content -->
+                    <div id="dataTab" class="tab-content">
+                        <div class="data-container">
+                            <div class="data-header">
+                                <h3>Options Index Data</h3>
+                                <p>Raw JSON data structure used to build the options table</p>
+                            </div>
+                            <div class="json-container">
+                                <pre id="jsonDisplay" class="json-content"></pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -148,34 +538,534 @@
     {{template "_symbol_modal.html"}}
 
     <script>
+        // Global variables
+        let optionsIndex = null;
+        let currentOptions = [];
+        let allSymbols = [];
+        
+        // Load options index from template data
+        try {
+            optionsIndex = {{.OptionsIndexJSON}};
+            console.log('Options index loaded:', optionsIndex);
+        } catch (e) {
+            console.error('Failed to parse options index:', e);
+            optionsIndex = { id: {}, symbol: {}, type: {}, open: [], closed: {} };
+        }
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+        });
+        
+        function initializePage() {
+            console.log('Initializing All Options page with index:', optionsIndex);
+            
+            // Extract all symbols from the index for filter dropdown
+            if (optionsIndex && optionsIndex.symbol) {
+                allSymbols = Object.keys(optionsIndex.symbol).sort();
+                populateSymbolFilter();
+            }
+            
+            // Load all options initially
+            applyFilters();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Initialize table sorting
+            initializeAllOptionsTableSorting();
+            
+            // Initialize tabs
+            initializeTabs();
+            
+            // Initialize JSON display
+            initializeDataTab();
+        }
+        
+        function initializeTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remove active class from all buttons and contents
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding content
+                    this.classList.add('active');
+                    document.getElementById(targetTab + 'Tab').classList.add('active');
+                    
+                    // If switching to data tab, refresh JSON display
+                    if (targetTab === 'data') {
+                        updateJsonDisplay();
+                    }
+                });
+            });
+        }
+        
+        function initializeDataTab() {
+            updateJsonDisplay();
+        }
+        
+        function updateJsonDisplay() {
+            const jsonDisplay = document.getElementById('jsonDisplay');
+            if (!jsonDisplay) return;
+            
+            try {
+                // Format the options index with proper indentation
+                const formattedJson = JSON.stringify(optionsIndex, null, 2);
+                jsonDisplay.textContent = formattedJson;
+            } catch (error) {
+                jsonDisplay.textContent = 'Error formatting JSON data: ' + error.message;
+            }
+        }
+        
+        function populateSymbolFilter() {
+            const symbolFilter = document.getElementById('symbolFilter');
+            if (!symbolFilter) return;
+            
+            // Clear existing options except "All Symbols"
+            while (symbolFilter.children.length > 1) {
+                symbolFilter.removeChild(symbolFilter.lastChild);
+            }
+            
+            // Add symbol options
+            allSymbols.forEach(symbol => {
+                const option = document.createElement('option');
+                option.value = symbol;
+                option.textContent = symbol;
+                symbolFilter.appendChild(option);
+            });
+        }
+        
+        function setupEventListeners() {
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            
+            if (clearBtn) {
+                clearBtn.addEventListener('click', clearFilters);
+            }
+            
+            // Auto-apply filters on change for better UX
+            const filterElements = document.querySelectorAll('.filter-select, .filter-input');
+            filterElements.forEach(element => {
+                element.addEventListener('change', applyFilters);
+            });
+        }
+        
+        function applyFilters() {
+            console.log('Applying filters...');
+            
+            const filters = gatherFilterCriteria();
+            const filteredOptions = filterOptions(filters);
+            
+            currentOptions = filteredOptions;
+            renderOptionsTable(filteredOptions);
+            updateResultsInfo(filteredOptions.length);
+            
+            // Update the monthly chart with filtered data
+            updateMonthlyChartWithFilters(filteredOptions);
+        }
+        
+        function gatherFilterCriteria() {
+            const symbolFilter = document.getElementById('symbolFilter')?.value || '';
+            const typeFilter = document.getElementById('typeFilter')?.value || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+            const expirationStart = document.getElementById('expirationStartFilter')?.value || '';
+            const expirationEnd = document.getElementById('expirationEndFilter')?.value || '';
+            const openedStart = document.getElementById('openedStartFilter')?.value || '';
+            const openedEnd = document.getElementById('openedEndFilter')?.value || '';
+            const closedStart = document.getElementById('closedStartFilter')?.value || '';
+            const closedEnd = document.getElementById('closedEndFilter')?.value || '';
+            
+            const filters = {
+                symbols: symbolFilter ? [symbolFilter] : [],
+                types: typeFilter ? [typeFilter] : [],
+                status: statusFilter === 'all' ? '' : statusFilter,
+                dateRange: {},
+                openedRange: {},
+                closedRange: {}
+            };
+            
+            // Expiration date range
+            if (expirationStart) {
+                filters.dateRange.start = expirationStart;
+            }
+            if (expirationEnd) {
+                filters.dateRange.end = expirationEnd;
+            }
+            if (Object.keys(filters.dateRange).length === 0) {
+                delete filters.dateRange;
+            }
+            
+            // Opened date range
+            if (openedStart) {
+                filters.openedRange.start = openedStart;
+            }
+            if (openedEnd) {
+                filters.openedRange.end = openedEnd;
+            }
+            if (Object.keys(filters.openedRange).length === 0) {
+                delete filters.openedRange;
+            }
+            
+            // Closed date range
+            if (closedStart) {
+                filters.closedRange.start = closedStart;
+            }
+            if (closedEnd) {
+                filters.closedRange.end = closedEnd;
+            }
+            if (Object.keys(filters.closedRange).length === 0) {
+                delete filters.closedRange;
+            }
+            
+            console.log('Filter criteria:', filters);
+            return filters;
+        }
+        
+        function filterOptions(filters) {
+            if (!optionsIndex || !optionsIndex.id) {
+                console.warn('Options index not available');
+                return [];
+            }
+            
+            // Get all options as base set
+            let options = Object.values(optionsIndex.id);
+            
+            // Apply symbol filter
+            if (filters.symbols && filters.symbols.length > 0) {
+                options = options.filter(option => filters.symbols.includes(option.symbol));
+            }
+            
+            // Apply type filter
+            if (filters.types && filters.types.length > 0) {
+                options = options.filter(option => filters.types.includes(option.type));
+            }
+            
+            // Apply status filter
+            if (filters.status) {
+                if (filters.status === 'open') {
+                    options = options.filter(option => !option.closed);
+                } else if (filters.status === 'closed') {
+                    options = options.filter(option => option.closed);
+                }
+            }
+            
+            // Apply expiration date range filter
+            if (filters.dateRange) {
+                options = options.filter(option => {
+                    const expirationDate = new Date(option.expiration);
+                    let include = true;
+                    
+                    if (filters.dateRange.start) {
+                        const startDate = new Date(filters.dateRange.start);
+                        include = include && expirationDate >= startDate;
+                    }
+                    
+                    if (filters.dateRange.end) {
+                        const endDate = new Date(filters.dateRange.end);
+                        endDate.setHours(23, 59, 59, 999); // End of day
+                        include = include && expirationDate <= endDate;
+                    }
+                    
+                    return include;
+                });
+            }
+            
+            // Apply opened date range filter
+            if (filters.openedRange) {
+                options = options.filter(option => {
+                    const openedDate = new Date(option.opened);
+                    let include = true;
+                    
+                    if (filters.openedRange.start) {
+                        const startDate = new Date(filters.openedRange.start);
+                        include = include && openedDate >= startDate;
+                    }
+                    
+                    if (filters.openedRange.end) {
+                        const endDate = new Date(filters.openedRange.end);
+                        endDate.setHours(23, 59, 59, 999); // End of day
+                        include = include && openedDate <= endDate;
+                    }
+                    
+                    return include;
+                });
+            }
+            
+            // Apply closed date range filter
+            if (filters.closedRange) {
+                options = options.filter(option => {
+                    // Only apply closed date filter to options that are actually closed
+                    if (!option.closed) {
+                        return false; // Exclude open options when filtering by closed date
+                    }
+                    
+                    const closedDate = new Date(option.closed);
+                    let include = true;
+                    
+                    if (filters.closedRange.start) {
+                        const startDate = new Date(filters.closedRange.start);
+                        include = include && closedDate >= startDate;
+                    }
+                    
+                    if (filters.closedRange.end) {
+                        const endDate = new Date(filters.closedRange.end);
+                        endDate.setHours(23, 59, 59, 999); // End of day
+                        include = include && closedDate <= endDate;
+                    }
+                    
+                    return include;
+                });
+            }
+            
+            // Sort by ID by default
+            options.sort((a, b) => a.id - b.id);
+            
+            console.log('Filtered options:', options.length, 'total');
+            return options;
+        }
+        
+        function renderOptionsTable(options) {
+            const tbody = document.getElementById('optionsTableBody');
+            const noOptionsMessage = document.getElementById('noOptionsMessage');
+            
+            if (!tbody) return;
+            
+            // Clear existing rows
+            tbody.innerHTML = '';
+            
+            if (options.length === 0) {
+                tbody.style.display = 'none';
+                if (noOptionsMessage) {
+                    noOptionsMessage.style.display = 'block';
+                }
+                return;
+            }
+            
+            // Show table, hide no options message
+            tbody.style.display = '';
+            if (noOptionsMessage) {
+                noOptionsMessage.style.display = 'none';
+            }
+            
+            // Generate table rows
+            options.forEach(option => {
+                const row = createOptionRow(option);
+                tbody.appendChild(row);
+            });
+            
+            // Apply formatting and coloring
+            applyOptionsTableColoring();
+            
+            // Update summary footer
+            updateSummaryFooter(options);
+        }
+        
+        function createOptionRow(option) {
+            const row = document.createElement('tr');
+            
+            // Calculate profits
+            const maxProfit = calculateMaxProfit(option);
+            const totalProfit = calculateTotalProfit(option);
+            
+            // Format dates
+            const expirationDate = new Date(option.expiration).toLocaleDateString('en-US');
+            const openedDate = new Date(option.opened).toLocaleDateString('en-US');
+            const closedDate = option.closed ? new Date(option.closed).toLocaleDateString('en-US') : null;
+            
+            row.innerHTML = `
+                <td class="ticker-col"><a href="/symbol/${option.symbol}?edit_option=${option.id}" class="symbol-link">${option.symbol}</a></td>
+                <td>
+                    <span class="${option.type === 'Put' ? 'put-badge' : 'call-badge'}">
+                        ${option.type === 'Put' ? 'P' : 'C'}
+                    </span>
+                </td>
+                <td class="neutral-currency">$${Math.round(option.strike)}</td>
+                <td>${expirationDate}</td>
+                <td>${openedDate}</td>
+                <td>${closedDate ? closedDate : '<span class="text-muted">Open</span>'}</td>
+                <td>${option.contracts}</td>
+                <td class="neutral-currency">$${option.premium.toFixed(2)}</td>
+                <td class="neutral-currency">$${Math.round(maxProfit)}</td>
+                <td class="premium-column ${totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency'}">$${Math.round(totalProfit)}</td>
+            `;
+            
+            return row;
+        }
+        
+        function calculateMaxProfit(option) {
+            return option.premium * option.contracts * 100;
+        }
+        
+        function calculateTotalProfit(option) {
+            let totalProfit = option.premium * option.contracts * 100; // Premium collected
+            
+            if (option.closed && option.exit_price) {
+                // Subtract the cost to close the position
+                totalProfit -= option.exit_price * option.contracts * 100;
+            }
+            
+            // Subtract commissions
+            if (option.commission) {
+                totalProfit -= option.commission;
+            }
+            
+            return totalProfit;
+        }
+        
+        function updateResultsInfo(count) {
+            const resultsInfo = document.getElementById('resultsInfo');
+            if (!resultsInfo) return;
+            
+            const totalCount = optionsIndex && optionsIndex.id ? Object.keys(optionsIndex.id).length : 0;
+            
+            if (count === totalCount) {
+                resultsInfo.textContent = `Showing all ${count} options`;
+            } else {
+                resultsInfo.textContent = `Showing ${count} of ${totalCount} options`;
+            }
+        }
+        
+        function updateSummaryFooter(options) {
+            const summaryFooter = document.getElementById('optionsSummaryFooter');
+            const headerSummary = document.getElementById('headerSummary');
+            
+            if (options.length === 0) {
+                if (summaryFooter) {
+                    summaryFooter.style.display = 'none';
+                }
+                if (headerSummary) {
+                    headerSummary.style.display = 'none';
+                }
+                return;
+            }
+            
+            // Calculate summaries
+            let putCount = 0;
+            let callCount = 0;
+            let totalStrike = 0;
+            let totalPremium = 0;
+            let totalContracts = 0;
+            let totalMaxProfit = 0;
+            let totalProfit = 0;
+            
+            options.forEach(option => {
+                if (option.type === 'Put') {
+                    putCount++;
+                } else if (option.type === 'Call') {
+                    callCount++;
+                }
+                
+                totalStrike += option.strike;
+                totalPremium += option.premium;
+                totalContracts += option.contracts;
+                totalMaxProfit += calculateMaxProfit(option);
+                totalProfit += calculateTotalProfit(option);
+            });
+            
+            const averageStrike = options.length > 0 ? totalStrike / options.length : 0;
+            const averagePremium = options.length > 0 ? totalPremium / options.length : 0;
+            
+            // Update summary cells
+            const summaryType = document.getElementById('summaryType');
+            const summaryStrike = document.getElementById('summaryStrike');
+            const summaryContracts = document.getElementById('summaryContracts');
+            const summaryPremium = document.getElementById('summaryPremium');
+            const summaryMaxProfit = document.getElementById('summaryMaxProfit');
+            const summaryTotalProfit = document.getElementById('summaryTotalProfit');
+            
+            if (summaryType) {
+                summaryType.textContent = `${putCount}P / ${callCount}C`;
+            }
+            
+            if (summaryStrike) {
+                summaryStrike.textContent = `$${Math.round(averageStrike)} avg`;
+            }
+            
+            if (summaryContracts) {
+                summaryContracts.textContent = totalContracts;
+            }
+            
+            if (summaryPremium) {
+                summaryPremium.textContent = `$${averagePremium.toFixed(2)} avg`;
+            }
+            
+            if (summaryMaxProfit) {
+                summaryMaxProfit.className = 'neutral-currency';
+                summaryMaxProfit.textContent = `$${Math.round(totalMaxProfit)}`;
+            }
+            
+            if (summaryTotalProfit) {
+                const className = totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency';
+                summaryTotalProfit.className = `premium-column ${className}`;
+                summaryTotalProfit.textContent = `$${Math.round(totalProfit)}`;
+            }
+            
+            // Show footer
+            if (summaryFooter) {
+                summaryFooter.style.display = '';
+            }
+            
+            // Update header summary
+            if (headerSummary) {
+                const profitClass = totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : '';
+                const profitText = `$${Math.round(totalProfit).toLocaleString()}`;
+                
+                headerSummary.innerHTML = `
+                    <span class="summary-item"><b>Total Profit:</b> <span class="summary-profit ${profitClass}">${profitText}</span></span>
+                    <span class="summary-item"><b>Contracts:</b> ${totalContracts}</span>
+                    <span class="summary-item"><b>Puts:</b> ${putCount}</span>
+                    <span class="summary-item"><b>Calls:</b> ${callCount}</span>
+                    <span class="summary-item"><b>Avg Strike:</b> $${Math.round(averageStrike)}</span>
+                    <span class="summary-item"><b>Avg Premium:</b> $${averagePremium.toFixed(2)}</span>
+                `;
+                headerSummary.style.display = '';
+            }
+        }
+        
+        function clearFilters() {
+            // Clear all filter inputs
+            document.getElementById('symbolFilter').value = '';
+            document.getElementById('typeFilter').value = '';
+            document.getElementById('statusFilter').value = 'all';
+            document.getElementById('expirationStartFilter').value = '';
+            document.getElementById('expirationEndFilter').value = '';
+            document.getElementById('openedStartFilter').value = '';
+            document.getElementById('openedEndFilter').value = '';
+            document.getElementById('closedStartFilter').value = '';
+            document.getElementById('closedEndFilter').value = '';
+            
+            // Reapply filters (will show all options)
+            applyFilters();
+        }
+        
         // Apply profit/loss coloring and formatting to options tables
         function applyOptionsTableColoring() {
             const tables = document.querySelectorAll('.financial-table');
             tables.forEach(table => {
-                // Process all rows in tbody and tfoot
                 const rows = table.querySelectorAll('tbody tr, tfoot tr');
                 rows.forEach(row => {
                     const cells = row.querySelectorAll('td');
-                    cells.forEach((cell, columnIndex) => {
+                    cells.forEach((cell) => {
                         const text = cell.textContent.trim();
                         
                         // Handle premium-column cells (Total Profit) with special formatting
                         if (cell.classList.contains('premium-column')) {
-                            // Check if it's a monetary value - handle both $123 and $-123 formats
-                            if (text.match(/^\\$-?[\\d,]*\\.?\\d*$/)) {
-                                const value = parseFloat(text.replace(/[\\$,]/g, ''));
+                            if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
+                                const value = parseFloat(text.replace(/[\$,]/g, ''));
                                 
                                 if (!isNaN(value)) {
-                                    // Remove any existing color classes
                                     cell.classList.remove('positive', 'negative', 'neutral-currency');
                                     
                                     if (value < 0) {
-                                        // Format negative values as -$1,234 (minus before dollar sign)
                                         const formattedValue = Math.round(Math.abs(value)).toLocaleString();
                                         cell.innerHTML = '-$' + formattedValue;
                                         cell.classList.add('negative');
                                     } else if (value > 0) {
-                                        // Format positive values as $1,234
                                         const formattedValue = Math.round(value).toLocaleString();
                                         cell.innerHTML = '$' + formattedValue;
                                         cell.classList.add('positive');
@@ -185,39 +1075,13 @@
                                     }
                                 }
                             }
-                            return;
-                        }
-                        
-                        // Skip cells with neutral-currency class
-                        if (cell.classList.contains('neutral-currency')) {
-                            return;
-                        }
-                        
-                        // Check if it's a monetary value (with or without decimal places)
-                        if (text.match(/^\\$-?[\\d,]*\\.?\\d*$/)) {
-                            // Extract numeric value
-                            const value = parseFloat(text.replace(/[\\$,]/g, ''));
-                            
-                            // Skip if it's not a valid number
-                            if (isNaN(value)) return;
-                            
-                            // Format as currency with comma separators
-                            const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
-                            
-                            if (value < 0) {
-                                cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
-                            } else if (value > 0) {
-                                cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
-                            } else {
-                                cell.innerHTML = '$0';
-                            }
                         }
                     });
                 });
             });
         }
         
-        // Initialize All Options table sorting with FontAwesome icons
+        // Initialize table sorting
         function initializeAllOptionsTableSorting() {
             const table = document.getElementById('allOptionsTable');
             if (!table) return;
@@ -268,11 +1132,11 @@
             
             // Handle special values
             if (value === '' || value === '-' || value === 'N/A' || value === 'Open') {
-                return value === 'Open' ? 'zzz_open' : ''; // Put "Open" at end
+                return value === 'Open' ? 'zzz_open' : '';
             }
             
             // Remove currency symbols and commas
-            return value.replace(/[$,%]/g, '');
+            return value.replace(/[\$,%]/g, '');
         }
         
         function compareSortValues(a, b) {
@@ -289,7 +1153,7 @@
             }
             
             // Try date comparison (MM/DD/YYYY format)
-            if (a.match(/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/) && b.match(/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/)) {
+            if (a.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/) && b.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
                 const dateA = new Date(a);
                 const dateB = new Date(b);
                 return dateA.getTime() - dateB.getTime();
@@ -299,21 +1163,200 @@
             return a.toLowerCase().localeCompare(b.toLowerCase());
         }
 
-        // Initialize when page loads
+        // Initialize the monthly premiums chart with empty data
+        function initializeMonthlyPremiumsChart() {
+            const ctx = document.getElementById('monthlyPremiumsBySymbolChart');
+            if (!ctx) return;
+            
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            
+            // Build chart data from options index
+            const chartData = buildMonthlyChartData();
+            
+            // Create chart with 3-bar structure
+            window.monthlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthNames,
+                    datasets: [
+                        {
+                            label: 'Max Profit',
+                            data: chartData.maxProfit,
+                            backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                            borderColor: 'rgba(255, 193, 7, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Actual Profit',
+                            data: chartData.actualProfit,
+                            backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                            borderColor: 'rgba(39, 174, 96, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Open Value',
+                            data: chartData.openValue,
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                color: '#404040'
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#404040'
+                            },
+                            ticks: {
+                                color: '#ffffff',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toLocaleString();
+                                },
+                                footer: function(tooltipItems) {
+                                    let total = 0;
+                                    tooltipItems.forEach(function(tooltipItem) {
+                                        total += tooltipItem.parsed.y;
+                                    });
+                                    return 'Total: $' + total.toLocaleString();
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: false
+                        }
+                    },
+                    interaction: {
+                        intersect: false
+                    }
+                },
+                plugins: [ChartDataLabels]
+            });
+        }
+        
+        function buildMonthlyChartData() {
+            const maxProfit = Array(12).fill(0);
+            const actualProfit = Array(12).fill(0);
+            const openValue = Array(12).fill(0);
+            
+            if (!optionsIndex || !optionsIndex.id) {
+                return { maxProfit, actualProfit, openValue };
+            }
+            
+            // Process all options from the index
+            Object.values(optionsIndex.id).forEach(option => {
+                const openedMonth = new Date(option.opened).getMonth(); // 0-11
+                const maxProfitValue = option.premium * option.contracts * 100;
+                
+                // Max profit is always based on opened month
+                maxProfit[openedMonth] += maxProfitValue;
+                
+                if (option.closed) {
+                    // Closed option - calculate actual profit and add to closed month
+                    const closedMonth = new Date(option.closed).getMonth();
+                    let actualProfitValue = maxProfitValue;
+                    
+                    if (option.exit_price) {
+                        actualProfitValue -= option.exit_price * option.contracts * 100;
+                    }
+                    
+                    if (option.commission) {
+                        actualProfitValue -= option.commission;
+                    }
+                    
+                    actualProfit[closedMonth] += actualProfitValue;
+                } else {
+                    // Open option - add to open value in opened month
+                    openValue[openedMonth] += maxProfitValue;
+                }
+            });
+            
+            return { maxProfit, actualProfit, openValue };
+        }
+        
+        function updateMonthlyChart() {
+            if (window.monthlyChart) {
+                const chartData = buildMonthlyChartData();
+                window.monthlyChart.data.datasets[0].data = chartData.maxProfit;
+                window.monthlyChart.data.datasets[1].data = chartData.actualProfit;
+                window.monthlyChart.data.datasets[2].data = chartData.openValue;
+                window.monthlyChart.update();
+            }
+        }
+        
+        function updateMonthlyChartWithFilters(filteredOptions) {
+            if (!window.monthlyChart) return;
+            
+            const maxProfit = Array(12).fill(0);
+            const actualProfit = Array(12).fill(0);
+            const openValue = Array(12).fill(0);
+            
+            // Process filtered options
+            filteredOptions.forEach(option => {
+                const openedMonth = new Date(option.opened).getMonth(); // 0-11
+                const maxProfitValue = option.premium * option.contracts * 100;
+                
+                // Max profit is always based on opened month
+                maxProfit[openedMonth] += maxProfitValue;
+                
+                if (option.closed) {
+                    // Closed option - calculate actual profit and add to closed month
+                    const closedMonth = new Date(option.closed).getMonth();
+                    let actualProfitValue = maxProfitValue;
+                    
+                    if (option.exit_price) {
+                        actualProfitValue -= option.exit_price * option.contracts * 100;
+                    }
+                    
+                    if (option.commission) {
+                        actualProfitValue -= option.commission;
+                    }
+                    
+                    actualProfit[closedMonth] += actualProfitValue;
+                } else {
+                    // Open option - add to open value in opened month
+                    openValue[openedMonth] += maxProfitValue;
+                }
+            });
+            
+            // Update chart with filtered data
+            window.monthlyChart.data.datasets[0].data = maxProfit;
+            window.monthlyChart.data.datasets[1].data = actualProfit;
+            window.monthlyChart.data.datasets[2].data = openValue;
+            window.monthlyChart.update();
+        }
+        
+        // Initialize chart when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            applyOptionsTableColoring();
-            initializeAllOptionsTableSorting();
+            initializeMonthlyPremiumsChart();
         });
         
-        // Also apply immediately in case DOMContentLoaded already fired
-        applyOptionsTableColoring();
-        
-        // Apply formatting to All Options table as well
-        setTimeout(() => {
-            initializeAllOptionsTableSorting();
-        }, 100);
-
-        console.log('All Options page loaded');
+        console.log('All Options page loaded with index-based filtering');
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>

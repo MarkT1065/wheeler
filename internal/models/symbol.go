@@ -137,7 +137,8 @@ func (o *Option) CalculateTotalProfit() float64 {
 	if o.ExitPrice != nil {
 		exitPrice = *o.ExitPrice
 	}
-	return (o.Premium - exitPrice) * float64(o.Contracts) * 100
+	profit := math.Floor((o.Premium - exitPrice) * float64(o.Contracts) * 100)
+	return profit - o.Commission // Subtract commission for accurate net profit
 }
 
 func (o *Option) CalculatePercentOfProfit() float64 {
@@ -149,13 +150,12 @@ func (o *Option) CalculatePercentOfProfit() float64 {
 	return (actualProfit / maxProfit) * 100
 }
 
-
 func (o *Option) CalculatePercentOfTime() float64 {
 	totalDays := o.Expiration.Sub(o.Opened).Hours() / 24
 	if totalDays <= 0 {
 		return 0
 	}
-	
+
 	// Use today's date for open positions, actual closed date for closed positions
 	var endDate time.Time
 	if o.Closed == nil {
@@ -163,14 +163,14 @@ func (o *Option) CalculatePercentOfTime() float64 {
 	} else {
 		endDate = *o.Closed
 	}
-	
+
 	usedDays := endDate.Sub(o.Opened).Hours() / 24
-	
+
 	// If 0 days used, assume 1 minimum
 	if usedDays < 1 {
 		usedDays = 1
 	}
-	
+
 	// Don't allow percentage to exceed 100% even if we're past expiration
 	percentOfTime := (usedDays / totalDays) * 100
 	if percentOfTime > 100 {
@@ -179,7 +179,7 @@ func (o *Option) CalculatePercentOfTime() float64 {
 	if percentOfTime < 0 {
 		return 0
 	}
-	
+
 	return percentOfTime
 }
 
@@ -201,15 +201,15 @@ func (o *Option) CalculateAROI() float64 {
 	} else {
 		endDate = *o.Closed
 	}
-	
+
 	daysInTrade := endDate.Sub(o.Opened).Hours() / 24
 	if daysInTrade <= 0 {
 		daysInTrade = 1 // Minimum 1 day to avoid division by zero
 	}
-	
+
 	// Calculate total profit
 	profit := o.CalculateTotalProfit()
-	
+
 	// Calculate the capital base (exposure for puts, long value for calls)
 	var capitalBase float64
 	if o.Type == "Put" {
@@ -220,17 +220,17 @@ func (o *Option) CalculateAROI() float64 {
 		// Use strike as approximation for now - this should be enhanced with current price
 		capitalBase = o.Strike * float64(o.Contracts) * 100
 	}
-	
+
 	if capitalBase <= 0 {
 		return 0
 	}
-	
+
 	// Calculate return percentage for the period
 	periodReturn := (profit / capitalBase) * 100
-	
+
 	// Annualize the return: (period return) * (365.25 days per year / days in trade)
 	aroi := periodReturn * (365.25 / daysInTrade)
-	
+
 	return aroi
 }
 
@@ -296,7 +296,6 @@ type Dividend struct {
 	Amount    float64   `json:"amount"`
 	CreatedAt time.Time `json:"created_at"`
 }
-
 
 type SymbolService struct {
 	db *sql.DB
@@ -410,7 +409,7 @@ func (s *SymbolService) GetDistinctSymbols() ([]string, error) {
 			SELECT symbol FROM dividends
 		) ORDER BY symbol
 	`
-	
+
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get distinct symbols: %w", err)
@@ -432,4 +431,3 @@ func (s *SymbolService) GetDistinctSymbols() ([]string, error) {
 
 	return symbols, nil
 }
-
