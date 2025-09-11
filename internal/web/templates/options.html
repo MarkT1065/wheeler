@@ -259,10 +259,10 @@
                                                         {{if eq .Type "Put"}}P{{else}}C{{end}}
                                                     </span>
                                                 </td>
-                                                <td class="neutral-currency">${{printf "%.0f" .Strike}}</td>
+                                                <td class="neutral-currency">${{printf "%.2f" .Strike}}</td>
                                                 <td>{{.Contracts}}</td>
                                                 <td class="neutral-currency">{{formatCurrency (mul (mul .Strike .Contracts) 100)}}</td>
-                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.0f" .CalculateTotalProfit}}</td>
+                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" .CalculateTotalProfit}}</td>
                                                 <td>{{.EntryDate.Format "01/02/2006"}}</td>
                                             </tr>
                                             {{end}}

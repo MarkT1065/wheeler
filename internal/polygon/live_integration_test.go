@@ -263,7 +263,7 @@ func TestLivePolygonIntegration(t *testing.T) {
 			t.Errorf("Expected positive current price, got %f", info.CurrentPrice)
 		}
 
-		t.Logf("✅ NVDA details: %s, Current Price: $%.2f, Market Cap: $%.0f", info.Name, info.CurrentPrice, info.MarketCap)
+		t.Logf("✅ NVDA details: %s, Current Price: $%.2f, Market Cap: $%.2f", info.Name, info.CurrentPrice, info.MarketCap)
 	})
 
 	t.Run("TestServiceFetchDividendHistory", func(t *testing.T) {
