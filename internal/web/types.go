@@ -415,3 +415,46 @@ type ZenData struct {
 	CurrentDB  string   `json:"currentDB"`
 	ActivePage string   `json:"activePage"`
 }
+
+// DividendSymbolData holds dividend information for symbols on the dividends page
+type DividendSymbolData struct {
+	Symbol            string     `json:"symbol"`
+	Price             float64    `json:"price"`
+	Dividend          float64    `json:"dividend"`          // Quarterly dividend
+	AnnualDividend    float64    `json:"annualDividend"`    // Quarterly x 4
+	YieldPercent      float64    `json:"yieldPercent"`      // Based on annual dividend
+	ExDividendDate    *time.Time `json:"exDividendDate"`
+	DividendCount     int        `json:"dividendCount"`
+	Shares            int        `json:"shares"`            // Number of shares held
+	TotalAnnualIncome float64    `json:"totalAnnualIncome"` // Shares x annual dividend
+}
+
+// DividendsPageData holds all data for the enhanced dividends page
+type DividendsPageData struct {
+	PageData
+	DividendSymbols      []DividendSymbolData     `json:"dividendSymbols"`
+	IncomeBySymbol       []ChartData              `json:"incomeBySymbol"`       // Pie chart data
+	DividendsOverTime    []MonthlyChartData       `json:"dividendsOverTime"`    // Historical payments
+	UpcomingExDivDates   []UpcomingDividendDate   `json:"upcomingExDivDates"`   // Calendar data
+	TotalAnnualIncome    float64                  `json:"totalAnnualIncome"`
+	TotalDividendsPaid   float64                  `json:"totalDividendsPaid"`
+	AverageYield         float64                  `json:"averageYield"`
+}
+
+// UpcomingDividendDate holds information about upcoming ex-dividend dates
+type UpcomingDividendDate struct {
+	Symbol         string    `json:"symbol"`
+	ExDividendDate time.Time `json:"exDividendDate"`
+	DaysUntil      int       `json:"daysUntil"`
+	Dividend       float64   `json:"dividend"`
+	Shares         int       `json:"shares"`
+	ExpectedAmount float64   `json:"expectedAmount"`
+}
+
+// PageData holds common data for all page templates
+type PageData struct {
+	Title      string   `json:"title"`
+	ActivePage string   `json:"activePage"`
+	CurrentDB  string   `json:"currentDB"`
+	AllSymbols []string `json:"allSymbols"`
+}

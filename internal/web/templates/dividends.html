@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dividends - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .dividends-calendar {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .calendar-month {
+            background: #2d2d2d;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #404040;
+        }
+        .calendar-header {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #404040;
+        }
+        .calendar-days-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        .calendar-day-name {
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: #a0a0a0;
+            padding: 5px 0;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #e0e0e0;
+            background: #1e1e1e;
+            border: 1px solid #2a2a2a;
+            cursor: default;
+            position: relative;
+        }
+        .calendar-day.empty {
+            background: transparent;
+            border: none;
+        }
+        .calendar-day.today {
+            background: #3498db;
+            border-color: #2980b9;
+            font-weight: bold;
+        }
+        .calendar-day.has-dividend {
+            background: #27ae60;
+            border-color: #229954;
+            cursor: pointer;
+        }
+        .calendar-day.has-dividend:hover {
+            background: #2ecc71;
+        }
+        .dividend-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 4px;
+            height: 4px;
+            background: #f39c12;
+            border-radius: 50%;
+        }
+        .accordion-item {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            cursor: pointer;
+            background: #2d2d2d;
+            transition: background 0.2s;
+        }
+        .accordion-header:hover {
+            background: #353535;
+        }
+        .accordion-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .accordion-symbol {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3498db;
+            min-width: 80px;
+        }
+        .accordion-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #a0a0a0;
+        }
+        .accordion-stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .accordion-stat-label {
+            font-size: 11px;
+            color: #808080;
+        }
+        .accordion-stat-value {
+            font-size: 14px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        .accordion-chevron {
+            transition: transform 0.3s;
+            color: #a0a0a0;
+        }
+        .accordion-chevron.open {
+            transform: rotate(180deg);
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-content.open {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .accordion-table-container {
+            padding: 0 20px 20px 20px;
+        }
+    </style>
+</head>
+<body class="dividends-page">
+    <div class="app-container">
+        <!-- Sidebar -->
+        {{template "_navigation.html" .}}
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            
+            <!-- Top Summary Metrics -->
+            <div class="content-section">
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Total Positions</div>
+                        <div class="summary-value">{{len .DividendSymbols}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Annual Income</div>
+                        <div class="summary-value positive">{{formatCurrency .TotalAnnualIncome}}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Average Yield</div>
+                        <div class="summary-value">{{printf "%.2f" .AverageYield}}%</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Paid (All Time)</div>
+                        <div class="summary-value positive">{{formatCurrency .TotalDividendsPaid}}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dividends Panel (50%) and Calendar (50%) -->
+            <div class="section-row">
+                <!-- Dividends Section (from Monthly view) -->
+                <div class="content-section">
+                    <div class="section-title">Dividends</div>
+                    <div class="charts-row">
+                        <div class="chart-column">
+                            <h4>By Month</h4>
+                            <div class="chart-container-small">
+                                <canvas id="dividendsMonthChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-column">
+                            <h4>By Ticker</h4>
+                            <div class="chart-container-small">
+                                <canvas id="dividendsTickerChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar Panel -->
+                <div class="content-section">
+                    <div class="section-title">Dividend Calendar</div>
+                    <div class="dividends-calendar" id="dividendsCalendar">
+                        <!-- Calendars will be generated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Position Details Accordions -->
+            <div class="content-section">
+                <div class="section-title">Position Details</div>
+                <div id="positionAccordions">
+                    {{range .DividendSymbols}}
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <div class="accordion-header-left">
+                                <div class="accordion-symbol">{{.Symbol}}</div>
+                                <div class="accordion-stats">
+                                    <div class="accordion-stat-item">
+                                        <span class="accordion-stat-label">Shares</span>
+                                        <span class="accordion-stat-value">{{formatInt .Shares}}</span>
+                                    </div>
+                                    <div class="accordion-stat-item">
+                                        <span class="accordion-stat-label">Annual Income</span>
+                                        <span class="accordion-stat-value positive">{{formatCurrency .TotalAnnualIncome}}</span>
+                                    </div>
+                                    <div class="accordion-stat-item">
+                                        <span class="accordion-stat-label">Yield</span>
+                                        <span class="accordion-stat-value">{{printf "%.2f" .YieldPercent}}%</span>
+                                    </div>
+                                    <div class="accordion-stat-item">
+                                        <span class="accordion-stat-label">Ex-Div Date</span>
+                                        <span class="accordion-stat-value">
+                                            {{if .ExDividendDate}}
+                                                {{.ExDividendDate.Format "01/02"}}
+                                            {{else}}
+                                                -
+                                            {{end}}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-down accordion-chevron"></i>
+                        </div>
+                        <div class="accordion-content">
+                            <div class="accordion-table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Price</th>
+                                            <th>Quarterly Div</th>
+                                            <th>Annual Div</th>
+                                            <th>Annual Yield %</th>
+                                            <th>Ex-Dividend Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>{{formatCurrencyWithDecimals .Price}}</td>
+                                            <td>{{formatCurrencyWithDecimals .Dividend}}</td>
+                                            <td>{{formatCurrencyWithDecimals .AnnualDividend}}</td>
+                                            <td>{{printf "%.2f" .YieldPercent}}%</td>
+                                            <td>
+                                                {{if .ExDividendDate}}
+                                                    {{.ExDividendDate.Format "01/02/2006"}}
+                                                {{else}}
+                                                    -
+                                                {{end}}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                
+                {{if eq (len .DividendSymbols) 0}}
+                <div class="empty-state">
+                    <i class="fas fa-coins fa-3x"></i>
+                    <h3>No Dividend Positions</h3>
+                    <p>No open long positions with dividend-paying stocks found.</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <script src="/static/js/navigation.js"></script>
+    
+    <script>
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            const chevron = header.querySelector('.accordion-chevron');
+            
+            // Close all other accordions
+            document.querySelectorAll('.accordion-content').forEach(c => {
+                if (c !== content) {
+                    c.classList.remove('open');
+                    c.previousElementSibling.querySelector('.accordion-chevron').classList.remove('open');
+                }
+            });
+            
+            // Toggle this accordion
+            content.classList.toggle('open');
+            chevron.classList.toggle('open');
+        }
+
+        function generateCalendar(year, month, exDivDates) {
+            const monthNames = ["January", "February", "March", "April", "May", "June",
+                              "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let html = `
+                <div class="calendar-month">
+                    <div class="calendar-header">${monthNames[month]} ${year}</div>
+                    <div class="calendar-days-header">
+                        ${dayNames.map(day => `<div class="calendar-day-name">${day}</div>`).join('')}
+                    </div>
+                    <div class="calendar-grid">
+            `;
+            
+            // Add empty cells for days before month starts
+            const startDay = firstDay.getDay();
+            for (let i = 0; i < startDay; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+            
+            // Add days of month
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const currentDate = new Date(year, month, day);
+                const dateKey = currentDate.toISOString().split('T')[0];
+                
+                let classes = ['calendar-day'];
+                let title = '';
+                
+                // Check if today
+                if (currentDate.getTime() === today.getTime()) {
+                    classes.push('today');
+                }
+                
+                // Check if ex-dividend date
+                if (exDivDates[dateKey]) {
+                    classes.push('has-dividend');
+                    title = `Ex-Div: ${exDivDates[dateKey].join(', ')}`;
+                }
+                
+                html += `<div class="${classes.join(' ')}" title="${title}">${day}</div>`;
+            }
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        $(document).ready(function() {
+            console.log('Dividends page loaded with {{len .DividendSymbols}} symbols');
+
+            // Build ex-dividend dates map
+            const exDivDates = {};
+            {{range .DividendSymbols}}
+            {{if .ExDividendDate}}
+            (function() {
+                const dateKey = '{{.ExDividendDate.Format "2006-01-02"}}';
+                if (!exDivDates[dateKey]) {
+                    exDivDates[dateKey] = [];
+                }
+                exDivDates[dateKey].push('{{.Symbol}}');
+            })();
+            {{end}}
+            {{end}}
+
+            // Generate two-month calendar
+            const today = new Date();
+            const currentMonth = today.getMonth();
+            const currentYear = today.getFullYear();
+            
+            let calendarHTML = generateCalendar(currentYear, currentMonth, exDivDates);
+            
+            const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
+            const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+            calendarHTML += generateCalendar(nextYear, nextMonth, exDivDates);
+            
+            $('#dividendsCalendar').html(calendarHTML);
+
+            // Dividends by Month Chart
+            {{if .DividendsOverTime}}
+            const dividendsMonthCtx = document.getElementById('dividendsMonthChart').getContext('2d');
+            
+            const monthlyData = [{{range .DividendsOverTime}}
+                {month: '{{.Month}}', amount: {{.Amount}}},
+            {{end}}];
+            monthlyData.sort((a, b) => a.month.localeCompare(b.month));
+            
+            new Chart(dividendsMonthCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthlyData.map(d => {
+                        const [year, month] = d.month.split('-');
+                        const date = new Date(year, month - 1);
+                        return date.toLocaleDateString('en-US', { month: 'short' });
+                    }),
+                    datasets: [{
+                        label: 'Dividends',
+                        data: monthlyData.map(d => d.amount),
+                        backgroundColor: '#2ecc71',
+                        borderColor: '#27ae60',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a0a0',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: { color: '#2a2a2a' }
+                        },
+                        x: {
+                            ticks: { color: '#a0a0a0' },
+                            grid: { color: '#2a2a2a' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Dividends: $' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            {{end}}
+
+            // Dividends by Ticker Pie Chart
+            {{if .IncomeBySymbol}}
+            const dividendsTickerCtx = document.getElementById('dividendsTickerChart').getContext('2d');
+            new Chart(dividendsTickerCtx, {
+                type: 'pie',
+                data: {
+                    labels: [{{range .IncomeBySymbol}}'{{.Label}}',{{end}}],
+                    datasets: [{
+                        data: [{{range .IncomeBySymbol}}{{.Value}},{{end}}],
+                        backgroundColor: [{{range .IncomeBySymbol}}'{{.Color}}',{{end}}]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#e0e0e0',
+                                padding: 8,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': $' + context.parsed.toFixed(0);
+                                }
+                            }
+                        }
+                    },
+                    onClick: function(event, elements) {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const symbol = this.data.labels[index];
+                            window.location.href = '/symbol/' + symbol;
+                        }
+                    }
+                }
+            });
+            {{end}}
+        });
+    </script>
+</body>
+</html>

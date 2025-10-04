@@ -264,7 +264,7 @@
                                     <tr>
                                         <td>{{.Opened.Format "1/2/2006"}}</td>
                                         <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
-                                        <td>{{printf "%.2f" (.CalculateYield $.Yield)}}%</td>
+                                        <td>{{printf "%.2f" (.CalculateYield $.Dividend)}}%</td>
                                         <td>{{.Shares}}</td>
                                         <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
                                         <td>{{if .ExitPrice}}{{formatCurrencyWithDecimals (.GetExitPriceValue)}}{{else}}-{{end}}</td>

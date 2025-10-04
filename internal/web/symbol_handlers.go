@@ -163,30 +163,30 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[SYMBOL] Total cap gains for %s: $%.2f (%d closed positions)", symbol, capGains, closedPositionsCount)
 
-	// Calculate total current long position value for Cash on Cash calculation
-	log.Printf("[SYMBOL] Step 8: Calculating current long value for %s", symbol)
-	var totalLongValue float64
-	openPositionsCount := 0
+	// Calculate total invested in all long positions (for Cash on Cash calculation)
+	log.Printf("[SYMBOL] Step 8: Calculating total invested for %s", symbol)
+	var totalInvested float64
 	for _, position := range longPositionsList {
-		if position.Closed == nil { // Only open positions
-			amount := position.CalculateAmount()
-			totalLongValue += amount
-			openPositionsCount++
-			log.Printf("[SYMBOL] Open position %d for %s: Amount=%.2f", position.ID, symbol, amount)
+		invested := position.CalculateTotalInvested()
+		totalInvested += invested
+		status := "open"
+		if position.Closed != nil {
+			status = "closed"
 		}
+		log.Printf("[SYMBOL] Position %d for %s (%s): Invested=%.2f", position.ID, symbol, status, invested)
 	}
-	log.Printf("[SYMBOL] Total current long value for %s: $%.2f (%d open positions)", symbol, totalLongValue, openPositionsCount)
+	log.Printf("[SYMBOL] Total invested for %s: $%.2f (%d positions)", symbol, totalInvested, len(longPositionsList))
 
 	// Calculate Total Profits - sum of Options Gains + Cap Gains + Dividends
 	totalProfits := optionsGains + capGains + dividendsTotal
 	log.Printf("[SYMBOL] Total profits for %s: $%.2f (Options: $%.2f + Cap: $%.2f + Div: $%.2f)", symbol, totalProfits, optionsGains, capGains, dividendsTotal)
 
-	// Calculate Cash on Cash - Total Profits / Total Long Value
+	// Calculate Cash on Cash - Total Profits / Total Invested (all positions)
 	var cashOnCash float64
-	if totalLongValue > 0 {
-		cashOnCash = (totalProfits / totalLongValue) * 100
+	if totalInvested > 0 {
+		cashOnCash = (totalProfits / totalInvested) * 100
 	}
-	log.Printf("[SYMBOL] Cash on Cash for %s: %.2f%%", symbol, cashOnCash)
+	log.Printf("[SYMBOL] Cash on Cash for %s: %.2f%% (Total Profits: $%.2f / Total Invested: $%.2f)", symbol, cashOnCash, totalProfits, totalInvested)
 
 	// Build monthly results for this symbol
 	log.Printf("[SYMBOL] Step 9: Building monthly results for %s", symbol)

@@ -200,6 +200,41 @@ func NewServer() (*Server, error) {
 			}
 			return "$" + formatted
 		},
+		"formatInt": func(value interface{}) string {
+			var intVal int
+			switch v := value.(type) {
+			case int:
+				intVal = v
+			case float64:
+				intVal = int(v)
+			default:
+				return "0"
+			}
+			
+			str := fmt.Sprintf("%d", intVal)
+			isNegative := false
+			if intVal < 0 {
+				isNegative = true
+				str = str[1:]
+			}
+			
+			// Add commas
+			if len(str) > 3 {
+				var result string
+				for i, digit := range str {
+					if i > 0 && (len(str)-i)%3 == 0 {
+						result += ","
+					}
+					result += string(digit)
+				}
+				str = result
+			}
+			
+			if isNegative {
+				return "-" + str
+			}
+			return str
+		},
 	}
 	
 	templates, err := template.New("").Funcs(funcMap).ParseGlob(templatePath)
@@ -264,6 +299,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/treasuries", s.treasuriesHandler)
 	log.Printf("[SERVER] Route registered: /treasuries -> treasuriesHandler")
+
+	http.HandleFunc("/dividends", s.dividendsHandler)
+	log.Printf("[SERVER] Route registered: /dividends -> dividendsHandler")
 
 	http.HandleFunc("/metrics", s.metricsHandler)
 	log.Printf("[SERVER] Route registered: /metrics -> metricsHandler")
@@ -498,4 +536,14 @@ func (s *Server) getCurrentDatabaseName() string {
 		return "wheeler.db"
 	}
 	return dbName
+}
+
+// getAllSymbolsList returns a list of all distinct symbols for navigation
+func (s *Server) getAllSymbolsList() []string {
+	symbols, err := s.symbolService.GetDistinctSymbols()
+	if err != nil {
+		log.Printf("[SERVER] Error getting symbols list: %v", err)
+		return []string{}
+	}
+	return symbols
 }

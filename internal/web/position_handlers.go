@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"time"
 )
-
 
 // dividendsAPIHandler handles CRUD operations for dividends
 func (s *Server) dividendsAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +88,163 @@ func (s *Server) deleteDividendHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"success": true}`))
+}
+
+// dividendsHandler handles GET requests for the dividends page
+func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[DIVIDENDS] Starting dividends page handler")
+
+	// Get all open long positions (positions that can earn dividends)
+	openPositions, err := s.longPositionService.GetOpenPositions()
+	if err != nil {
+		log.Printf("[DIVIDENDS] Error getting open positions: %v", err)
+		http.Error(w, "Failed to load open positions", http.StatusInternalServerError)
+		return
+	}
+
+	// Build dividend data for symbols with open positions
+	var dividendSymbols []DividendSymbolData
+	var totalAnnualIncome float64
+	var totalYield float64
+	var yieldCount int
+	
+	// Map for pie chart data
+	incomeBySymbolMap := make(map[string]float64)
+	
+	for _, position := range openPositions {
+		// Get symbol data for dividend and price info
+		symbol, err := s.symbolService.GetBySymbol(position.Symbol)
+		if err != nil {
+			log.Printf("[DIVIDENDS] Error getting symbol %s: %v", position.Symbol, err)
+			continue
+		}
+
+		// Check if symbol has dividend records
+		dividends, err := s.dividendService.GetBySymbol(position.Symbol)
+		if err != nil {
+			log.Printf("[DIVIDENDS] Error getting dividends for %s: %v", position.Symbol, err)
+			continue
+		}
+
+		// Only include symbols that pay dividends or have dividend data
+		if symbol.Dividend > 0 || len(dividends) > 0 {
+			// Calculate annual yield (quarterly dividend x 4)
+			annualDividend := symbol.Dividend * 4
+			var yieldPercent float64
+			if symbol.Price > 0 && annualDividend > 0 {
+				yieldPercent = (annualDividend / symbol.Price) * 100
+			}
+
+			// Calculate total dividend income: shares x quarterly dividend x 4
+			positionAnnualIncome := float64(position.Shares) * annualDividend
+			totalAnnualIncome += positionAnnualIncome
+			
+			// Track for pie chart
+			incomeBySymbolMap[position.Symbol] = positionAnnualIncome
+
+			// Track for average yield
+			if yieldPercent > 0 {
+				totalYield += yieldPercent
+				yieldCount++
+			}
+
+			dividendSymbols = append(dividendSymbols, DividendSymbolData{
+				Symbol:            position.Symbol,
+				Price:             symbol.Price,
+				Dividend:          symbol.Dividend,
+				AnnualDividend:    annualDividend,
+				YieldPercent:      yieldPercent,
+				ExDividendDate:    symbol.ExDividendDate,
+				DividendCount:     len(dividends),
+				Shares:            position.Shares,
+				TotalAnnualIncome: positionAnnualIncome,
+			})
+		}
+	}
+
+	// Build pie chart data for income by symbol
+	var incomeBySymbol []ChartData
+	colors := []string{"#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6", "#1abc9c", "#34495e", "#e67e22"}
+	colorIndex := 0
+	for symbol, income := range incomeBySymbolMap {
+		incomeBySymbol = append(incomeBySymbol, ChartData{
+			Label: symbol,
+			Value: income,
+			Color: colors[colorIndex%len(colors)],
+		})
+		colorIndex++
+	}
+
+	// Calculate historical dividends by month
+	allDividends, err := s.dividendService.GetAll()
+	if err != nil {
+		log.Printf("[DIVIDENDS] Error getting all dividends: %v", err)
+	}
+	
+	monthlyTotals := make(map[string]float64)
+	for _, div := range allDividends {
+		monthKey := div.Received.Format("2006-01")
+		monthlyTotals[monthKey] += div.Amount
+	}
+	
+	var dividendsOverTime []MonthlyChartData
+	var totalDividendsPaid float64
+	for month, amount := range monthlyTotals {
+		dividendsOverTime = append(dividendsOverTime, MonthlyChartData{
+			Month:  month,
+			Amount: amount,
+		})
+		totalDividendsPaid += amount
+	}
+
+	// Build upcoming ex-dividend dates
+	var upcomingExDivDates []UpcomingDividendDate
+	now := time.Now()
+	for _, divSymbol := range dividendSymbols {
+		if divSymbol.ExDividendDate != nil {
+			daysUntil := int(divSymbol.ExDividendDate.Sub(now).Hours() / 24)
+			// Only show upcoming dates (within next 60 days)
+			if daysUntil >= 0 && daysUntil <= 60 {
+				upcomingExDivDates = append(upcomingExDivDates, UpcomingDividendDate{
+					Symbol:         divSymbol.Symbol,
+					ExDividendDate: *divSymbol.ExDividendDate,
+					DaysUntil:      daysUntil,
+					Dividend:       divSymbol.Dividend,
+					Shares:         divSymbol.Shares,
+					ExpectedAmount: divSymbol.Dividend * float64(divSymbol.Shares),
+				})
+			}
+		}
+	}
+	
+	// Sort upcoming dates by DaysUntil (soonest first)
+	sort.Slice(upcomingExDivDates, func(i, j int) bool {
+		return upcomingExDivDates[i].DaysUntil < upcomingExDivDates[j].DaysUntil
+	})
+
+	// Calculate average yield
+	var averageYield float64
+	if yieldCount > 0 {
+		averageYield = totalYield / float64(yieldCount)
+	}
+
+	data := DividendsPageData{
+		PageData: PageData{
+			Title:      "Dividends",
+			ActivePage: "dividends",
+			CurrentDB:  s.getCurrentDatabaseName(),
+			AllSymbols: s.getAllSymbolsList(),
+		},
+		DividendSymbols:    dividendSymbols,
+		IncomeBySymbol:     incomeBySymbol,
+		DividendsOverTime:  dividendsOverTime,
+		UpcomingExDivDates: upcomingExDivDates,
+		TotalAnnualIncome:  totalAnnualIncome,
+		TotalDividendsPaid: totalDividendsPaid,
+		AverageYield:       averageYield,
+	}
+
+	s.renderTemplate(w, "dividends.html", data)
 }
 
 // longPositionsAPIHandler handles CRUD operations for long positions

@@ -1164,8 +1164,10 @@
             
             allOptions.forEach(option => {
                 // Use opened date for premium realization (when premium was received)
-                const openedDate = new Date(option.opened);
-                const month = openedDate.getMonth(); // 0-11
+                // Parse month directly from ISO date string to avoid timezone conversion issues
+                // Date format from Go: "2025-10-01T00:00:00Z" or "2025-10-01 00:00:00+00:00"
+                const dateStr = option.opened;
+                const month = parseInt(dateStr.substring(5, 7)) - 1; // Extract MM and convert to 0-11
                 const monthName = monthNames[month];
                 
                 if (!monthlyData[monthName]) {
@@ -1176,7 +1178,7 @@
                     monthlyData[monthName][option.symbol] = { open: 0, closed: 0 };
                 }
                 
-                // Calculate total profit for this option
+                // Calculate total profit for this option (same logic as Go backend)
                 let totalProfit = option.premium * option.contracts * 100;
                 if (option.closed && option.exit_price) {
                     totalProfit -= option.exit_price * option.contracts * 100;

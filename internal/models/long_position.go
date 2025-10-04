@@ -225,3 +225,31 @@ func (s *LongPositionService) DeleteBySymbol(symbol string) error {
 
 	return nil
 }
+
+// GetOpenPositions retrieves all open long positions (where closed is NULL)
+func (s *LongPositionService) GetOpenPositions() ([]*LongPosition, error) {
+	query := `SELECT id, symbol, opened, closed, shares, buy_price, exit_price, created_at, updated_at 
+			  FROM long_positions WHERE closed IS NULL ORDER BY opened DESC`
+	
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get open long positions: %w", err)
+	}
+	defer rows.Close()
+
+	var positions []*LongPosition
+	for rows.Next() {
+		var position LongPosition
+		if err := rows.Scan(&position.ID, &position.Symbol, &position.Opened, &position.Closed, &position.Shares,
+			&position.BuyPrice, &position.ExitPrice, &position.CreatedAt, &position.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan open long position: %w", err)
+		}
+		positions = append(positions, &position)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating open long positions: %w", err)
+	}
+
+	return positions, nil
+}

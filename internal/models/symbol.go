@@ -38,11 +38,11 @@ type LongPosition struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-func (lp *LongPosition) CalculateYield(dividendPercent float64) float64 {
+func (lp *LongPosition) CalculateYield(quarterlyDividend float64) float64 {
 	if lp.BuyPrice == 0 {
 		return 0
 	}
-	return dividendPercent
+	return (quarterlyDividend * 4) / lp.BuyPrice * 100
 }
 
 func (lp *LongPosition) CalculateProfitLoss(currentPrice float64) float64 {
