@@ -152,7 +152,7 @@
                                     </td>
                                     <td>{{.Opened.Format "1/2/2006"}}</td>
                                     <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.0f" .Strike}}</td>
+                                    <td>{{printf "%.2f" .Strike}}</td>
                                     <td>{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
                                     <td>{{.Expiration.Format "1/2/2006"}}</td>
                                     <td>
@@ -174,11 +174,11 @@
                                     </td>
                                     <td>
                                         {{$percentProfit := .CalculatePercentOfProfit}}
-                                        <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.0f" $percentProfit}}%</span>
+                                        <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentProfit}}%</span>
                                     </td>
                                     <td>
                                         {{$percentTime := .CalculatePercentOfTime}}
-                                        <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.0f" $percentTime}}%</span>
+                                        <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentTime}}%</span>
                                     </td>
                                     <td>
                                         {{$multiplier := .CalculateMultiplier}}

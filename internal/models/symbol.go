@@ -284,9 +284,9 @@ func (o *Option) GetFormattedTotalProfit() string {
 func (o *Option) GetFormattedPercentOfProfit() string {
 	percent := o.CalculatePercentOfProfit()
 	if percent < 0 {
-		return fmt.Sprintf("<span class=\"negative\">%.0f%%</span>", percent)
+		return fmt.Sprintf("<span class=\"negative\">%.2f%%</span>", percent)
 	}
-	return fmt.Sprintf("%.0f%%", percent)
+	return fmt.Sprintf("%.2f%%", percent)
 }
 
 type Dividend struct {
