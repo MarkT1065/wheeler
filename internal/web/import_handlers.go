@@ -1148,6 +1148,11 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("[BACKUP] Checkpointing WAL to ensure all data is committed")
+	if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		log.Printf("[BACKUP] Warning: WAL checkpoint failed: %v", err)
+	}
+
 	// Create backup filename with timestamp
 	timestamp := time.Now().Format("2006-01-02-15-04-05")
 	baseName := strings.TrimSuffix(dbFileName, ".db")

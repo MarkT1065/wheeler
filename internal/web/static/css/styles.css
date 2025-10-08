@@ -3362,3 +3362,33 @@ th[colspan] {
         font-size: 0.9rem;
     }
 }
+
+/* ===========================
+   RESIZABLE OPTIONS SECTION
+   =========================== */
+
+.resizable-options-section {
+    resize: vertical;
+    overflow: auto;
+    min-height: 300px;
+    height: 500px;
+    max-height: 1200px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.resizable-options-section .table-container-scrollable {
+    flex: 1 1 auto !important;
+    overflow: auto !important;
+    max-height: none !important;
+    height: auto !important;
+    min-height: 0;
+}
+
+.resizable-options-section .table-container-scrollable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #1a1a1a;
+}

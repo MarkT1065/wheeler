@@ -292,6 +292,38 @@ func TestLivePolygonIntegration(t *testing.T) {
 		}
 	})
 
+	t.Run("TestGetOptionSnapshot", func(t *testing.T) {
+		underlyingAsset := "AAPL"
+		optionContract := "O:AAPL250117C00150000"
+		
+		snapshot, err := client.GetOptionSnapshot(ctx, underlyingAsset, optionContract)
+		if err != nil {
+			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "status 403") {
+				t.Skipf("Option snapshot endpoint not available with current API key (likely free tier): %v", err)
+				return
+			}
+			t.Errorf("GetOptionSnapshot failed: %v", err)
+			return
+		}
+
+		if snapshot == nil {
+			t.Error("Expected snapshot but got nil")
+			return
+		}
+
+		if snapshot.Status != "OK" {
+			t.Errorf("Expected status OK, got %s", snapshot.Status)
+		}
+
+		if snapshot.Results.LastTrade.Price <= 0 {
+			t.Errorf("Expected positive last trade price, got %f", snapshot.Results.LastTrade.Price)
+		}
+
+		t.Logf("✅ Option snapshot - Last Trade Price: $%.2f, Day Close: $%.2f", 
+			snapshot.Results.LastTrade.Price, 
+			snapshot.Results.Day.Close)
+	})
+
 	// Rate limiting test - Polygon free tier has 5 requests per minute
 	t.Log("⏱️  Respecting API rate limits (free tier: 5 requests/minute)")
 }
