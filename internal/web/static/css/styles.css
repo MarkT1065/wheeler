@@ -714,15 +714,56 @@ body {
    =========================== */
 
 .positive { 
-    color: #4ade80; 
+    color: #26b255; 
 }
 
 .negative { 
-    color: #f87171; 
+    color: #f16565; 
 }
 
 .neutral-currency {
     color: #e0e0e0;
+}
+
+/* Multiplier color coding (% of Profit / % of Time) - text color gradient */
+.multiplier-excellent {
+    color: #26b255 !important;
+    font-weight: 600;
+}
+
+.multiplier-great {
+    color: #2fbb2f !important;
+    font-weight: 600;
+}
+
+.multiplier-good {
+    color: #66c438 !important;
+    font-weight: 600;
+}
+
+.multiplier-fair {
+    color: #9ecd41 !important;
+    font-weight: 600;
+}
+
+.multiplier-poor {
+    color: #d6d64a !important;
+    font-weight: 600;
+}
+
+.multiplier-losing {
+    color: #dfb053 !important;
+    font-weight: 600;
+}
+
+.multiplier-verybad {
+    color: #e88b5c !important;
+    font-weight: 600;
+}
+
+.multiplier-terrible {
+    color: #f16565 !important;
+    font-weight: 600;
 }
 
 .text-center {
@@ -1712,13 +1753,13 @@ th[colspan] {
 }
 
 /* DTE Color Coding */
-.dte-expired { color: #dc2626 !important; } /* Red - 0 or less */
-.dte-critical { color: #ea580c !important; } /* Dark orange - 1-3 */
-.dte-warning { color: #f97316 !important; } /* Medium orange - 4-6 */
-.dte-caution { color: #fb923c !important; } /* Light orange - 7-9 */
-.dte-neutral { color: #eab308 !important; } /* Yellow - 10-15 */
-.dte-safe { color: #84cc16 !important; } /* Light green - 16-21 */
-.dte-healthy { color: #22c55e !important; } /* Medium green - 21+ */
+.dte-expired { color: #f16565 !important; } /* Red - 0 or less */
+.dte-critical { color: #e88b5c !important; } /* Light orange - 1-3 */
+.dte-warning { color: #dfb053 !important; } /* Peach - 4-6 */
+.dte-caution { color: #d6d64a !important; } /* Yellow - 7-9 */
+.dte-neutral { color: #9ecd41 !important; } /* Yellow-green - 10-15 */
+.dte-safe { color: #66c438 !important; } /* Light green - 16-21 */
+.dte-healthy { color: #26b255 !important; } /* Dark green - 21+ */
 
 .accordion-toggle {
     transition: transform 0.2s ease;
