@@ -137,7 +137,6 @@
                                 <th>% of Profit</th>
                                 <th>% of Time</th>
                                 <th>Multiplier</th>
-                                <th>AROI %</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -173,20 +172,31 @@
                                         <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
                                     </td>
                                     <td>
-                                        {{$percentProfit := .CalculatePercentOfProfit}}
-                                        <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentProfit}}%</span>
+                                        {{if .Closed}}
+                                            {{$percentProfit := .CalculatePercentOfProfit}}
+                                            <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentProfit}}%</span>
+                                        {{else}}
+                                            -
+                                        {{end}}
                                     </td>
                                     <td>
-                                        {{$percentTime := .CalculatePercentOfTime}}
-                                        <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentTime}}%</span>
+                                        {{if .Closed}}
+                                            {{$percentProfit := .CalculatePercentOfProfit}}
+                                            {{$percentTime := .CalculatePercentOfTime}}
+                                            {{$multiplier := .CalculateMultiplier}}
+                                            <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $percentTime}}%</span>
+                                        {{else}}
+                                            {{$percentTime := .CalculatePercentOfTime}}
+                                            <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentTime}}%</span>
+                                        {{end}}
                                     </td>
                                     <td>
-                                        {{$multiplier := .CalculateMultiplier}}
-                                        <span class="{{if lt $multiplier 0.0}}negative{{else if gt $multiplier 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $multiplier}}</span>
-                                    </td>
-                                    <td>
-                                        {{$aroi := .CalculateAROI}}
-                                        <span class="{{if lt $aroi 0.0}}negative{{else if gt $aroi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.1f" $aroi}}%</span>
+                                        {{if .Closed}}
+                                            {{$multiplier := .CalculateMultiplier}}
+                                            <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $multiplier}}</span>
+                                        {{else}}
+                                            -
+                                        {{end}}
                                     </td>
                                     <td>
                                         <button class="btn btn-secondary edit-option-btn" 
@@ -220,7 +230,7 @@
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="19" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                    <td colspan="18" style="text-align: center; color: #a0a0a0; padding: 20px;">
                                         No options trades recorded for {{.Symbol}}
                                     </td>
                                 </tr>
