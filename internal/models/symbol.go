@@ -141,11 +141,14 @@ func (o *Option) CalculateTotalProfit() float64 {
 	return profit - o.Commission // Subtract commission for accurate net profit
 }
 
+// antamy: changed maxprofit calculation to account for commissions
+
 func (o *Option) CalculatePercentOfProfit() float64 {
 	if o.Premium == 0 {
 		return 0
 	}
 	maxProfit := o.Premium * float64(o.Contracts) * 100
+	maxProfit -= o.Commission
 	actualProfit := o.CalculateTotalProfit()
 	return (actualProfit / maxProfit) * 100
 }
