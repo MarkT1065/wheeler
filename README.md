@@ -22,7 +22,7 @@ The Dashboard shows overall progress and total Longs, Put Exposure, and Treasuri
 
 ### Monthly
 
-The Montly view shows gains over time by income type by month with the goal of doing more of what works well.
+The Monthly view shows gains over time by income type by month with the goal of doing more of what works well.  The user can toggle between cumulative and monthly views.
 
 ![Monthly](./screenshots/monthly.png)
 
