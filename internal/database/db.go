@@ -53,6 +53,27 @@ func (db *DB) InitSchema() error {
 		return fmt.Errorf("failed to execute schema: %w", err)
 	}
 
+	if err := db.runMigrations(); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	return nil
+}
+
+func (db *DB) runMigrations() error {
+	var hasCurrentPrice bool
+	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('options') WHERE name = 'current_price'").Scan(&hasCurrentPrice)
+	if err != nil {
+		return fmt.Errorf("failed to check for current_price column: %w", err)
+	}
+
+	if !hasCurrentPrice {
+		_, err := db.Exec("ALTER TABLE options ADD COLUMN current_price REAL")
+		if err != nil {
+			return fmt.Errorf("failed to add current_price column: %w", err)
+		}
+	}
+
 	return nil
 }
 

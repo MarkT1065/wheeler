@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"stonks/internal/models"
 	"time"
 )
 
@@ -103,14 +104,15 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build dividend data for symbols with open positions
-	var dividendSymbols []DividendSymbolData
+	// Use a map to aggregate positions by symbol
+	dividendSymbolsMap := make(map[string]*DividendSymbolData)
 	var totalAnnualIncome float64
 	var totalYield float64
 	var yieldCount int
-	
+
 	// Map for pie chart data
 	incomeBySymbolMap := make(map[string]float64)
-	
+
 	for _, position := range openPositions {
 		// Get symbol data for dividend and price info
 		symbol, err := s.symbolService.GetBySymbol(position.Symbol)
@@ -138,63 +140,116 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 			// Calculate total dividend income: shares x quarterly dividend x 4
 			positionAnnualIncome := float64(position.Shares) * annualDividend
 			totalAnnualIncome += positionAnnualIncome
-			
-			// Track for pie chart
-			incomeBySymbolMap[position.Symbol] = positionAnnualIncome
 
-			// Track for average yield
-			if yieldPercent > 0 {
-				totalYield += yieldPercent
-				yieldCount++
+			// Check if we already have this symbol in the map
+			if existing, exists := dividendSymbolsMap[position.Symbol]; exists {
+				// Aggregate shares and income
+				existing.Shares += position.Shares
+				existing.TotalAnnualIncome += positionAnnualIncome
+				existing.Positions = append(existing.Positions, position)
+				incomeBySymbolMap[position.Symbol] += positionAnnualIncome
+			} else {
+				// Track for pie chart
+				incomeBySymbolMap[position.Symbol] = positionAnnualIncome
+
+				// Track for average yield (only count unique symbols)
+				if yieldPercent > 0 {
+					totalYield += yieldPercent
+					yieldCount++
+				}
+
+				// Create new entry
+				dividendSymbolsMap[position.Symbol] = &DividendSymbolData{
+					Symbol:            position.Symbol,
+					Price:             symbol.Price,
+					Dividend:          symbol.Dividend,
+					AnnualDividend:    annualDividend,
+					YieldPercent:      yieldPercent,
+					ExDividendDate:    symbol.ExDividendDate,
+					DividendCount:     len(dividends),
+					Shares:            position.Shares,
+					TotalAnnualIncome: positionAnnualIncome,
+					Positions:         []*models.LongPosition{position},
+					DividendPayments:  dividends,
+				}
 			}
-
-			dividendSymbols = append(dividendSymbols, DividendSymbolData{
-				Symbol:            position.Symbol,
-				Price:             symbol.Price,
-				Dividend:          symbol.Dividend,
-				AnnualDividend:    annualDividend,
-				YieldPercent:      yieldPercent,
-				ExDividendDate:    symbol.ExDividendDate,
-				DividendCount:     len(dividends),
-				Shares:            position.Shares,
-				TotalAnnualIncome: positionAnnualIncome,
-			})
 		}
 	}
 
-	// Build pie chart data for income by symbol
+	// Convert map to slice and sort alphabetically
+	var dividendSymbols []DividendSymbolData
+	for _, data := range dividendSymbolsMap {
+		dividendSymbols = append(dividendSymbols, *data)
+	}
+	sort.Slice(dividendSymbols, func(i, j int) bool {
+		return dividendSymbols[i].Symbol < dividendSymbols[j].Symbol
+	})
+
+	// Build pie chart data for income by symbol (sorted alphabetically)
+	var symbolsSorted []string
+	for symbol := range incomeBySymbolMap {
+		symbolsSorted = append(symbolsSorted, symbol)
+	}
+	sort.Strings(symbolsSorted)
+
 	var incomeBySymbol []ChartData
 	colors := []string{"#3498db", "#2ecc71", "#e74c3c", "#f39c12", "#9b59b6", "#1abc9c", "#34495e", "#e67e22"}
-	colorIndex := 0
-	for symbol, income := range incomeBySymbolMap {
+	for i, symbol := range symbolsSorted {
 		incomeBySymbol = append(incomeBySymbol, ChartData{
 			Label: symbol,
-			Value: income,
-			Color: colors[colorIndex%len(colors)],
+			Value: incomeBySymbolMap[symbol],
+			Color: colors[i%len(colors)],
 		})
-		colorIndex++
 	}
 
-	// Calculate historical dividends by month
+	// Calculate historical dividends by month and symbol
 	allDividends, err := s.dividendService.GetAll()
 	if err != nil {
 		log.Printf("[DIVIDENDS] Error getting all dividends: %v", err)
 	}
-	
-	monthlyTotals := make(map[string]float64)
+
+	type monthSymbolKey struct {
+		month  string
+		symbol string
+	}
+
+	monthlyBySymbol := make(map[monthSymbolKey]float64)
+	monthsSet := make(map[string]bool)
+	symbolsSet := make(map[string]bool)
+
 	for _, div := range allDividends {
 		monthKey := div.Received.Format("2006-01")
-		monthlyTotals[monthKey] += div.Amount
+		key := monthSymbolKey{month: monthKey, symbol: div.Symbol}
+		monthlyBySymbol[key] += div.Amount
+		monthsSet[monthKey] = true
+		symbolsSet[div.Symbol] = true
 	}
-	
+
+	var months []string
+	for month := range monthsSet {
+		months = append(months, month)
+	}
+	sort.Strings(months)
+
+	var symbols []string
+	for symbol := range symbolsSet {
+		symbols = append(symbols, symbol)
+	}
+	sort.Strings(symbols)
+
 	var dividendsOverTime []MonthlyChartData
 	var totalDividendsPaid float64
-	for month, amount := range monthlyTotals {
+	for month := range monthsSet {
+		var monthTotal float64
+		for symbol := range symbolsSet {
+			key := monthSymbolKey{month: month, symbol: symbol}
+			monthTotal += monthlyBySymbol[key]
+		}
 		dividendsOverTime = append(dividendsOverTime, MonthlyChartData{
 			Month:  month,
-			Amount: amount,
+			Amount: monthTotal,
 		})
-		totalDividendsPaid += amount
+		totalDividendsPaid += monthTotal
 	}
 
 	// Build upcoming ex-dividend dates
@@ -216,7 +271,7 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	
+
 	// Sort upcoming dates by DaysUntil (soonest first)
 	sort.Slice(upcomingExDivDates, func(i, j int) bool {
 		return upcomingExDivDates[i].DaysUntil < upcomingExDivDates[j].DaysUntil
@@ -228,6 +283,16 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 		averageYield = totalYield / float64(yieldCount)
 	}
 
+	// Build stacked bar chart data
+	stackedData := make(map[string]map[string]float64)
+	for symbol := range symbolsSet {
+		stackedData[symbol] = make(map[string]float64)
+		for _, month := range months {
+			key := monthSymbolKey{month: month, symbol: symbol}
+			stackedData[symbol][month] = monthlyBySymbol[key]
+		}
+	}
+
 	data := DividendsPageData{
 		PageData: PageData{
 			Title:      "Dividends",
@@ -235,9 +300,14 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 			CurrentDB:  s.getCurrentDatabaseName(),
 			AllSymbols: s.getAllSymbolsList(),
 		},
-		DividendSymbols:    dividendSymbols,
-		IncomeBySymbol:     incomeBySymbol,
-		DividendsOverTime:  dividendsOverTime,
+		DividendSymbols:   dividendSymbols,
+		IncomeBySymbol:    incomeBySymbol,
+		DividendsOverTime: dividendsOverTime,
+		DividendsStackedByMonth: []DividendStackedMonthData{{
+			Months:  months,
+			Symbols: symbols,
+			Data:    stackedData,
+		}},
 		UpcomingExDivDates: upcomingExDivDates,
 		TotalAnnualIncome:  totalAnnualIncome,
 		TotalDividendsPaid: totalDividendsPaid,

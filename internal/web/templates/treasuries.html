@@ -58,6 +58,7 @@
                                 <th>CUSPID</th>
                                 <th>Purchased</th>
                                 <th>Maturity Date</th>
+                                <th>Remaining</th>
                                 <th class="text-right">Amount</th>
                                 <th class="text-right">Yield</th>
                                 <th class="text-right">Buy Price</th>
@@ -73,6 +74,13 @@
                                 <td><strong>{{.CUSPID}}</strong></td>
                                 <td>{{.Purchased.Format "1/2/2006"}}</td>
                                 <td>{{.Maturity.Format "1/2/2006"}}</td>
+                                <td>
+                                    {{if not .HasExitPrice}}
+                                        <span class="{{if le .CalculateDaysRemaining 0}}dte-expired{{else if le .CalculateDaysRemaining 3}}dte-critical{{else if le .CalculateDaysRemaining 6}}dte-warning{{else if le .CalculateDaysRemaining 9}}dte-caution{{else if le .CalculateDaysRemaining 15}}dte-neutral{{else if le .CalculateDaysRemaining 21}}dte-safe{{else}}dte-healthy{{end}}">{{.CalculateDaysRemaining}} days</span>
+                                    {{else}}
+                                        -
+                                    {{end}}
+                                </td>
                                 <td class="text-right">${{printf "%.2f" .Amount}}</td>
                                 <td class="text-right">{{printf "%.3f" .Yield}}%</td>
                                 <td class="text-right">${{printf "%.2f" .BuyPrice}}</td>
@@ -90,7 +98,7 @@
                             </tr>
                             {{else}}
                             <tr>
-                                <td colspan="10" style="text-align: center; color: #a0a0a0; padding: 40px;">
+                                <td colspan="11" style="text-align: center; color: #a0a0a0; padding: 40px;">
                                     No treasuries found. <a href="#" onclick="openAddModal()" style="color: #4fc3f7;">Add your first treasury</a>
                                 </td>
                             </tr>
@@ -99,7 +107,7 @@
                         <tfoot>
                             {{if .Treasuries}}
                             <tr class="table-totals-row">
-                                <td colspan="6"><strong>Total</strong></td>
+                                <td colspan="7"><strong>Total</strong></td>
                                 <td colspan="2"></td>
                                 <td class="text-right"><strong>${{printf "%.2f" .Summary.TotalProfitLoss}}</strong></td>
                                 <td></td>
