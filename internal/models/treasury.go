@@ -80,6 +80,16 @@ func (t *Treasury) HasExitPrice() bool {
 	return t.ExitPrice != nil
 }
 
+// CalculateDaysRemaining calculates days remaining until maturity
+func (t *Treasury) CalculateDaysRemaining() int {
+	if t.ExitPrice != nil {
+		return 0
+	}
+	now := time.Now()
+	duration := t.Maturity.Sub(now)
+	return int(duration.Hours() / 24)
+}
+
 type TreasuryService struct {
 	db *sql.DB
 }

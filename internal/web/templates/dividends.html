@@ -6,6 +6,7 @@
     <title>Dividends - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
     <style>
@@ -254,13 +255,14 @@
                         </div>
                         <div class="accordion-content">
                             <div class="accordion-table-container">
-                                <table class="data-table">
+                                <h4 style="color: #a0a0a0; margin-bottom: 10px; font-size: 14px;">Symbol Information</h4>
+                                <table class="data-table" style="margin-bottom: 20px;">
                                     <thead>
                                         <tr>
                                             <th>Price</th>
                                             <th>Quarterly Div</th>
                                             <th>Annual Div</th>
-                                            <th>Annual Yield %</th>
+                                            <th>Yield %</th>
                                             <th>Ex-Dividend Date</th>
                                         </tr>
                                     </thead>
@@ -278,6 +280,62 @@
                                                 {{end}}
                                             </td>
                                         </tr>
+                                    </tbody>
+                                </table>
+                                
+                                <h4 style="color: #a0a0a0; margin-bottom: 10px; font-size: 14px;">Open Positions</h4>
+                                <table class="data-table" id="positions-{{.Symbol}}" style="margin-bottom: 20px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Purchased</th>
+                                            <th>Shares</th>
+                                            <th>Buy Price</th>
+                                            <th>Annual Income</th>
+                                            <th>Yield at Buy</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{$dividend := .Dividend}}
+                                        {{range .Positions}}
+                                        <tr>
+                                            <td>{{.Opened.Format "01/02/2006"}}</td>
+                                            <td>{{.Shares}}</td>
+                                            <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
+                                            <td class="positive">{{formatCurrency (mul (mul $dividend 4.0) .Shares)}}</td>
+                                            <td>{{printf "%.2f" (.CalculateYield $dividend)}}%</td>
+                                        </tr>
+                                        {{end}}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="font-weight: bold; background: rgba(0, 122, 204, 0.1);">
+                                            <td>Total</td>
+                                            <td>{{formatInt .Shares}}</td>
+                                            <td>-</td>
+                                            <td class="positive">{{formatCurrency .TotalAnnualIncome}}</td>
+                                            <td>{{printf "%.2f" .YieldPercent}}%</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                                
+                                <h4 style="color: #a0a0a0; margin-bottom: 10px; font-size: 14px;">Historical Dividend Payments</h4>
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Received</th>
+                                            <th>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {{range .DividendPayments}}
+                                        <tr>
+                                            <td>{{.Received.Format "01/02/2006"}}</td>
+                                            <td class="positive">{{formatCurrencyWithDecimals .Amount}}</td>
+                                        </tr>
+                                        {{else}}
+                                        <tr>
+                                            <td colspan="2" style="text-align: center; color: #808080;">No dividend payments recorded</td>
+                                        </tr>
+                                        {{end}}
                                     </tbody>
                                 </table>
                             </div>
@@ -399,36 +457,89 @@
             
             $('#dividendsCalendar').html(calendarHTML);
 
-            // Dividends by Month Chart
-            {{if .DividendsOverTime}}
+            // Dividends by Month Stacked Chart
+            {{if .DividendsStackedByMonth}}
+            {{$stackedData := index .DividendsStackedByMonth 0}}
             const dividendsMonthCtx = document.getElementById('dividendsMonthChart').getContext('2d');
             
-            const monthlyData = [{{range .DividendsOverTime}}
-                {month: '{{.Month}}', amount: {{.Amount}}},
-            {{end}}];
-            monthlyData.sort((a, b) => a.month.localeCompare(b.month));
+            const months = [{{range $stackedData.Months}}'{{.}}',{{end}}];
+            const symbols = [{{range $stackedData.Symbols}}'{{.}}',{{end}}];
+            const colors = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#34495e', '#e67e22'];
+            
+            const datasets = symbols.map((symbol, idx) => {
+                return {
+                    label: symbol,
+                    data: months.map(month => {
+                        {{range $symbol, $monthData := $stackedData.Data}}
+                        if (symbol === '{{$symbol}}') {
+                            {{range $month, $amount := $monthData}}
+                            if (month === '{{$month}}') return {{$amount}};
+                            {{end}}
+                        }
+                        {{end}}
+                        return 0;
+                    }),
+                    backgroundColor: colors[idx % colors.length],
+                    borderColor: colors[idx % colors.length],
+                    borderWidth: 1
+                };
+            });
             
             new Chart(dividendsMonthCtx, {
                 type: 'bar',
                 data: {
-                    labels: monthlyData.map(d => {
-                        const [year, month] = d.month.split('-');
-                        const date = new Date(year, month - 1);
+                    labels: months.map(month => {
+                        const [year, m] = month.split('-');
+                        const date = new Date(year, m - 1);
                         return date.toLocaleDateString('en-US', { month: 'short' });
                     }),
-                    datasets: [{
-                        label: 'Dividends',
-                        data: monthlyData.map(d => d.amount),
-                        backgroundColor: '#2ecc71',
-                        borderColor: '#27ae60',
-                        borderWidth: 1
-                    }]
+                    datasets: datasets
                 },
+                plugins: [{
+                    id: 'stackTotals',
+                    afterDatasetsDraw: function(chart) {
+                        const ctx = chart.ctx;
+                        ctx.save();
+                        
+                        ctx.font = 'bold 12px Arial';
+                        ctx.fillStyle = '#27ae60';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        
+                        chart.data.labels.forEach((label, monthIndex) => {
+                            let total = 0;
+                            let stackTop = null;
+                            let stackX = null;
+                            
+                            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                                const meta = chart.getDatasetMeta(datasetIndex);
+                                if (meta.data[monthIndex] && dataset.data[monthIndex] > 0) {
+                                    total += dataset.data[monthIndex];
+                                    const bar = meta.data[monthIndex];
+                                    stackTop = bar.y;
+                                    stackX = bar.x;
+                                }
+                            });
+                            
+                            if (total > 0 && stackX !== null && stackTop !== null) {
+                                ctx.fillText('$' + Math.round(total).toLocaleString(), stackX, stackTop - 5);
+                            }
+                        });
+                        
+                        ctx.restore();
+                    }
+                }],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { color: '#a0a0a0' },
+                            grid: { color: '#2a2a2a' }
+                        },
                         y: {
+                            stacked: true,
                             beginAtZero: true,
                             ticks: {
                                 color: '#a0a0a0',
@@ -437,20 +548,156 @@
                                 }
                             },
                             grid: { color: '#2a2a2a' }
-                        },
-                        x: {
-                            ticks: { color: '#a0a0a0' },
-                            grid: { color: '#2a2a2a' }
                         }
                     },
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            labels: {
+                                color: '#e0e0e0',
+                                padding: 8,
+                                font: { size: 11 }
+                            }
+                        },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return 'Dividends: $' + context.parsed.y.toFixed(2);
+                            enabled: false,
+                            external: function(context) {
+                                const {chart, tooltip} = context;
+                                
+                                let tooltipEl = document.getElementById('chartjs-tooltip-dividends');
+                                if (!tooltipEl) {
+                                    tooltipEl = document.createElement('div');
+                                    tooltipEl.id = 'chartjs-tooltip-dividends';
+                                    document.body.appendChild(tooltipEl);
+                                }
+                                
+                                if (tooltip.opacity === 0) {
+                                    tooltipEl.style.opacity = 0;
+                                    tooltipEl.style.visibility = 'hidden';
+                                    return;
+                                }
+                                
+                                if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
+                                    const monthIndex = tooltip.dataPoints[0].dataIndex;
+                                    const monthLabel = months[monthIndex];
+                                    const [year, m] = monthLabel.split('-');
+                                    const date = new Date(year, m - 1);
+                                    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+                                    
+                                    const symbolSummary = {};
+                                    let total = 0;
+                                    
+                                    symbols.forEach(symbol => {
+                                        {{range $symbol, $monthData := $stackedData.Data}}
+                                        if (symbol === '{{$symbol}}') {
+                                            {{range $month, $amount := $monthData}}
+                                            if (monthLabel === '{{$month}}' && {{$amount}} > 0) {
+                                                symbolSummary[symbol] = {{$amount}};
+                                                total += {{$amount}};
+                                            }
+                                            {{end}}
+                                        }
+                                        {{end}}
+                                    });
+                                    
+                                    const symbolKeys = Object.keys(symbolSummary).sort();
+                                    
+                                    let html = `
+                                        <div style="
+                                            background: rgba(20, 20, 20, 0.95);
+                                            border: 2px solid #007acc;
+                                            border-radius: 8px;
+                                            padding: 16px;
+                                            font-family: monospace;
+                                            color: #ffffff;
+                                            width: 500px;
+                                            max-width: 90vw;
+                                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                                        ">
+                                            <div style="
+                                                font-size: 16px;
+                                                font-weight: bold;
+                                                text-align: center;
+                                                margin-bottom: 16px;
+                                                padding-bottom: 8px;
+                                                border-bottom: 1px solid #007acc;
+                                                color: #007acc;
+                                            ">
+                                                ${monthName} Dividends Summary
+                                            </div>
+                                            
+                                            <table style="
+                                                width: 100%;
+                                                margin-bottom: 16px;
+                                                border-collapse: collapse;
+                                                background: rgba(0, 122, 204, 0.1);
+                                                border-radius: 4px;
+                                            ">
+                                                <tr>
+                                                    <td style="padding: 8px 12px; font-weight: bold; width: 40%;">TOTAL MONTH:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: #27ae60;">$${Math.round(total).toLocaleString()}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding: 8px 12px; font-weight: bold;">SYMBOLS:</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: #ffffff;">${symbolKeys.length}</td>
+                                                </tr>
+                                            </table>
+                                            
+                                            <div style="
+                                                font-size: 14px;
+                                                font-weight: bold;
+                                                margin-bottom: 8px;
+                                                color: #007acc;
+                                            ">BREAKDOWN BY SYMBOL</div>
+                                            
+                                            <table style="
+                                                width: 100%;
+                                                border-collapse: collapse;
+                                                font-size: 12px;
+                                                background: rgba(255, 255, 255, 0.05);
+                                            ">
+                                                <thead>
+                                                    <tr style="background: rgba(0, 122, 204, 0.3);">
+                                                        <th style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #404040;">SYMBOL</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">AMOUNT</th>
+                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">% OF MONTH</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>`;
+                                    
+                                    symbolKeys.forEach((symbol, index) => {
+                                        const amount = symbolSummary[symbol];
+                                        const percentage = total > 0 ? ((amount / total) * 100) : 0;
+                                        const bgColor = index % 2 === 0 ? 'rgba(255, 255, 255, 0.03)' : 'transparent';
+                                        
+                                        html += `
+                                            <tr style="background: ${bgColor};">
+                                                <td style="padding: 4px 8px; font-weight: bold; color: #ffffff;">${symbol}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: #27ae60;">$${Math.round(amount).toLocaleString()}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: #f39c12;">${percentage.toFixed(1)}%</td>
+                                            </tr>`;
+                                    });
+                                    
+                                    html += `
+                                                </tbody>
+                                            </table>
+                                        </div>`;
+                                    
+                                    tooltipEl.innerHTML = html;
+                                    tooltipEl.style.opacity = 1;
+                                    tooltipEl.style.visibility = 'visible';
+                                    tooltipEl.style.position = 'absolute';
+                                    tooltipEl.style.left = tooltip.caretX + 'px';
+                                    tooltipEl.style.top = tooltip.caretY + 'px';
+                                    tooltipEl.style.pointerEvents = 'none';
+                                    tooltipEl.style.zIndex = '1000';
+                                    tooltipEl.style.transition = 'opacity 0.2s ease';
                                 }
                             }
+                        },
+                        datalabels: {
+                            display: false
                         }
                     }
                 }
@@ -466,9 +713,12 @@
                     labels: [{{range .IncomeBySymbol}}'{{.Label}}',{{end}}],
                     datasets: [{
                         data: [{{range .IncomeBySymbol}}{{.Value}},{{end}}],
-                        backgroundColor: [{{range .IncomeBySymbol}}'{{.Color}}',{{end}}]
+                        backgroundColor: [{{range .IncomeBySymbol}}'{{.Color}}',{{end}}],
+                        borderWidth: 0.7,
+                        borderColor: '#ccc'
                     }]
                 },
+                plugins: [ChartDataLabels],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -476,16 +726,28 @@
                         legend: {
                             position: 'right',
                             labels: {
-                                color: '#e0e0e0',
-                                padding: 8,
-                                font: { size: 11 }
+                                font: { size: 14 },
+                                padding: 10,
+                                color: '#e0e0e0'
                             }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.label + ': $' + context.parsed.toFixed(0);
+                                    return context.label + ': $' + context.parsed.toLocaleString();
                                 }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#e0e0e0',
+                            formatter: function(value) {
+                                if (value < 500) return '';
+                                return '$' + Math.round(value).toLocaleString();
+                            },
+                            font: {
+                                size: 12,
+                                weight: 'bold'
                             }
                         }
                     },
