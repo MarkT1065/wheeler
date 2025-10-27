@@ -8,19 +8,38 @@ import (
 )
 
 // Commission constants
-const OptionCommissionPerContract = 0.65
+const DefaultCommissionPerContract = 0.65 // Fallback if setting not configured
 
 type OptionService struct {
-	db *sql.DB
+	db             *sql.DB
+	settingService *SettingService
 }
 
-func NewOptionService(db *sql.DB) *OptionService {
-	return &OptionService{db: db}
+func NewOptionService(db *sql.DB, settingService *SettingService) *OptionService {
+	return &OptionService{
+		db:             db,
+		settingService: settingService,
+	}
 }
 
-func (s *OptionService) Create(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int) (*Option, error) {
-	// Automatically calculate opening commission: $0.65 per contract
-	openingCommission := OptionCommissionPerContract * float64(contracts)
+// GetCommissionPerContract retrieves the current commission setting
+func (s *OptionService) GetCommissionPerContract() float64 {
+	if s.settingService == nil {
+		return DefaultCommissionPerContract
+	}
+
+	// Get from settings with validation (min: 0, max: 50)
+	return s.settingService.GetFloatValueWithValidation(
+		"OPTION_COMMISSION_PER_CONTRACT",
+		DefaultCommissionPerContract,
+		0.0,  // min
+		50.0, // max
+	)
+}
+
+func (s *OptionService) Create(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commissionPerContract float64) (*Option, error) {
+	// Calculate total opening commission from per-contract rate
+	openingCommission := commissionPerContract * float64(contracts)
 	return s.CreateWithCommission(symbol, optionType, opened, strike, expiration, premium, contracts, openingCommission)
 }
 
@@ -131,11 +150,17 @@ func (s *OptionService) GetOpen() ([]*Option, error) {
 }
 
 func (s *OptionService) Close(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, closed time.Time, exitPrice float64) error {
-	// Calculate closing commission: $0.65 per contract
-	closingCommission := OptionCommissionPerContract * float64(contracts)
+	// Calculate closing commission: only if position was bought to close (exitPrice > 0)
+	// For expired positions (exitPrice = 0), no closing commission is added
+	closingCommission := 0.0
+	if exitPrice > 0 {
+		// Get current commission setting
+		commissionPerContract := s.GetCommissionPerContract()
+		closingCommission = commissionPerContract * float64(contracts)
+	}
 
-	query := `UPDATE options 
-			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
+	query := `UPDATE options
+			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP
 			  WHERE symbol = ? AND type = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
 
 	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, symbol, optionType, opened, strike, expiration, premium, contracts)
@@ -244,17 +269,23 @@ func (s *OptionService) DeleteByID(id int) error {
 
 // CloseByID closes an option by its ID
 func (s *OptionService) CloseByID(id int, closed time.Time, exitPrice float64) error {
-	// First get the option to find out the number of contracts for commission calculation
+	// First get the option to find out the number of contracts
 	option, err := s.GetByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to get option for commission calculation: %w", err)
 	}
 
-	// Calculate closing commission: $0.65 per contract
-	closingCommission := OptionCommissionPerContract * float64(option.Contracts)
+	// Calculate closing commission: only if position was bought to close (exitPrice > 0)
+	// For expired positions (exitPrice = 0), no closing commission is added
+	closingCommission := 0.0
+	if exitPrice > 0 {
+		// Get current commission setting
+		commissionPerContract := s.GetCommissionPerContract()
+		closingCommission = commissionPerContract * float64(option.Contracts)
+	}
 
-	query := `UPDATE options 
-			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
+	query := `UPDATE options
+			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP
 			  WHERE id = ?`
 
 	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, id)

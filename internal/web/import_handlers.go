@@ -1338,7 +1338,8 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 	// Update server's database connection and reinitialize all services
 	log.Printf("[SET_DATABASE] Reinitializing services with new database connection")
 	s.db = dbWrapper.DB
-	s.optionService = models.NewOptionService(dbWrapper.DB)
+	s.settingService = models.NewSettingService(dbWrapper.DB)
+	s.optionService = models.NewOptionService(dbWrapper.DB, s.settingService)
 	s.symbolService = models.NewSymbolService(dbWrapper.DB)
 	s.treasuryService = models.NewTreasuryService(dbWrapper.DB)
 	s.longPositionService = models.NewLongPositionService(dbWrapper.DB)

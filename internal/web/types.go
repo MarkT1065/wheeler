@@ -273,17 +273,18 @@ type SymbolData struct {
 }
 
 type OptionRequest struct {
-	ID         *int     `json:"id,omitempty"`
-	Symbol     string   `json:"symbol"`
-	Type       string   `json:"type"`
-	Strike     float64  `json:"strike"`
-	Expiration string   `json:"expiration"`
-	Premium    float64  `json:"premium"`
-	Contracts  int      `json:"contracts"`
-	Opened     string   `json:"opened"`
-	Closed     *string  `json:"closed,omitempty"`
-	ExitPrice  *float64 `json:"exit_price,omitempty"`
-	Commission float64  `json:"commission,omitempty"`
+	ID                    *int     `json:"id,omitempty"`
+	Symbol                string   `json:"symbol"`
+	Type                  string   `json:"type"`
+	Strike                float64  `json:"strike"`
+	Expiration            string   `json:"expiration"`
+	Premium               float64  `json:"premium"`
+	Contracts             int      `json:"contracts"`
+	Opened                string   `json:"opened"`
+	Closed                *string  `json:"closed,omitempty"`
+	ExitPrice             *float64 `json:"exit_price,omitempty"`
+	Commission            float64  `json:"commission,omitempty"`
+	CommissionPerContract float64  `json:"commission_per_contract,omitempty"`
 }
 
 type DividendRequest struct {

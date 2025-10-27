@@ -1,6 +1,20 @@
-<<<<<<< HEAD
-./data/test_db.db
-=======
-./data/test_db.*
-./docs/*.*
->>>>>>> 8eadf0f (initial commit)
+# Database files
+data/test_db.db
+data/test_db.db-shm
+data/test_db.db-wal
+data/*.db-shm
+data/*.db-wal
+
+# Executables
+*.exe
+wheeler
+stonks
+stonks.exe
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

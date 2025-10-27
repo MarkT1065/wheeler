@@ -141,17 +141,37 @@ func (o *Option) CalculateTotalProfit() float64 {
 	return profit - o.Commission // Subtract commission for accurate net profit
 }
 
-// antamy: changed maxprofit calculation to account for commissions
-
 func (o *Option) CalculatePercentOfProfit() float64 {
 	if o.Premium == 0 {
 		return 0
 	}
-	maxProfit := o.Premium * float64(o.Contracts) * 100
-	maxProfit -= o.Commission
+
+	// MaxProfit is CONSTANT = (Premium × Contracts × 100) - Opening Commission
+	// Extract opening commission from the commission field:
+	// - Open positions: commission = opening commission
+	// - Expired positions (exitPrice = 0): commission = opening commission
+	// - Bought-back positions (exitPrice > 0): commission = opening + closing, so divide by 2
+
+	openingCommission := o.Commission
+	if o.Closed != nil && o.ExitPrice != nil && *o.ExitPrice > 0 {
+		// Position was bought to close - commission includes both opening and closing
+		// Assume equal rates, so opening = total / 2
+		openingCommission = o.Commission / 2.0
+	}
+
+	maxProfit := (o.Premium * float64(o.Contracts) * 100) - openingCommission
 	actualProfit := o.CalculateTotalProfit()
+
+	if maxProfit <= 0 {
+		return 0
+	}
+
 	return (actualProfit / maxProfit) * 100
 }
+
+// Note: For positions bought to close, this assumes opening and closing
+// commissions are equal. If commission rates changed between opening and
+// closing, the calculation uses an approximation.
 
 func (o *Option) CalculatePercentOfTime() float64 {
 	totalDays := o.Expiration.Sub(o.Opened).Hours() / 24
