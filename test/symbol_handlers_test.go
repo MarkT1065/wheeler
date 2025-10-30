@@ -369,7 +369,8 @@ func setupSymbolTestDatabase(t *testing.T) *database.DB {
 // Helper function to create deterministic symbol test data
 func createDeterministicSymbolData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	longPositionService := models.NewLongPositionService(db.DB)
 	dividendService := models.NewDividendService(db.DB)
 
@@ -404,18 +405,20 @@ func createDeterministicSymbolData(t *testing.T, db *database.DB) {
 			// Put options (more frequent)
 			putPremium := 5.50 + float64(i)*1.25 + float64(month)*0.25
 			_ = 3.25 + float64(i)*0.75 + float64(month)*0.15 // putExitPrice
-			
-			_, err := optionService.Create(symbol, "Put", openDate, prices[i]*0.95, expirationDate, putPremium, 2)
+
+			// Put: 2 contracts, commission = 0.65 * 2 = 1.30 total
+			_, err := optionService.CreateWithCommission(symbol, "Put", openDate, prices[i]*0.95, expirationDate, putPremium, 2, 1.30)
 			if err != nil {
 				t.Fatalf("Failed to create %s put for month %d: %v", symbol, month, err)
 			}
-			
+
 			// Call options (less frequent)
 			if month%2 == 0 {
 				callPremium := 3.75 + float64(i)*0.75 + float64(month)*0.20
 				_ = 2.15 + float64(i)*0.50 + float64(month)*0.10 // callExitPrice
-				
-				_, err := optionService.Create(symbol, "Call", openDate, prices[i]*1.05, expirationDate, callPremium, 1)
+
+				// Call: 1 contract, commission = 0.65 * 1 = 0.65 total
+				_, err := optionService.CreateWithCommission(symbol, "Call", openDate, prices[i]*1.05, expirationDate, callPremium, 1, 0.65)
 				if err != nil {
 					t.Fatalf("Failed to create %s call for month %d: %v", symbol, month, err)
 				}
@@ -452,8 +455,9 @@ func createDeterministicSymbolData(t *testing.T, db *database.DB) {
 func buildTestSymbolData(t *testing.T, db *database.DB, symbol string) web.SymbolData {
 	// This simulates the buildSymbolData function from symbol_handlers.go
 	// For testing, we'll fetch actual data from the database
-	
-	optionService := models.NewOptionService(db.DB)
+
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	longPositionService := models.NewLongPositionService(db.DB)
 	dividendService := models.NewDividendService(db.DB)
 	

@@ -59,6 +59,9 @@ Represents options positions (cash-secured puts and covered calls) central to wh
 - premium (REAL) - Premium received when selling the option
 - contracts (INTEGER) - Number of option contracts
 - exit_price (REAL) - Price paid to close position (null if still open)
+- commission (REAL) - Total commission paid for the option (default: 0.0)
+  - For open/expired positions: per_contract_rate × contracts
+  - For closed positions (buy-to-close): per_contract_rate × contracts × 2
 - created_at (DATETIME) - Record creation timestamp (default: CURRENT_TIMESTAMP)
 - updated_at (DATETIME) - Record update timestamp (default: CURRENT_TIMESTAMP)
 
@@ -185,6 +188,7 @@ Represents application configuration settings stored as name-value pairs for dyn
 - **AUTO_UPDATE_INTERVAL**: Minutes between automatic price updates
 - **DEFAULT_CURRENCY**: Base currency for portfolio calculations
 - **ENABLE_NOTIFICATIONS**: Enable/disable system notifications
+- **OPTION_COMMISSION_PER_CONTRACT**: Default commission rate per option contract (default: 0.65)
 
 **Constraints:**
 - name must be unique

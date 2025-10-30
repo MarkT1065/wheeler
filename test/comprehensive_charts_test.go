@@ -293,7 +293,8 @@ func setupLargeTestDatabase(t *testing.T) *database.DB {
 func createComprehensiveTestData(t *testing.T, db *database.DB) {
 	// Create comprehensive test data for all chart types
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	longPositionService := models.NewLongPositionService(db.DB)
 	dividendService := models.NewDividendService(db.DB)
 	treasuryService := models.NewTreasuryService(db.DB)
@@ -327,14 +328,16 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 			_ = 3.0 + float64(i)*1.0 + float64(month)*0.25 // exitPrice
 			
 			// Create puts and calls
-			if _, err := optionService.Create(symbol, "Put", openDate, prices[i]*0.95, expirationDate, premium, 2); err != nil {
+			// Put: 2 contracts, commission = 0.65 * 2 = 1.30 total
+			if _, err := optionService.CreateWithCommission(symbol, "Put", openDate, prices[i]*0.95, expirationDate, premium, 2, 1.30); err != nil {
 				t.Fatalf("Failed to create %s put for month %d: %v", symbol, month, err)
 			}
-			
+
 			if month%2 == 0 { // Calls every other month
 				callPremium := premium * 0.8
 				_ = premium * 0.8 * 0.7 // callExitPrice
-				if _, err := optionService.Create(symbol, "Call", openDate, prices[i]*1.05, expirationDate, callPremium, 1); err != nil {
+				// Call: 1 contract, commission = 0.65 * 1 = 0.65 total
+				if _, err := optionService.CreateWithCommission(symbol, "Call", openDate, prices[i]*1.05, expirationDate, callPremium, 1, 0.65); err != nil {
 					t.Fatalf("Failed to create %s call for month %d: %v", symbol, month, err)
 				}
 			}
@@ -383,7 +386,8 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 func createLargeTestData(t *testing.T, db *database.DB) {
 	// Create larger dataset for performance testing
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	
 	// Create many symbols
 	for i := 0; i < 50; i++ {
@@ -409,8 +413,9 @@ func createLargeTestData(t *testing.T, db *database.DB) {
 			
 			premium := 1.0 + float64(i)*0.5 + float64(month)*0.1
 			_ = premium * 0.6 // exitPrice
-			
-			if _, err := optionService.Create(symbol, "Put", openDate, 100.0+float64(i), expirationDate, premium, 1); err != nil {
+
+			// 1 contract, commission = 0.65 * 1 = 0.65 total
+			if _, err := optionService.CreateWithCommission(symbol, "Put", openDate, 100.0+float64(i), expirationDate, premium, 1, 0.65); err != nil {
 				t.Fatalf("Failed to create large dataset option: %v", err)
 			}
 		}

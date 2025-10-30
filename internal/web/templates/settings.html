@@ -14,32 +14,32 @@
         
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Trading Configuration Section -->
+            <!-- Fees and Charges Section -->
             <div class="content-section">
-                <div class="section-title">Trading Configuration</div>
-                <div class="section-subtitle">Configure default commission rates for options trading</div>
+                <div class="section-title">Fees and Charges</div>
+                <div class="section-subtitle">Configure brokerage fees applied to options trading</div>
 
                 <div class="settings-form-container">
-                    <!-- Trading Configuration -->
+                    <!-- Fees and Charges -->
                     <div class="settings-card">
                         <div class="settings-card-header">
                             <i class="fas fa-dollar-sign"></i>
-                            <h3>Commission Settings</h3>
+                            <h3>Brokerage Fees</h3>
                         </div>
                         <div class="settings-card-body">
-                            <form id="tradingConfigForm">
+                            <form id="feesConfigForm">
                                 <div class="form-group">
                                     <label for="commissionInput" class="form-label">Commission per Contract</label>
                                     <div class="input-with-prefix">
                                         <span class="input-prefix">$</span>
                                         <input type="number" id="commissionInput" class="form-input with-prefix"
                                                step="0.01" min="0" max="50"
-                                               placeholder="0.65"
+                                               placeholder="0.00"
                                                value="{{if .CommissionPerContract}}{{printf "%.2f" .CommissionPerContract}}{{end}}">
                                     </div>
                                     <div class="form-help">
                                         <i class="fas fa-info-circle"></i>
-                                        Default commission charged per options contract (opening and closing)
+                                        Commission per options contract, to be used when adding a trade.  Enter 0 if your broker does not charge a commission.
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -421,7 +421,7 @@
         });
 
         // Commission configuration form submission
-        document.getElementById('tradingConfigForm').addEventListener('submit', function(e) {
+        document.getElementById('feesConfigForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
             const commission = document.getElementById('commissionInput').value.trim();
@@ -446,12 +446,12 @@
                 },
                 body: JSON.stringify({
                     value: commission,
-                    description: 'Default commission per options contract'
+                    description: 'Commission per options contract'
                 })
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Failed to save commission setting');
+                    throw new Error('Failed to save commission rate');
                 }
                 return response.json();
             })
@@ -459,8 +459,8 @@
                 showNotification('Commission rate saved successfully!', 'success');
             })
             .catch(error => {
-                console.error('Error saving commission:', error);
-                showNotification('Error saving commission: ' + error.message, 'error');
+                console.error('Error saving commission rate:', error);
+                showNotification('Error saving commission rate: ' + error.message, 'error');
             })
             .finally(() => {
                 // Restore button state

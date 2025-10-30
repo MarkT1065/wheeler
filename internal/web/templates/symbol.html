@@ -80,6 +80,10 @@
                             <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .TotalProfits}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
+                            <div style="font-size: 16px; color: #a0a0a0;">Commissions</div>
+                            <div style="font-size: 20px; color: #ef4444; font-weight: 700;">{{formatCurrencyWithDecimals .TotalCommissions}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Cash on Cash</div>
                             <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{.CashOnCash}}%</div>
                         </div>
@@ -122,7 +126,7 @@
                             <tr>
                                 <th>Call/Put</th>
                                 <th>Date Sold</th>
-                                <th>Closed Date</th>
+                                <th>Date Closed</th>
                                 <th>Strike</th>
                                 <th>OTM</th>
                                 <th>Expiration</th>
@@ -132,7 +136,7 @@
                                 <th>Contracts</th>
                                 <th>Premium</th>
                                 <th>Exit Price</th>
-                                <th>Commission</th>
+                                <th>Total Commission</th>
                                 <th>Total</th>
                                 <th>% of Profit</th>
                                 <th>% of Time</th>
@@ -151,22 +155,22 @@
                                     </td>
                                     <td>{{.Opened.Format "1/2/2006"}}</td>
                                     <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.2f" .Strike}}</td>
+                                    <td>${{printf "%.2f" .Strike}}</td>
                                     <td>{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
                                     <td>{{.Expiration.Format "1/2/2006"}}</td>
                                     <td>
                                         {{if not .Closed}}
                                             <span class="{{if le .CalculateDaysRemaining 0}}dte-expired{{else if le .CalculateDaysRemaining 3}}dte-critical{{else if le .CalculateDaysRemaining 6}}dte-warning{{else if le .CalculateDaysRemaining 9}}dte-caution{{else if le .CalculateDaysRemaining 15}}dte-neutral{{else if le .CalculateDaysRemaining 21}}dte-safe{{else}}dte-healthy{{end}}">{{.CalculateDaysRemaining}} days</span>
                                         {{else}}
-                                            - 
+                                            -
                                         {{end}}
                                     </td>
                                     <td>{{.CalculateDTE}}</td>
                                     <td>{{.CalculateDTC}}</td>
                                     <td>{{.Contracts}}</td>
-                                    <td>{{printf "%.2f" .Premium}}</td>
+                                    <td>${{printf "%.2f" .Premium}}</td>
                                     <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.2f" .Commission}}</td>
+                                    <td>${{printf "%.2f" .Commission}}</td>
                                     <td>
                                         {{$totalProfit := .CalculateTotalProfit}}
                                         <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
@@ -256,7 +260,7 @@
                             <thead>
                                 <tr>
                                     <th>Purchased</th>
-                                    <th>Closed Date</th>
+                                    <th>Closed</th>
                                     <th>Yield</th>
                                     <th>Shares</th>
                                     <th>Buy Price</th>
@@ -387,6 +391,7 @@
                                 <th>Puts Total</th>
                                 <th>Calls Total</th>
                                 <th>Total</th>
+                                <th>Commission Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -405,6 +410,9 @@
                                     </td>
                                     <td>
                                         <span class="{{if lt .Total 0.0}}negative{{else if gt .Total 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .Total}}</span>
+                                    </td>
+                                    <td>
+                                        <span class="negative">{{formatCurrencyWithDecimals .CommissionTotal}}</span>
                                     </td>
                                 </tr>
                                 {{end}}
@@ -500,8 +508,12 @@
                         <input type="number" id="optionContractsInput" class="form-input" min="1" required>
                     </div>
                     <div class="form-group">
-                        <label for="optionCommissionInput" class="form-label">Commission</label>
-                        <input type="number" id="optionCommissionInput" class="form-input" step="0.01" value="0.00">
+                        <label for="optionCommissionInput" class="form-label">Commission per Contract</label>
+                        <input type="number" id="optionCommissionInput" class="form-input" step="0.01" min="0">
+                        <small class="form-help" style="display: block; margin-top: 4px; color: #888; font-size: 12px;">
+                            <i class="fas fa-info-circle"></i>
+                            Defaults to value in Settings (Admin > Settings)
+                        </small>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1298,7 +1310,21 @@
                 closeOptionModalFunc();
             }
         });
-        
+
+        // Commission helper function
+        async function fetchDefaultCommission() {
+            try {
+                const response = await fetch('/api/settings/OPTION_COMMISSION_PER_CONTRACT');
+                if (response.ok) {
+                    const setting = await response.json();
+                    return parseFloat(setting.value) || 0.65;
+                }
+            } catch (error) {
+                console.log('No default commission setting found');
+            }
+            return 0.65;
+        }
+
         function openOptionModal(editMode = false, optionData = null) {
             isEditingOption = editMode;
             optionModalTitle.textContent = editMode ? 'Edit Option' : 'Add Option';
@@ -1315,17 +1341,39 @@
                 document.getElementById('optionPremiumInput').value = optionData.premium;
                 document.getElementById('optionContractsInput').value = optionData.contracts;
                 document.getElementById('optionExitPriceInput').value = optionData.exit_price || '';
-                document.getElementById('optionCommissionInput').value = optionData.commission;
+
+                // Commission is stored as total commission, so we need to calculate the per-contract rate
+                // For buy-to-close positions: total = per_contract * contracts * 2
+                // For open/expired positions: total = per_contract * contracts
+
+                let commissionPerContract = optionData.commission;
+                if (optionData.contracts > 0) {
+                    commissionPerContract = optionData.commission / optionData.contracts;
+                    // If closed with exit price > 0, it was doubled for buy-to-close
+                    if (optionData.closed && optionData.exit_price > 0) {
+                        commissionPerContract = commissionPerContract / 2.0;
+                    }
+                }
+                document.getElementById('optionCommissionInput').value = commissionPerContract.toFixed(2);
             } else {
                 optionForm.reset();
                 document.getElementById('optionSymbolInput').value = currentSymbol;
                 // Set Date Sold to today's date
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('optionOpenedInput').value = today;
-                document.getElementById('optionCommissionInput').value = '0.65';
+
+                // Fetch and pre-fill default commission from settings
+                fetchDefaultCommission().then(defaultRate => {
+                    if (defaultRate > 0) {
+                        document.getElementById('optionCommissionInput').value = defaultRate.toFixed(2);
+                    } else {
+                        document.getElementById('optionCommissionInput').value = '';
+                    }
+                });
+
                 originalOptionData = null;
             }
-            
+
             optionModal.style.display = 'block';
         }
         
@@ -1339,7 +1387,10 @@
         // Handle option form submission
         optionForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
+            const commissionInput = parseFloat(document.getElementById('optionCommissionInput').value);
+            const commissionPerContract = isNaN(commissionInput) ? 0.0 : commissionInput;
+
             const optionData = {
                 symbol: document.getElementById('optionSymbolInput').value,
                 type: document.getElementById('optionTypeInput').value,
@@ -1350,9 +1401,10 @@
                 premium: parseFloat(document.getElementById('optionPremiumInput').value),
                 contracts: parseInt(document.getElementById('optionContractsInput').value),
                 exit_price: parseFloat(document.getElementById('optionExitPriceInput').value) || null,
-                commission: parseFloat(document.getElementById('optionCommissionInput').value) || 0.0
+                commission_per_contract: commissionPerContract
             };
-            
+
+            // Save the option
             if (isEditingOption) {
                 updateOption(originalOptionData, optionData);
             } else {
@@ -1399,7 +1451,7 @@
                     premium: newData.premium,
                     contracts: newData.contracts,
                     exit_price: newData.exit_price || null,
-                    commission: newData.commission
+                    commission_per_contract: newData.commission_per_contract
                 })
             })
             .then(response => {

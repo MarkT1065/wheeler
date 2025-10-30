@@ -366,7 +366,8 @@ func TestCallsByMonthCalculation(t *testing.T) {
 	defer testDB.Close()
 
 	// Create the services needed for the monthly handler
-	optionService := models.NewOptionService(testDB.DB)
+	settingService := models.NewSettingService(testDB.DB)
+	optionService := models.NewOptionService(testDB.DB, settingService)
 	
 	// Test the month calculation logic directly
 	t.Run("MayCallsCalculation", func(t *testing.T) {
@@ -565,7 +566,8 @@ func setupCallsTestDatabase(t *testing.T) *database.DB {
 // Helper function to create May call test data that reproduces the $13 issue
 func createMayCallTestData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	
 	// Create symbols
 	symbols := []string{"CVX", "MMM", "KO", "USB", "VZ"}
@@ -598,8 +600,10 @@ func createMayCallTestData(t *testing.T, db *database.DB) {
 		openDate := time.Date(2025, 4, data.closedDay-5, 12, 0, 0, 0, time.UTC) // Opened few days before close
 		closeDate := time.Date(2025, 5, data.closedDay, 12, 0, 0, 0, time.UTC)   // Closed in May
 		expirationDate := time.Date(2025, 5, data.closedDay+10, 12, 0, 0, 0, time.UTC) // Expires after close
-		
-		option, err := optionService.Create(data.symbol, "Call", openDate, 100.0, expirationDate, data.premium, data.contracts)
+
+		// Commission: 0.65 * contracts (will be doubled on close)
+		commission := 0.65 * float64(data.contracts)
+		option, err := optionService.CreateWithCommission(data.symbol, "Call", openDate, 100.0, expirationDate, data.premium, data.contracts, commission)
 		if err != nil {
 			t.Fatalf("Failed to create %s call option: %v", data.symbol, err)
 		}
@@ -635,8 +639,10 @@ func createMayCallTestData(t *testing.T, db *database.DB) {
 		openDate := time.Date(2025, 3, 25, 12, 0, 0, 0, time.UTC)
 		closeDate := time.Date(2025, 4, 15, 12, 0, 0, 0, time.UTC)  // Closed in April
 		expirationDate := time.Date(2025, 4, 25, 12, 0, 0, 0, time.UTC)
-		
-		option, err := optionService.Create(data.symbol, "Call", openDate, 100.0, expirationDate, data.premium, data.contracts)
+
+		// Commission: 0.65 * contracts (will be doubled on close)
+		commission := 0.65 * float64(data.contracts)
+		option, err := optionService.CreateWithCommission(data.symbol, "Call", openDate, 100.0, expirationDate, data.premium, data.contracts, commission)
 		if err != nil {
 			t.Fatalf("Failed to create April %s call option: %v", data.symbol, err)
 		}
@@ -718,7 +724,8 @@ func createTestServerForMonthly(testDB *database.DB) http.Handler {
 	// Create a simple handler that mimics the monthly handler logic
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get all options for calculations
-		optionService := models.NewOptionService(db)
+		settingService := models.NewSettingService(db)
+		optionService := models.NewOptionService(db, settingService)
 		options, err := optionService.GetAll()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -852,7 +859,8 @@ func setupRealDataTestDatabase(t *testing.T) *database.DB {
 // Recreate the exact call options data from wheeler.db that should sum to $393
 func recreateWheelerCallData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 
 	// Create symbols from the real database
 	symbols := []string{"CVX", "MMM", "KO", "USB", "VZ"}
@@ -896,7 +904,9 @@ func recreateWheelerCallData(t *testing.T, db *database.DB) {
 		openTime := closeTime.AddDate(0, 0, -10)
 		expirationTime := closeTime.AddDate(0, 0, 15)
 
-		option, err := optionService.Create(data.symbol, "Call", openTime, 100.0, expirationTime, data.premium, data.contracts)
+		// Commission: 0.65 * contracts (will be doubled on close)
+		commission := 0.65 * float64(data.contracts)
+		option, err := optionService.CreateWithCommission(data.symbol, "Call", openTime, 100.0, expirationTime, data.premium, data.contracts, commission)
 		if err != nil {
 			t.Fatalf("Failed to create %s call: %v", data.symbol, err)
 		}
@@ -932,7 +942,9 @@ func recreateWheelerCallData(t *testing.T, db *database.DB) {
 		closeTime := time.Date(2025, 4, data.day, 12, 0, 0, 0, time.UTC)
 		expirationTime := time.Date(2025, 4, data.day+10, 12, 0, 0, 0, time.UTC)
 
-		option, err := optionService.Create(data.symbol, "Call", openTime, 100.0, expirationTime, data.premium, data.contracts)
+		// Commission: 0.65 * contracts (will be doubled on close)
+		commission := 0.65 * float64(data.contracts)
+		option, err := optionService.CreateWithCommission(data.symbol, "Call", openTime, 100.0, expirationTime, data.premium, data.contracts, commission)
 		if err != nil {
 			t.Fatalf("Failed to create April %s call: %v", data.symbol, err)
 		}
@@ -986,7 +998,8 @@ func setupMonthlyTestDatabase(t *testing.T) *database.DB {
 // Helper function to create deterministic monthly test data
 func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	longPositionService := models.NewLongPositionService(db.DB)
 	dividendService := models.NewDividendService(db.DB)
 
@@ -1012,8 +1025,9 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 		
 		premium := 5.50 + float64(month)*0.25 // Increasing premium
 		_ = 3.25 + float64(month)*0.15 // exitPrice - Increasing exit price
-		
-		option, err := optionService.Create("AAPL", "Put", openDate, 145.0, expirationDate, premium, 2)
+
+		// AAPL Put: 2 contracts, commission = 0.65 * 2 = 1.30 total
+		option, err := optionService.CreateWithCommission("AAPL", "Put", openDate, 145.0, expirationDate, premium, 2, 1.30)
 		if err != nil {
 			t.Fatalf("Failed to create AAPL put for month %d: %v", month, err)
 		}
@@ -1022,8 +1036,9 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 		// TSLA calls closed each month
 		callPremium := 8.75 + float64(month)*0.50
 		_ = 4.25 + float64(month)*0.25 // callExitPrice
-		
-		callOption, err := optionService.Create("TSLA", "Call", openDate, 200.0, expirationDate, callPremium, 1)
+
+		// TSLA Call: 1 contract, commission = 0.65 * 1 = 0.65 total
+		callOption, err := optionService.CreateWithCommission("TSLA", "Call", openDate, 200.0, expirationDate, callPremium, 1, 0.65)
 		if err != nil {
 			t.Fatalf("Failed to create TSLA call for month %d: %v", month, err)
 		}

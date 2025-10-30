@@ -100,11 +100,12 @@ func (o *Option) CalculatePercentOTM(currentPrice float64) float64 {
 	if currentPrice <= 0 {
 		return 0
 	}
-	if o.Type == "Put" {
+	switch o.Type {
+	case "Put":
 		if currentPrice >= o.Strike {
 			return math.Abs((currentPrice - o.Strike) / currentPrice * 100)
 		}
-	} else if o.Type == "Call" {
+	case "Call":
 		if currentPrice <= o.Strike {
 			return math.Abs((o.Strike - currentPrice) / currentPrice * 100)
 		}
@@ -138,7 +139,11 @@ func (o *Option) CalculateTotalProfit() float64 {
 		exitPrice = *o.ExitPrice
 	}
 	profit := math.Floor((o.Premium - exitPrice) * float64(o.Contracts) * 100)
-	return profit - o.Commission // Subtract commission for accurate net profit
+
+	// Commission is now stored as total in database
+	// For open/expired positions: commission = per_contract * contracts
+	// For closed positions (buy-to-close): commission = per_contract * contracts * 2
+	return profit - o.Commission
 }
 
 func (o *Option) CalculatePercentOfProfit() float64 {
@@ -146,20 +151,11 @@ func (o *Option) CalculatePercentOfProfit() float64 {
 		return 0
 	}
 
-	// MaxProfit is CONSTANT = (Premium × Contracts × 100) - Opening Commission
-	// Extract opening commission from the commission field:
-	// - Open positions: commission = opening commission
-	// - Expired positions (exitPrice = 0): commission = opening commission
-	// - Bought-back positions (exitPrice > 0): commission = opening + closing, so divide by 2
-
-	openingCommission := o.Commission
-	if o.Closed != nil && o.ExitPrice != nil && *o.ExitPrice > 0 {
-		// Position was bought to close - commission includes both opening and closing
-		// Assume equal rates, so opening = total / 2
-		openingCommission = o.Commission / 2.0
-	}
-
-	maxProfit := (o.Premium * float64(o.Contracts) * 100) - openingCommission
+	// MaxProfit = (Premium × Contracts × 100) - Total Commission
+	// Commission is now stored as total in database
+	// For open positions: commission is already the total opening commission
+	// For closed positions: commission is already doubled (opening + closing)
+	maxProfit := (o.Premium * float64(o.Contracts) * 100) - o.Commission
 	actualProfit := o.CalculateTotalProfit()
 
 	if maxProfit <= 0 {
@@ -168,10 +164,6 @@ func (o *Option) CalculatePercentOfProfit() float64 {
 
 	return (actualProfit / maxProfit) * 100
 }
-
-// Note: For positions bought to close, this assumes opening and closing
-// commissions are equal. If commission rates changed between opening and
-// closing, the calculation uses an approximation.
 
 func (o *Option) CalculatePercentOfTime() float64 {
 	totalDays := o.Expiration.Sub(o.Opened).Hours() / 24
@@ -235,10 +227,11 @@ func (o *Option) CalculateAROI() float64 {
 
 	// Calculate the capital base (exposure for puts, long value for calls)
 	var capitalBase float64
-	if o.Type == "Put" {
+	switch o.Type {
+	case "Put":
 		// For puts, use strike * contracts * 100 as the exposure/capital at risk
 		capitalBase = o.Strike * float64(o.Contracts) * 100
-	} else if o.Type == "Call" {
+	case "Call":
 		// For calls, we need the underlying stock value, but we don't have current price here
 		// Use strike as approximation for now - this should be enhanced with current price
 		capitalBase = o.Strike * float64(o.Contracts) * 100
