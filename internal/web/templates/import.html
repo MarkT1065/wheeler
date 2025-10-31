@@ -333,11 +333,11 @@ symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,commiss
                                         <td>1.25</td>
                                     </tr>
                                     <tr>
-                                        <td><code>commission</code></td>
+                                        <td><code>total_commission</code></td>
                                         <td>Number</td>
                                         <td>Yes</td>
-                                        <td>Decimal</td>
-                                        <td>1.30</td>
+                                        <td>Total commission for all contracts</td>
+                                        <td>1.30 (2 contracts × $0.65)</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -347,9 +347,9 @@ symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,commiss
                     <div class="format-section">
                         <h4>Sample CSV Content</h4>
                         <div class="code-block">
-symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,commission
+symbol,opened,closed,type,strike,expiration,premium,contracts,exit_price,total_commission
 AAPL,2025-01-15,2025-02-01,Put,150.00,2025-02-15,3.50,2,1.25,1.30
-MSFT,2025-01-20,,Call,400.00,2025-03-20,5.00,1,,1.30
+MSFT,2025-01-20,,Call,400.00,2025-03-20,5.00,1,,0.65
                         </div>
                     </div>
                     
@@ -359,6 +359,7 @@ MSFT,2025-01-20,,Call,400.00,2025-03-20,5.00,1,,1.30
                             <li><strong>Date Format:</strong> All dates must be in YYYY-MM-DD format</li>
                             <li><strong>Option Types:</strong> Must be exactly "Put" or "Call" (case-sensitive)</li>
                             <li><strong>Open Positions:</strong> Leave <code>closed</code> and <code>exit_price</code> empty for open positions</li>
+                            <li><strong>Total Commission:</strong> Enter the total commission for all contracts (e.g., 2 contracts × $0.65 = $1.30)</li>
                             <li><strong>Decimal Precision:</strong> Use decimal format for all prices (e.g., 150.00, not 150)</li>
                             <li><strong>No Headers Duplication:</strong> Include the header row only once at the top</li>
                             <li><strong>Symbols:</strong> Stock symbols will be automatically created if they don't exist</li>
@@ -862,7 +863,18 @@ CUSPID,Purchased,Maturity,Amount,Yield,BuyPrice,CurrentValue,ExitPrice
                     return;
                 }
                 
-                const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                // Smart file size formatting
+                let fileSizeValue, fileSizeText;
+                if (file.size < 1024 * 1024) {
+                    // Less than 1 MB, show in KB
+                    fileSizeValue = (file.size / 1024).toFixed(2);
+                    fileSizeText = `${fileSizeValue} KB`;
+                } else {
+                    // 1 MB or more, show in MB
+                    fileSizeValue = (file.size / (1024 * 1024)).toFixed(2);
+                    fileSizeText = `${fileSizeValue} MB`;
+                }
+
                 if (file.size > 10 * 1024 * 1024) {
                     alert('File size must be less than 10MB.');
                     csvFile.value = '';
@@ -870,7 +882,7 @@ CUSPID,Purchased,Maturity,Amount,Yield,BuyPrice,CurrentValue,ExitPrice
                 }
 
                 fileName.textContent = file.name;
-                fileSize.textContent = `(${sizeMB} MB)`;
+                fileSize.textContent = `(${fileSizeText})`;
                 fileInfo.style.display = 'flex';
                 uploadArea.querySelector('.upload-content').style.display = 'none';
                 uploadBtn.disabled = false;
