@@ -1,4 +1,29 @@
 .claude
-data/backups
-data/test_db.db
-data/wheeler.*
+
+# Database files
+data/*.db
+!data/test_db.db
+data/*.db-shm
+data/*.db-wal
+data/currentdb
+data/backups/
+
+# Logs
+*.log
+
+# Executables
+*.exe
+wheeler
+stonks
+stonks.exe
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local documentation
+docs/

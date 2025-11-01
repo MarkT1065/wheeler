@@ -157,7 +157,11 @@ func (s *Server) addOptionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = s.optionService.Create(symbol, optionType, time.Now(), strike, expiration, premium, contracts)
+	// Get commission per contract from settings and calculate total
+	commissionPerContract := s.optionService.GetCommissionPerContract()
+	totalCommission := commissionPerContract * float64(contracts)
+
+	_, err = s.optionService.CreateWithCommission(symbol, optionType, time.Now(), strike, expiration, premium, contracts, totalCommission)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -262,8 +266,19 @@ func (s *Server) createOption(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create the option
-	option, err := s.optionService.CreateWithCommission(req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission)
+	// Get commission per contract
+	// If provided in request, use it; otherwise get from settings
+	commissionPerContract := req.CommissionPerContract
+	if commissionPerContract <= 0 {
+		commissionPerContract = s.optionService.GetCommissionPerContract()
+	}
+
+	// Calculate total commission for storage
+	// For new options, just multiply by contracts
+	totalCommission := commissionPerContract * float64(req.Contracts)
+
+	// Create the option - store total commission in database
+	option, err := s.optionService.CreateWithCommission(req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, totalCommission)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create option: %v", err), http.StatusInternalServerError)
 		return
@@ -342,8 +357,23 @@ func (s *Server) updateOption(w http.ResponseWriter, r *http.Request) {
 		closed = &closedDate
 	}
 
-	// Update the option
-	option, err := s.optionService.UpdateByID(*req.ID, req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission, closed, req.ExitPrice)
+	// Get commission per contract
+	// If provided in request, use it; otherwise get from settings
+	commissionPerContract := req.CommissionPerContract
+	if commissionPerContract <= 0 {
+		commissionPerContract = s.optionService.GetCommissionPerContract()
+	}
+
+	// Calculate total commission for storage
+	totalCommission := commissionPerContract * float64(req.Contracts)
+
+	// If option is closed with exit price > 0, double the commission (opening + closing)
+	if closed != nil && req.ExitPrice != nil && *req.ExitPrice > 0 {
+		totalCommission = totalCommission * 2.0
+	}
+
+	// Update the option - store total commission in database
+	option, err := s.optionService.UpdateByID(*req.ID, req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, totalCommission, closed, req.ExitPrice)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to update option: %v", err), http.StatusInternalServerError)
 		return

@@ -252,7 +252,7 @@ func NewServer() (*Server, error) {
 	
 	server := &Server{
 		db:                  dbWrapper.DB,
-		optionService:       models.NewOptionService(dbWrapper.DB),
+		optionService:       models.NewOptionService(dbWrapper.DB, settingService),
 		symbolService:       symbolService,
 		treasuryService:     models.NewTreasuryService(dbWrapper.DB),
 		longPositionService: models.NewLongPositionService(dbWrapper.DB),

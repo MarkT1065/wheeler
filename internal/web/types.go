@@ -236,12 +236,13 @@ type AllOptionsDataWithJSON struct {
 
 // SymbolMonthlyResult represents monthly results for a specific symbol
 type SymbolMonthlyResult struct {
-	Month      string  `json:"month"`
-	PutsCount  int     `json:"putsCount"`
-	CallsCount int     `json:"callsCount"`
-	PutsTotal  float64 `json:"putsTotal"`
-	CallsTotal float64 `json:"callsTotal"`
-	Total      float64 `json:"total"`
+	Month            string  `json:"month"`
+	PutsCount        int     `json:"putsCount"`
+	CallsCount       int     `json:"callsCount"`
+	PutsTotal        float64 `json:"putsTotal"`
+	CallsTotal       float64 `json:"callsTotal"`
+	Total            float64 `json:"total"`
+	CommissionTotal  float64 `json:"commissionTotal"`
 }
 
 // SymbolData holds data for the symbol-specific template
@@ -263,6 +264,7 @@ type SymbolData struct {
 	Dividends         string                 `json:"dividends"`
 	TotalProfits      string                 `json:"totalProfits"`
 	CashOnCash        string                 `json:"cashOnCash"`
+	TotalCommissions  float64                `json:"totalCommissions"`
 	DividendsList     []*models.Dividend     `json:"dividendsList"`
 	DividendsTotal    float64                `json:"dividendsTotal"`
 	OptionsList       []*models.Option       `json:"optionsList"`
@@ -273,17 +275,18 @@ type SymbolData struct {
 }
 
 type OptionRequest struct {
-	ID         *int     `json:"id,omitempty"`
-	Symbol     string   `json:"symbol"`
-	Type       string   `json:"type"`
-	Strike     float64  `json:"strike"`
-	Expiration string   `json:"expiration"`
-	Premium    float64  `json:"premium"`
-	Contracts  int      `json:"contracts"`
-	Opened     string   `json:"opened"`
-	Closed     *string  `json:"closed,omitempty"`
-	ExitPrice  *float64 `json:"exit_price,omitempty"`
-	Commission float64  `json:"commission,omitempty"`
+	ID                    *int     `json:"id,omitempty"`
+	Symbol                string   `json:"symbol"`
+	Type                  string   `json:"type"`
+	Strike                float64  `json:"strike"`
+	Expiration            string   `json:"expiration"`
+	Premium               float64  `json:"premium"`
+	Contracts             int      `json:"contracts"`
+	Opened                string   `json:"opened"`
+	Closed                *string  `json:"closed,omitempty"`
+	ExitPrice             *float64 `json:"exit_price,omitempty"`
+	Commission            float64  `json:"commission,omitempty"`
+	CommissionPerContract float64  `json:"commission_per_contract,omitempty"`
 }
 
 type DividendRequest struct {

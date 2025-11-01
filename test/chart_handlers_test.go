@@ -429,7 +429,8 @@ func setupMetricsTestDatabase(t *testing.T) *database.DB {
 // Helper function to create deterministic test data for charts
 func createDeterministicChartData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
-	optionService := models.NewOptionService(db.DB)
+	settingService := models.NewSettingService(db.DB)
+	optionService := models.NewOptionService(db.DB, settingService)
 	longPositionService := models.NewLongPositionService(db.DB)
 	treasuryService := models.NewTreasuryService(db.DB)
 
@@ -467,14 +468,16 @@ func createDeterministicChartData(t *testing.T, db *database.DB) {
 
 	// Create open put options (deterministic exposure)
 	expirationDate := time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC)
-	
+
 	// AAPL Put: 2 contracts at $145 strike = $29,000 exposure
-	if _, err := optionService.Create("AAPL", "Put", baseDate, 145.0, expirationDate, 5.50, 2); err != nil {
+	// Commission: 0.65 * 2 = 1.30 total
+	if _, err := optionService.CreateWithCommission("AAPL", "Put", baseDate, 145.0, expirationDate, 5.50, 2, 1.30); err != nil {
 		t.Fatalf("Failed to create AAPL put: %v", err)
 	}
-	
+
 	// TSLA Put: 1 contract at $190 strike = $19,000 exposure
-	if _, err := optionService.Create("TSLA", "Put", baseDate, 190.0, expirationDate, 7.25, 1); err != nil {
+	// Commission: 0.65 * 1 = 0.65 total
+	if _, err := optionService.CreateWithCommission("TSLA", "Put", baseDate, 190.0, expirationDate, 7.25, 1, 0.65); err != nil {
 		t.Fatalf("Failed to create TSLA put: %v", err)
 	}
 

@@ -7,9 +7,14 @@ import (
 )
 
 func eztime(dt string) time.Time {
-	ti, err := time.Parse("2006-01-02 15:04:05", "2025-09-01 10:30:05")
+	// Try parsing with time first
+	ti, err := time.Parse("2006-01-02 15:04:05", dt)
 	if err != nil {
-		log.Fatal(err)
+		// If that fails, try parsing date only
+		ti, err = time.Parse("2006-01-02", dt)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	return ti
 }

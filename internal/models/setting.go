@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -178,4 +179,35 @@ func (s *Setting) GetDescriptionAsString() string {
 		return ""
 	}
 	return *s.Description
+}
+
+// GetFloatValue returns the setting value as float64, or default if not found/invalid
+func (s *SettingService) GetFloatValue(name string, defaultValue float64) float64 {
+	value := s.GetValue(name)
+	if value == "" {
+		return defaultValue
+	}
+
+	// Parse as float
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return defaultValue
+	}
+
+	return floatValue
+}
+
+// GetFloatValueWithValidation returns float64 with min/max validation
+func (s *SettingService) GetFloatValueWithValidation(name string, defaultValue, min, max float64) float64 {
+	value := s.GetFloatValue(name, defaultValue)
+
+	// Validate range
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+
+	return value
 }

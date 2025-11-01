@@ -149,6 +149,14 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[SYMBOL] Total options gains for %s: $%.2f (%d total options)", symbol, optionsGains, allOptionsCount)
 
+	// Calculate Total Commissions - sum of all commissions paid for this symbol
+	log.Printf("[SYMBOL] Step 6b: Calculating total commissions for %s", symbol)
+	var totalCommissions float64
+	for _, option := range optionsList {
+		totalCommissions += option.Commission
+	}
+	log.Printf("[SYMBOL] Total commissions for %s: $%.2f", symbol, totalCommissions)
+
 	// Calculate Cap Gains - sum of profit/loss from all closed long positions for this symbol
 	log.Printf("[SYMBOL] Step 7: Calculating cap gains for %s", symbol)
 	var capGains float64
@@ -212,6 +220,7 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 		Dividends:         strconv.FormatFloat(dividendsTotal, 'f', 2, 64),
 		TotalProfits:      strconv.FormatFloat(totalProfits, 'f', 2, 64),
 		CashOnCash:        strconv.FormatFloat(cashOnCash, 'f', 2, 64),
+		TotalCommissions:  totalCommissions,
 		DividendsList:     dividendsList,
 		DividendsTotal:    dividendsTotal,
 		OptionsList:       optionsList,
@@ -242,12 +251,13 @@ func (s *Server) buildSymbolMonthlyResults(options []*models.Option) []SymbolMon
 	// Initialize all months
 	for _, month := range months {
 		monthMap[month] = &SymbolMonthlyResult{
-			Month:      month,
-			PutsCount:  0,
-			CallsCount: 0,
-			PutsTotal:  0.0,
-			CallsTotal: 0.0,
-			Total:      0.0,
+			Month:           month,
+			PutsCount:       0,
+			CallsCount:      0,
+			PutsTotal:       0.0,
+			CallsTotal:      0.0,
+			Total:           0.0,
+			CommissionTotal: 0.0,
 		}
 	}
 	log.Printf("[MONTHLY] Initialized %d months", len(monthMap))
@@ -274,8 +284,9 @@ func (s *Server) buildSymbolMonthlyResults(options []*models.Option) []SymbolMon
 			monthData.CallsTotal += profit
 		}
 		monthData.Total = monthData.PutsTotal + monthData.CallsTotal
-		log.Printf("[MONTHLY] Month %s now has: Puts=%d (%.2f), Calls=%d (%.2f), Total=%.2f",
-			monthName, monthData.PutsCount, monthData.PutsTotal, monthData.CallsCount, monthData.CallsTotal, monthData.Total)
+		monthData.CommissionTotal += option.Commission
+		log.Printf("[MONTHLY] Month %s now has: Puts=%d (%.2f), Calls=%d (%.2f), Total=%.2f, Commissions=%.2f",
+			monthName, monthData.PutsCount, monthData.PutsTotal, monthData.CallsCount, monthData.CallsTotal, monthData.Total, monthData.CommissionTotal)
 	}
 	log.Printf("[MONTHLY] Processed %d options out of %d total", processedCount, len(options))
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polygon - Wheeler</title>
+    <title>Settings - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
@@ -14,22 +14,64 @@
         
         <!-- Main Content -->
         <div class="main-content">
+            <!-- Fees and Charges Section -->
             <div class="content-section">
-                <div class="section-title">Polygon</div>
+                <div class="section-title">Fees and Charges</div>
+                <div class="section-subtitle">Configure brokerage fees applied to options trading</div>
+
+                <div class="settings-form-container">
+                    <!-- Fees and Charges -->
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-dollar-sign"></i>
+                            <h3>Brokerage Fees</h3>
+                        </div>
+                        <div class="settings-card-body">
+                            <form id="feesConfigForm">
+                                <div class="form-group">
+                                    <label for="commissionInput" class="form-label">Commission per Contract</label>
+                                    <div class="input-with-prefix">
+                                        <span class="input-prefix">$</span>
+                                        <input type="number" id="commissionInput" class="form-input with-prefix"
+                                               step="0.01" min="0" max="50"
+                                               placeholder="0.00"
+                                               value="{{if .CommissionPerContract}}{{printf "%.2f" .CommissionPerContract}}{{end}}">
+                                    </div>
+                                    <div class="form-help">
+                                        <i class="fas fa-info-circle"></i>
+                                        Commission per options contract, to be used when adding a trade.  Enter 0 if your broker does not charge a commission.
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary" id="saveCommissionBtn">
+                                            <i class="fas fa-save"></i>
+                                            Save Commission Rate
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Polygon Integration Section -->
+            <div class="content-section">
+                <div class="section-title">Polygon.io Integration</div>
                 <div class="section-subtitle">Configure your Polygon.io API key for live market data</div>
-                
-                <!-- API Key Configuration Form -->
+
                 <div class="settings-form-container">
                     <div class="settings-card">
                         <div class="settings-card-header">
                             <i class="fas fa-key"></i>
-                            <h3>Polygon.io API Configuration</h3>
+                            <h3>API Configuration</h3>
                         </div>
                         <div class="settings-card-body">
                             <form id="apiKeyForm">
                                 <div class="form-group">
                                     <label for="apiKeyInput" class="form-label">API Key</label>
-                                    <input type="password" id="apiKeyInput" class="form-input" 
+                                    <input type="password" id="apiKeyInput" class="form-input"
                                            placeholder="Enter your Polygon.io API key"
                                            value="{{if .ApiKey}}{{.ApiKey}}{{end}}">
                                     <div class="form-help">
@@ -50,7 +92,7 @@
                                     </div>
                                 </div>
                             </form>
-                            
+
                             <!-- API Key Status -->
                             <div class="api-status" id="apiStatus">
                                 <div class="status-indicator">
@@ -61,7 +103,7 @@
                                     Configure your API key to enable live market data updates
                                 </div>
                             </div>
-                            
+
                             <!-- API Actions -->
                             <div class="api-actions" id="apiActions" style="display: none;">
                                 <button type="button" class="btn btn-secondary" id="testConnectionBtn">
@@ -76,7 +118,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- API Key Information -->
                 <div class="info-section">
                     <div class="info-card">
@@ -264,6 +306,24 @@
             gap: 10px;
             align-items: center;
         }
+
+        .input-with-prefix {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-prefix {
+            position: absolute;
+            left: 12px;
+            color: #888;
+            font-size: 14px;
+            pointer-events: none;
+        }
+
+        .form-input.with-prefix {
+            padding-left: 28px;
+        }
     </style>
 
     <script>
@@ -352,6 +412,55 @@
             .catch(error => {
                 console.error('Error saving API key:', error);
                 showNotification('Error saving API key: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // Restore button state
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            });
+        });
+
+        // Commission configuration form submission
+        document.getElementById('feesConfigForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const commission = document.getElementById('commissionInput').value.trim();
+            const saveBtn = document.getElementById('saveCommissionBtn');
+
+            // Validate commission value
+            if (commission === '' || isNaN(commission) || parseFloat(commission) < 0) {
+                showNotification('Please enter a valid commission amount (0 or greater)', 'error');
+                return;
+            }
+
+            // Disable button and show loading state
+            saveBtn.disabled = true;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            // Update commission setting via API
+            fetch('/api/settings/OPTION_COMMISSION_PER_CONTRACT', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: commission,
+                    description: 'Commission per options contract'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to save commission rate');
+                }
+                return response.json();
+            })
+            .then(data => {
+                showNotification('Commission rate saved successfully!', 'success');
+            })
+            .catch(error => {
+                console.error('Error saving commission rate:', error);
+                showNotification('Error saving commission rate: ' + error.message, 'error');
             })
             .finally(() => {
                 // Restore button state

@@ -11,11 +11,12 @@ import (
 
 // SettingsData holds data for the settings template
 type SettingsData struct {
-	Settings   []*models.Setting `json:"settings"`
-	AllSymbols []string          `json:"allSymbols"`
-	CurrentDB  string            `json:"currentDB"`
-	ApiKey     string            `json:"apiKey"`
-	ActivePage string            `json:"activePage"`
+	Settings                []*models.Setting `json:"settings"`
+	AllSymbols              []string          `json:"allSymbols"`
+	CurrentDB               string            `json:"currentDB"`
+	ApiKey                  string            `json:"apiKey"`
+	CommissionPerContract   float64           `json:"commissionPerContract"`
+	ActivePage              string            `json:"activePage"`
 }
 
 // settingsHandler serves the settings management page
@@ -39,12 +40,16 @@ func (s *Server) settingsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get API key value specifically
 	apiKey := s.settingService.GetValue("POLYGON_API_KEY")
 
+	// Get commission per contract from settings (with fallback to default)
+	commissionPerContract := s.optionService.GetCommissionPerContract()
+
 	data := SettingsData{
-		Settings:   settings,
-		AllSymbols: symbols,
-		CurrentDB:  s.getCurrentDatabaseName(),
-		ApiKey:     apiKey,
-		ActivePage: "settings",
+		Settings:              settings,
+		AllSymbols:            symbols,
+		CurrentDB:             s.getCurrentDatabaseName(),
+		ApiKey:                apiKey,
+		CommissionPerContract: commissionPerContract,
+		ActivePage:            "settings",
 	}
 
 	s.renderTemplate(w, "settings.html", data)
