@@ -347,14 +347,19 @@ func (s *Server) importOptionsFromCSV(file io.Reader) (importedCount int, skippe
 		return 0, 0, fmt.Errorf("failed to read CSV headers: %w", err)
 	}
 
-	// Validate headers
+	// Validate headers (accept both 'commission' and 'total_commission' for backward compatibility)
 	expectedHeaders := []string{"symbol", "opened", "closed", "type", "strike", "expiration", "premium", "contracts", "exit_price", "commission"}
 	if len(headers) != len(expectedHeaders) {
 		return 0, 0, fmt.Errorf("CSV must have exactly %d columns, got %d", len(expectedHeaders), len(headers))
 	}
 
 	for i, expected := range expectedHeaders {
-		if strings.TrimSpace(strings.ToLower(headers[i])) != expected {
+		header := strings.TrimSpace(strings.ToLower(headers[i]))
+		// Accept both 'commission' and 'total_commission' for the last column
+		if i == 9 && (header == "commission" || header == "total_commission") {
+			continue
+		}
+		if header != expected {
 			return 0, 0, fmt.Errorf("column %d should be '%s', got '%s'", i+1, expected, headers[i])
 		}
 	}
@@ -411,7 +416,7 @@ func (s *Server) importOptionsFromCSV(file io.Reader) (importedCount int, skippe
 		}
 
 		// If the option was closed, update it with exit information
-		if option.Closed != nil && option.ExitPrice != nil {
+		if option.Closed != nil {
 			// We need to get the created option to update it
 			options, err := s.optionService.GetBySymbol(option.Symbol)
 			if err == nil {
@@ -1146,6 +1151,11 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[BACKUP] Source file does not exist: %s", sourceFilePath)
 		http.Error(w, `{"success": false, "error": "Source file not found"}`, http.StatusNotFound)
 		return
+	}
+
+	log.Printf("[BACKUP] Checkpointing WAL to ensure all data is committed")
+	if _, err := s.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+		log.Printf("[BACKUP] Warning: WAL checkpoint failed: %v", err)
 	}
 
 	// Create backup filename with timestamp

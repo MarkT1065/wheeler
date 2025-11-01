@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS options (
     contracts INTEGER NOT NULL,
     exit_price REAL,
     commission REAL DEFAULT 0.0, -- Total commission (not per-contract)
+    current_price REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (symbol) REFERENCES symbols(symbol)

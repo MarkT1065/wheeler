@@ -283,3 +283,17 @@ Wheeler uses a hybrid primary key approach optimized for modern web applications
 - Call assignments increase Treasury balances (stock sold for cash)
 - Interest payments add new Treasury entries quarterly
 - Treasury table independent of symbols (bonds vs. stocks)
+
+
+#4ade80, bold
+#4ade80, normal,
+
+
+Multiplier Gradient:
+- Excellent (≥2.0): #26b255 (bright green)
+- Great (≥1.5): #45bf33 (medium-bright green)
+- Good (≥1.0): #93cb3f (lime green)
+- Fair (≥0.5): #d8cf4c (bright yellow)
+- Poor (≥0.0): #e49a58 (bright orange)
+- Losing (<0.0): #f16565 (bright red)
+

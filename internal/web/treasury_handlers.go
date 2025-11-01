@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 	"stonks/internal/models"
 	"strconv"
 	"strings"
@@ -34,6 +35,25 @@ func (s *Server) treasuriesHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("[TREASURIES PAGE] Retrieved %d treasuries from service", len(treasuries))
 	}
+
+	// Sort treasuries by days remaining: active positions by days ascending, then sold positions
+	sort.Slice(treasuries, func(i, j int) bool {
+		iHasExit := treasuries[i].ExitPrice != nil
+		jHasExit := treasuries[j].ExitPrice != nil
+
+		// If one has exit price and other doesn't, put the one without exit price first
+		if iHasExit != jHasExit {
+			return !iHasExit
+		}
+
+		// If both are active (no exit price), sort by days remaining ascending
+		if !iHasExit && !jHasExit {
+			return treasuries[i].CalculateDaysRemaining() < treasuries[j].CalculateDaysRemaining()
+		}
+
+		// If both are sold, maintain original order (or could sort by exit date)
+		return false
+	})
 
 	// Calculate summary data
 	log.Printf("[TREASURIES PAGE] Calculating summary data for %d treasuries", len(treasuries))

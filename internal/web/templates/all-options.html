@@ -865,6 +865,13 @@
             updateSummaryFooter(options);
         }
         
+        function formatDate(date) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${month}/${day}/${year}`;
+        }
+        
         function createOptionRow(option) {
             const row = document.createElement('tr');
             
@@ -872,10 +879,10 @@
             const maxProfit = calculateMaxProfit(option);
             const totalProfit = calculateTotalProfit(option);
             
-            // Format dates
-            const expirationDate = new Date(option.expiration).toLocaleDateString('en-US');
-            const openedDate = new Date(option.opened).toLocaleDateString('en-US');
-            const closedDate = option.closed ? new Date(option.closed).toLocaleDateString('en-US') : null;
+            // Format dates (MM/DD/YYYY with leading zeros)
+            const expirationDate = formatDate(new Date(option.expiration));
+            const openedDate = formatDate(new Date(option.opened));
+            const closedDate = option.closed ? formatDate(new Date(option.closed)) : null;
             
             row.innerHTML = `
                 <td class="ticker-col"><a href="/symbol/${option.symbol}?edit_option=${option.id}" class="symbol-link">${option.symbol}</a></td>

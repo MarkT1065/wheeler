@@ -81,19 +81,20 @@ func (lp *LongPosition) GetExitPriceValue() float64 {
 }
 
 type Option struct {
-	ID         int        `json:"id"`
-	Symbol     string     `json:"symbol"`
-	Type       string     `json:"type"`
-	Opened     time.Time  `json:"opened"`
-	Closed     *time.Time `json:"closed"`
-	Strike     float64    `json:"strike"`
-	Expiration time.Time  `json:"expiration"`
-	Premium    float64    `json:"premium"`
-	Contracts  int        `json:"contracts"`
-	ExitPrice  *float64   `json:"exit_price"`
-	Commission float64    `json:"commission"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	ID           int        `json:"id"`
+	Symbol       string     `json:"symbol"`
+	Type         string     `json:"type"`
+	Opened       time.Time  `json:"opened"`
+	Closed       *time.Time `json:"closed"`
+	Strike       float64    `json:"strike"`
+	Expiration   time.Time  `json:"expiration"`
+	Premium      float64    `json:"premium"`
+	Contracts    int        `json:"contracts"`
+	ExitPrice    *float64   `json:"exit_price"`
+	Commission   float64    `json:"commission"`
+	CurrentPrice *float64   `json:"current_price"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func (o *Option) CalculatePercentOTM(currentPrice float64) float64 {

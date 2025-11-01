@@ -112,7 +112,7 @@
             </div>
             
             <!-- Options Trading - Full Width -->
-            <div class="content-section">
+            <div class="content-section resizable-options-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <div class="section-title">Options{{if .OptionsList}} ({{len .OptionsList}} trades){{end}}</div>
                     <button id="addOptionBtn" class="btn btn-primary">
@@ -153,11 +153,11 @@
                                             {{if eq .Type "Put"}}P{{else}}C{{end}}
                                         </span>
                                     </td>
-                                    <td>{{.Opened.Format "1/2/2006"}}</td>
-                                    <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
+                                    <td>{{.Opened.Format "01/02/2006"}}</td>
+                                    <td>{{if .Closed}}{{.Closed.Format "01/02/2006"}}{{else}}-{{end}}</td>
                                     <td>${{printf "%.2f" .Strike}}</td>
                                     <td>{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
-                                    <td>{{.Expiration.Format "1/2/2006"}}</td>
+                                    <td>{{.Expiration.Format "01/02/2006"}}</td>
                                     <td>
                                         {{if not .Closed}}
                                             <span class="{{if le .CalculateDaysRemaining 0}}dte-expired{{else if le .CalculateDaysRemaining 3}}dte-critical{{else if le .CalculateDaysRemaining 6}}dte-warning{{else if le .CalculateDaysRemaining 9}}dte-caution{{else if le .CalculateDaysRemaining 15}}dte-neutral{{else if le .CalculateDaysRemaining 21}}dte-safe{{else}}dte-healthy{{end}}">{{.CalculateDaysRemaining}} days</span>

@@ -428,20 +428,30 @@ type DividendSymbolData struct {
 	YieldPercent      float64    `json:"yieldPercent"`      // Based on annual dividend
 	ExDividendDate    *time.Time `json:"exDividendDate"`
 	DividendCount     int        `json:"dividendCount"`
-	Shares            int        `json:"shares"`            // Number of shares held
+	Shares            int        `json:"shares"`            // Total number of shares held
 	TotalAnnualIncome float64    `json:"totalAnnualIncome"` // Shares x annual dividend
+	Positions         []*models.LongPosition `json:"positions"` // Individual positions
+	DividendPayments  []*models.Dividend     `json:"dividendPayments"` // Historical dividend payments
 }
 
 // DividendsPageData holds all data for the enhanced dividends page
 type DividendsPageData struct {
 	PageData
-	DividendSymbols      []DividendSymbolData     `json:"dividendSymbols"`
-	IncomeBySymbol       []ChartData              `json:"incomeBySymbol"`       // Pie chart data
-	DividendsOverTime    []MonthlyChartData       `json:"dividendsOverTime"`    // Historical payments
-	UpcomingExDivDates   []UpcomingDividendDate   `json:"upcomingExDivDates"`   // Calendar data
-	TotalAnnualIncome    float64                  `json:"totalAnnualIncome"`
-	TotalDividendsPaid   float64                  `json:"totalDividendsPaid"`
-	AverageYield         float64                  `json:"averageYield"`
+	DividendSymbols        []DividendSymbolData       `json:"dividendSymbols"`
+	IncomeBySymbol         []ChartData                `json:"incomeBySymbol"`         // Pie chart data
+	DividendsOverTime      []MonthlyChartData         `json:"dividendsOverTime"`      // Historical payments (deprecated)
+	DividendsStackedByMonth []DividendStackedMonthData `json:"dividendsStackedByMonth"` // Stacked bar chart data
+	UpcomingExDivDates     []UpcomingDividendDate     `json:"upcomingExDivDates"`     // Calendar data
+	TotalAnnualIncome      float64                    `json:"totalAnnualIncome"`
+	TotalDividendsPaid     float64                    `json:"totalDividendsPaid"`
+	AverageYield           float64                    `json:"averageYield"`
+}
+
+// DividendStackedMonthData holds stacked bar chart data for dividends by month and symbol
+type DividendStackedMonthData struct {
+	Months  []string                   `json:"months"`  // Sorted month labels
+	Symbols []string                   `json:"symbols"` // Sorted symbol list
+	Data    map[string]map[string]float64 `json:"data"`    // data[symbol][month] = amount
 }
 
 // UpcomingDividendDate holds information about upcoming ex-dividend dates
