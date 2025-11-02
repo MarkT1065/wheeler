@@ -54,8 +54,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ┌──────────────────────────────────┐  │
 │            SYMBOL                │  │
 ├──────────────────────────────────┤  │
-│ PK  id                  INTEGER  │  │
-│ UK  ticker              TEXT     │  │
+│ PK  symbol              TEXT     │  │
 │     name                TEXT     │  │
 │     price               REAL     │  │
 │     dividend_yield      REAL     │  │
@@ -73,7 +72,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ├──────────────────────────────────┤  │
 │ PK  id                  INTEGER  │  │
 │ FK  account_id          INTEGER  │◄─┤
-│ FK  symbol_id           INTEGER  │  │
+│ FK  symbol              TEXT     │  │
 │ FK  tx_id               INTEGER  │  │  -- References opening transaction
 │     shares              INTEGER  │  │
 │     cost_basis          REAL     │  │  -- Total cost (shares * price + commission)
@@ -91,7 +90,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ├──────────────────────────────────┤  │
 │ PK  id                  INTEGER  │  │
 │ FK  account_id          INTEGER  │◄─┤
-│ FK  symbol_id           INTEGER  │  │
+│ FK  symbol              TEXT     │  │
 │ FK  tx_id               INTEGER  │  │  -- References opening transaction
 │     option_type         TEXT     │  │  -- 'PUT', 'CALL'
 │     strike              REAL     │  │
@@ -134,7 +133,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ├──────────────────────────────────┤  │
 │ PK  id                  INTEGER  │  │
 │ FK  account_id          INTEGER  │◄─┘
-│ FK  symbol_id           INTEGER  │
+│ FK  symbol              TEXT     │
 │ FK  stock_id            INTEGER  │  -- References stock position
 │ FK  tx_id               INTEGER  │  -- References dividend receipt transaction
 │     payment_date        DATE     │
@@ -158,9 +157,9 @@ Account 1 ────── N Option          (account_id FK)
 Account 1 ────── N Treasury        (account_id FK)
 Account 1 ────── N Dividend        (account_id FK)
 
-Symbol  1 ────── N Stock           (symbol_id FK)
-Symbol  1 ────── N Option          (symbol_id FK)
-Symbol  1 ────── N Dividend        (symbol_id FK)
+Symbol  1 ────── N Stock           (symbol FK)
+Symbol  1 ────── N Option          (symbol FK)
+Symbol  1 ────── N Dividend        (symbol FK)
 
 Transaction 1 ── 0..1 Stock        (tx_id FK - opening transaction)
 Transaction 1 ── 0..1 Option       (tx_id FK - opening transaction)
@@ -209,14 +208,14 @@ SUM(transactions.net_amount WHERE account_id = X) = Current Account Value
 CREATE INDEX idx_transaction_account_id      ON transaction(account_id);
 CREATE INDEX idx_transaction_asset           ON transaction(asset_type, asset_id);
 CREATE INDEX idx_transaction_date            ON transaction(transaction_date);
-CREATE INDEX idx_stock_account_symbol        ON stock(account_id, symbol_id);
+CREATE INDEX idx_stock_account_symbol        ON stock(account_id, symbol);
 CREATE INDEX idx_stock_status                ON stock(status);
-CREATE INDEX idx_option_account_symbol       ON option(account_id, symbol_id);
+CREATE INDEX idx_option_account_symbol       ON option(account_id, symbol);
 CREATE INDEX idx_option_expiration           ON option(expiration);
 CREATE INDEX idx_option_status               ON option(status);
 CREATE INDEX idx_treasury_account            ON treasury(account_id);
 CREATE INDEX idx_treasury_maturity           ON treasury(maturity_date);
-CREATE INDEX idx_dividend_account_symbol     ON dividend(account_id, symbol_id);
+CREATE INDEX idx_dividend_account_symbol     ON dividend(account_id, symbol);
 CREATE INDEX idx_dividend_payment_date       ON dividend(payment_date);
 ```
 
