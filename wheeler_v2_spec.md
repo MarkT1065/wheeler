@@ -337,3 +337,319 @@ HELD                 - Currently held
 SOLD                 - Sold before maturity
 MATURED              - Reached maturity
 ```
+
+## Migration Plan
+
+### File-Based Migration System
+
+Wheeler V2 uses a file-based migration system for database schema evolution. All migrations are stored in `internal/database/migrations/` and executed in lexicographical order.
+
+**Migration Guidelines:**
+- All migrations MUST be idempotent (safe to run multiple times)
+- Use `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE IF NOT EXISTS` patterns
+- Check for column/index existence before adding
+- Migrations are named with timestamp prefix: `YYYYMMDDHHMMSS_description.sql`
+- Once applied to production, migrations should never be modified
+
+**Migration Execution:**
+```go
+// internal/database/db.go
+func (db *DB) runMigrations() error {
+    migrationFiles, err := migrationFS.ReadDir("migrations")
+    if err != nil {
+        return fmt.Errorf("failed to read migrations directory: %w", err)
+    }
+
+    for _, file := range migrationFiles {
+        if !strings.HasSuffix(file.Name(), ".sql") {
+            continue
+        }
+
+        content, err := migrationFS.ReadFile(filepath.Join("migrations", file.Name()))
+        if err != nil {
+            return fmt.Errorf("failed to read migration %s: %w", file.Name(), err)
+        }
+
+        if _, err := db.Exec(string(content)); err != nil {
+            return fmt.Errorf("failed to execute migration %s: %w", file.Name(), err)
+        }
+    }
+
+    return nil
+}
+```
+
+### V2 Migration Files
+
+#### `internal/database/migrations/20250103000001_create_accounts.sql`
+```sql
+-- Create accounts table for multi-account support
+CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    account_type TEXT NOT NULL CHECK (account_type IN ('CASH', 'MARGIN', 'IRA')),
+    balance REAL DEFAULT 0.0,
+    cash_balance REAL DEFAULT 0.0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create default account for existing data
+INSERT OR IGNORE INTO accounts (id, name, account_type, balance, cash_balance)
+VALUES (1, 'Default Account', 'CASH', 0.0, 0.0);
+```
+
+#### `internal/database/migrations/20250103000002_create_transactions.sql`
+```sql
+-- Create transactions table for transaction-centric accounting
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    asset_type TEXT NOT NULL CHECK (asset_type IN ('CASH', 'STOCK', 'OPTION', 'TREASURY', 'DIVIDEND')),
+    asset_id INTEGER,
+    trade_type TEXT NOT NULL CHECK (trade_type IN ('RECEIVE', 'BUY_TO_OPEN', 'SELL_TO_CLOSE', 'SELL_TO_OPEN', 'BUY_TO_CLOSE', 'ASSIGNED', 'EXPIRED', 'INTEREST', 'WITHDRAW')),
+    transaction_date DATE NOT NULL,
+    quantity INTEGER,
+    price REAL,
+    total_amount REAL NOT NULL,
+    commission REAL DEFAULT 0.0,
+    net_amount REAL NOT NULL,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_account_id ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_asset ON transactions(asset_type, asset_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_date ON transactions(transaction_date);
+```
+
+#### `internal/database/migrations/20250103000003_add_account_id_to_assets.sql`
+```sql
+-- Add account_id to long_positions (stock)
+ALTER TABLE long_positions ADD COLUMN account_id INTEGER DEFAULT 1;
+ALTER TABLE long_positions ADD COLUMN tx_id INTEGER;
+ALTER TABLE long_positions ADD COLUMN cost_basis REAL;
+ALTER TABLE long_positions ADD COLUMN avg_price REAL;
+ALTER TABLE long_positions ADD COLUMN status TEXT DEFAULT 'OPEN';
+ALTER TABLE long_positions ADD COLUMN notes TEXT;
+
+-- Backfill cost_basis and avg_price
+UPDATE long_positions SET cost_basis = shares * buy_price WHERE cost_basis IS NULL;
+UPDATE long_positions SET avg_price = buy_price WHERE avg_price IS NULL;
+UPDATE long_positions SET status = CASE WHEN closed IS NULL THEN 'OPEN' ELSE 'CLOSED' END WHERE status IS NULL;
+
+-- Add account_id to options
+ALTER TABLE options ADD COLUMN account_id INTEGER DEFAULT 1;
+ALTER TABLE options ADD COLUMN tx_id INTEGER;
+ALTER TABLE options ADD COLUMN premium_received REAL;
+ALTER TABLE options ADD COLUMN premium_paid REAL;
+ALTER TABLE options ADD COLUMN status TEXT DEFAULT 'OPEN';
+ALTER TABLE options ADD COLUMN assignment_tx_id INTEGER;
+ALTER TABLE options ADD COLUMN notes TEXT;
+
+-- Backfill premium fields based on option type
+UPDATE options SET premium_received = premium WHERE type IN ('Put', 'Call') AND premium_received IS NULL;
+UPDATE options SET status = CASE WHEN closed IS NULL THEN 'OPEN' ELSE 'CLOSED' END WHERE status IS NULL;
+
+-- Add account_id to dividends
+ALTER TABLE dividends ADD COLUMN account_id INTEGER DEFAULT 1;
+ALTER TABLE dividends ADD COLUMN stock_id INTEGER;
+ALTER TABLE dividends ADD COLUMN tx_id INTEGER;
+ALTER TABLE dividends ADD COLUMN ex_dividend_date DATE;
+ALTER TABLE dividends ADD COLUMN shares INTEGER;
+ALTER TABLE dividends ADD COLUMN amount_per_share REAL;
+ALTER TABLE dividends ADD COLUMN total_amount REAL;
+ALTER TABLE dividends ADD COLUMN dividend_type TEXT DEFAULT 'CASH';
+ALTER TABLE dividends ADD COLUMN notes TEXT;
+ALTER TABLE dividends ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+-- Backfill total_amount from amount
+UPDATE dividends SET total_amount = amount WHERE total_amount IS NULL;
+
+-- Add account_id to treasuries
+ALTER TABLE treasuries ADD COLUMN id INTEGER;
+ALTER TABLE treasuries ADD COLUMN account_id INTEGER DEFAULT 1;
+ALTER TABLE treasuries ADD COLUMN tx_id INTEGER;
+ALTER TABLE treasuries ADD COLUMN status TEXT DEFAULT 'HELD';
+ALTER TABLE treasuries ADD COLUMN notes TEXT;
+
+-- Backfill treasury status
+UPDATE treasuries SET status = CASE WHEN exit_price IS NOT NULL THEN 'SOLD' ELSE 'HELD' END WHERE status IS NULL;
+```
+
+#### `internal/database/migrations/20250103000004_add_symbol_enhancements.sql`
+```sql
+-- Add symbol table enhancements
+ALTER TABLE symbols ADD COLUMN name TEXT;
+ALTER TABLE symbols ADD COLUMN dividend_yield REAL;
+ALTER TABLE symbols ADD COLUMN sector TEXT;
+
+-- Backfill dividend_yield from existing dividend field
+UPDATE symbols SET dividend_yield = dividend WHERE dividend_yield IS NULL;
+```
+
+#### `internal/database/migrations/20250103000005_create_indexes.sql`
+```sql
+-- Create performance indexes for V2 schema
+CREATE INDEX IF NOT EXISTS idx_long_positions_account_id ON long_positions(account_id);
+CREATE INDEX IF NOT EXISTS idx_long_positions_status ON long_positions(status);
+CREATE INDEX IF NOT EXISTS idx_options_account_id ON options(account_id);
+CREATE INDEX IF NOT EXISTS idx_options_status ON options(status);
+CREATE INDEX IF NOT EXISTS idx_dividends_account_id ON dividends(account_id);
+CREATE INDEX IF NOT EXISTS idx_treasuries_account_id ON treasuries(account_id);
+```
+
+### Migration from V1 to V2
+
+**Step 1: Run Migrations**
+```bash
+go run main.go  # Migrations run automatically on startup
+```
+
+**Step 2: Generate Opening Transactions**
+
+Create opening transactions for all existing assets:
+
+```sql
+-- Generate opening transactions for existing long positions
+INSERT INTO transactions (account_id, asset_type, asset_id, trade_type, transaction_date, quantity, price, total_amount, commission, net_amount)
+SELECT 
+    COALESCE(account_id, 1),
+    'STOCK',
+    id,
+    'BUY_TO_OPEN',
+    opened,
+    shares,
+    buy_price,
+    -(shares * buy_price),
+    0.0,
+    -(shares * buy_price)
+FROM long_positions
+WHERE tx_id IS NULL;
+
+-- Update long_positions with transaction references
+UPDATE long_positions
+SET tx_id = (
+    SELECT id FROM transactions 
+    WHERE asset_type = 'STOCK' 
+    AND asset_id = long_positions.id 
+    LIMIT 1
+)
+WHERE tx_id IS NULL;
+
+-- Generate opening transactions for existing options
+INSERT INTO transactions (account_id, asset_type, asset_id, trade_type, transaction_date, quantity, price, total_amount, commission, net_amount)
+SELECT 
+    COALESCE(account_id, 1),
+    'OPTION',
+    id,
+    'SELL_TO_OPEN',
+    opened,
+    contracts,
+    premium,
+    premium * contracts * 100,
+    COALESCE(commission, 0.0),
+    (premium * contracts * 100) - COALESCE(commission, 0.0)
+FROM options
+WHERE tx_id IS NULL;
+
+-- Update options with transaction references
+UPDATE options
+SET tx_id = (
+    SELECT id FROM transactions 
+    WHERE asset_type = 'OPTION' 
+    AND asset_id = options.id 
+    LIMIT 1
+)
+WHERE tx_id IS NULL;
+
+-- Generate dividend transactions
+INSERT INTO transactions (account_id, asset_type, asset_id, trade_type, transaction_date, quantity, price, total_amount, commission, net_amount)
+SELECT 
+    COALESCE(account_id, 1),
+    'DIVIDEND',
+    id,
+    'RECEIVE',
+    received,
+    NULL,
+    NULL,
+    amount,
+    0.0,
+    amount
+FROM dividends
+WHERE tx_id IS NULL;
+
+-- Update dividends with transaction references
+UPDATE dividends
+SET tx_id = (
+    SELECT id FROM transactions 
+    WHERE asset_type = 'DIVIDEND' 
+    AND asset_id = dividends.id 
+    LIMIT 1
+)
+WHERE tx_id IS NULL;
+```
+
+**Step 3: Update Account Balances**
+
+```sql
+-- Calculate and update account balance from transactions
+UPDATE accounts
+SET balance = (
+    SELECT COALESCE(SUM(net_amount), 0)
+    FROM transactions
+    WHERE transactions.account_id = accounts.id
+);
+
+-- Calculate cash balance (transactions minus asset values)
+UPDATE accounts
+SET cash_balance = (
+    SELECT 
+        COALESCE(SUM(net_amount), 0) +
+        COALESCE((SELECT SUM(shares * buy_price) FROM long_positions WHERE account_id = accounts.id AND status = 'OPEN'), 0)
+    FROM transactions
+    WHERE transactions.account_id = accounts.id
+);
+```
+
+### Cleanup: Remove Deprecated Migration Code
+
+Remove the inline migration code from `internal/database/db.go`:
+
+```go
+// REMOVE THIS SECTION:
+func (db *DB) runMigrations() error {
+    var hasCurrentPrice bool
+    err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('options') WHERE name = 'current_price'").Scan(&hasCurrentPrice)
+    if err != nil {
+        return fmt.Errorf("failed to check for current_price column: %w", err)
+    }
+
+    if !hasCurrentPrice {
+        _, err := db.Exec("ALTER TABLE options ADD COLUMN current_price REAL")
+        if err != nil {
+            return fmt.Errorf("failed to add current_price column: %w", err)
+        }
+    }
+
+    return nil
+}
+```
+
+Replace with file-based migration system shown above.
+
+### Rollback Strategy
+
+**Database Backup Before Migration:**
+```bash
+cp ./data/wheeler.db ./data/wheeler_backup_$(date +%Y%m%d_%H%M%S).db
+```
+
+**Rollback Process:**
+1. Stop application
+2. Restore backup: `cp ./data/wheeler_backup_TIMESTAMP.db ./data/wheeler.db`
+3. Restart application on previous version
+
+**Note:** V2 schema is not backwards compatible with V1 application code. Full migration to V2 requires updating all application queries and handlers.
