@@ -12,18 +12,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     name                TEXT     │
 │     account_type        TEXT     │  -- 'CASH', 'MARGIN', 'IRA'
 │     balance             REAL     │
-│     created_at          DATETIME │
-│     updated_at          DATETIME │
-└──────────────────────────────────┘
-                  │
-                  │ 1:1
-                  ▼
-┌──────────────────────────────────┐
-│            CASH                  │
-├──────────────────────────────────┤
-│ PK  id                  INTEGER  │
-│ FK  account_id          INTEGER  │
-│     amount              REAL     │
+│     cash_balance        REAL     │
 │     created_at          DATETIME │
 │     updated_at          DATETIME │
 └──────────────────────────────────┘
@@ -163,7 +152,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ## Relationships
 
 ```
-Account 1 ────── 1 Cash            (account_id FK)
 Account 1 ────── N Transaction    (account_id FK)
 Account 1 ────── N Stock           (account_id FK)
 Account 1 ────── N Option          (account_id FK)
@@ -186,23 +174,20 @@ Stock       1 ── N Dividend        (stock_id FK)
 
 ### 0. Open Account
 ```
-Account:     id=1, name='Trading Account', account_type='CASH', balance=$0
-Cash:        account_id=1, amount=$0
+Account:     id=1, name='Trading Account', account_type='CASH', balance=$0, cash_balance=$0
 ```
 
 ### 1. Deposit Cash
 ```
-Transaction: trade_type='RECEIVE', asset_type='CASH', asset_id=cash.id, net_amount=+$10,000
-Cash:        account_id=1, amount=$10,000
-Account:     balance=$10,000
+Transaction: trade_type='RECEIVE', asset_type='CASH', net_amount=+$10,000
+Account:     cash_balance=$10,000, balance=$10,000
 ```
 
 ### 2. Sell Put to Open
 ```
 Transaction: trade_type='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$150
 Option:      status='OPEN', premium_received=$150
-Cash:        account_id=1, amount=$10,150
-Account:     balance=$10,150
+Account:     cash_balance=$10,150, balance=$10,150
 ```
 
 ### 3. Put Assignment
@@ -211,29 +196,26 @@ Transaction: trade_type='ASSIGNED', asset_type='OPTION', asset_id=option.id, net
 Option:      status='ASSIGNED', assignment_tx_id=stock_tx.id
 Transaction: trade_type='BUY_TO_OPEN', asset_type='STOCK', asset_id=stock.id, net_amount=-$5,000
 Stock:       status='OPEN', shares=100, cost_basis=$5,000
-Cash:        account_id=1, amount=$5,150
-Account:     balance=$10,150 (Cash $5,150 + Stock $5,000)
+Account:     cash_balance=$5,150, balance=$10,150 (Cash $5,150 + Stock $5,000)
 ```
 
 ### 4. Sell Call to Open
 ```
 Transaction: trade_type='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$200
 Option:      status='OPEN', premium_received=$200
-Cash:        account_id=1, amount=$5,350
-Account:     balance=$10,350
+Account:     cash_balance=$5,350, balance=$10,350
 ```
 
 ### 5. Dividend Received
 ```
 Transaction: trade_type='RECEIVE', asset_type='DIVIDEND', asset_id=dividend.id, net_amount=+$50
 Dividend:    total_amount=$50
-Cash:        account_id=1, amount=$5,400
-Account:     balance=$10,400
+Account:     cash_balance=$5,400, balance=$10,400
 ```
 
 ### 6. Account Value Calculation
 ```
-Cash Balance:        cash.amount WHERE account_id = X
+Cash Balance:        account.cash_balance
 Stock Value:         SUM(stock.shares * current_price) WHERE account_id = X
 Option Value:        SUM(option.current_value) WHERE account_id = X AND status = 'OPEN'
 Treasury Value:      SUM(treasury.current_value) WHERE account_id = X AND status = 'HELD'
@@ -247,7 +229,6 @@ SUM(transactions.net_amount WHERE account_id = X) = Current Account Value
 ## Database Indexes
 
 ```sql
-CREATE INDEX idx_cash_account_id             ON cash(account_id);
 CREATE INDEX idx_transaction_account_id      ON transaction(account_id);
 CREATE INDEX idx_transaction_asset           ON transaction(asset_type, asset_id);
 CREATE INDEX idx_transaction_date            ON transaction(transaction_date);
@@ -265,7 +246,7 @@ CREATE INDEX idx_dividend_payment_date       ON dividend(payment_date);
 ## Key Design Principles
 
 ### 1. Multi-Account Support
-All asset tables (Cash, Stock, Option, Treasury, Dividend) reference an Account via `account_id` foreign key. This enables tracking multiple portfolios or accounts within a single database. Each account has its own cash balance tracked in the Cash table.
+All asset tables (Stock, Option, Treasury, Dividend) reference an Account via `account_id` foreign key. This enables tracking multiple portfolios or accounts within a single database. Each account maintains its own cash balance via the `cash_balance` attribute.
 
 ### 2. Transaction-Centric Accounting
 The Transaction table serves as the source of truth for all financial movements. Account value is calculated as the sum of all transaction net amounts for that account.
