@@ -2,7 +2,7 @@
 
 **Page Type:** Analytics/Management Page (hybrid)
 
-**Navigation:** Main Menu → Options
+**Navigation:** Main Menu → Options → Overview
 
 **Purpose:** Visualize open options positions by expiration date with interactive charts and provide detailed position management through expandable accordions.
 
