@@ -447,12 +447,12 @@
             font-weight: bold;
         }
 
-        .trade-type-badge.csp {
+        .trade-type-badge.put {
             background: #3498db;
             color: white;
         }
 
-        .trade-type-badge.cc {
+        .trade-type-badge.call {
             background: #9b59b6;
             color: white;
         }
@@ -491,6 +491,10 @@
                     <div class="account-stat">
                         <div class="account-stat-label">Total Cash</div>
                         <div class="account-stat-value" id="totalCash">$0</div>
+                    </div>
+                    <div class="account-stat">
+                        <div class="account-stat-label">Cash Secured</div>
+                        <div class="account-stat-value" id="totalCashSecured">$0</div>
                     </div>
                     <div class="account-stat">
                         <div class="account-stat-label">Active Wheels</div>
@@ -641,6 +645,7 @@
 
             const activeWheels = filteredWheels.filter(w => w.status === 'active').length;
             const totalProfit = filteredWheels.reduce((sum, w) => sum + w.summary.totalProfit, 0);
+            const totalCashSecured = filteredWheels.reduce((sum, w) => sum + w.summary.currentCashSecured, 0);
 
             const filteredAccounts = currentAccount
                 ? wheelData.accounts.filter(a => a.id === currentAccount)
@@ -648,6 +653,7 @@
             const totalCash = filteredAccounts.reduce((sum, a) => sum + a.currentCash, 0);
 
             document.getElementById('totalCash').textContent = '$' + totalCash.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalCashSecured').textContent = '$' + totalCashSecured.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('activeWheelsCount').textContent = activeWheels;
             document.getElementById('totalProfit').textContent = '$' + totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
@@ -691,6 +697,28 @@
             const accountName = account ? account.name : 'Unknown';
             const profitClass = wheel.summary.totalProfit >= 0 ? 'positive' : 'negative';
 
+            // Find next expiration from active trades
+            const activeTrades = wheel.trades.filter(t => t.status === 'active');
+            let nextExpiration = '';
+            let dte = '';
+            if (activeTrades.length > 0) {
+                const sortedTrades = activeTrades.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
+                const nextTrade = sortedTrades[0];
+                const expDate = new Date(nextTrade.expirationDate);
+                const today = new Date();
+                const daysToExp = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+                nextExpiration = expDate.toLocaleDateString();
+                dte = daysToExp + ' days';
+            } else {
+                nextExpiration = 'None';
+                dte = '-';
+            }
+
+            // Get last premium from most recent trade
+            const lastPremium = wheel.trades.length > 0
+                ? wheel.trades[wheel.trades.length - 1].premium
+                : 0;
+
             return `
                 <div class="wheel-card ${wheel.status}" onclick="openWheelDetails('${wheel.id}')">
                     <div class="wheel-header">
@@ -708,20 +736,20 @@
                             <span class="wheel-summary-value ${profitClass}">$${wheel.summary.totalProfit.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                         </div>
                         <div class="wheel-summary-item">
-                            <span class="wheel-summary-label">Premium:</span>
-                            <span class="wheel-summary-value">$${wheel.summary.totalPremiumCollected.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                            <span class="wheel-summary-label">Next Expiration:</span>
+                            <span class="wheel-summary-value">${nextExpiration}</span>
                         </div>
                         <div class="wheel-summary-item">
                             <span class="wheel-summary-label">Stock Position:</span>
                             <span class="wheel-summary-value">${wheel.summary.currentStockPosition} shares</span>
                         </div>
                         <div class="wheel-summary-item">
-                            <span class="wheel-summary-label">Cycles:</span>
-                            <span class="wheel-summary-value">${wheel.summary.numberOfCycles}</span>
+                            <span class="wheel-summary-label">DTE:</span>
+                            <span class="wheel-summary-value">${dte}</span>
                         </div>
                         <div class="wheel-summary-item">
-                            <span class="wheel-summary-label">Trades:</span>
-                            <span class="wheel-summary-value">${wheel.trades.length}</span>
+                            <span class="wheel-summary-label">Last Premium:</span>
+                            <span class="wheel-summary-value">$${lastPremium.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -851,14 +879,42 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${wheel.trades.map(trade => {
-                                    const typeClass = trade.tradeType === 'CSP' ? 'csp' :
-                                                     trade.tradeType === 'CC' ? 'cc' :
-                                                     trade.tradeType.includes('ASSIGN') ? 'assigned' : 'expired';
+                                ${[...wheel.trades].reverse().map(trade => {
+                                    // Determine badge label
+                                    let badgeLabel = '';
+                                    let typeClass = '';
+                                    if (trade.tradeType === 'CSP' || trade.tradeType.includes('PUT')) {
+                                        badgeLabel = 'P';
+                                        typeClass = 'put';
+                                    } else if (trade.tradeType === 'CC' || trade.tradeType.includes('CALL')) {
+                                        badgeLabel = 'C';
+                                        typeClass = 'call';
+                                    } else if (trade.tradeType.includes('ASSIGN')) {
+                                        badgeLabel = 'ASSIGN';
+                                        typeClass = 'assigned';
+                                    } else {
+                                        badgeLabel = trade.tradeType;
+                                        typeClass = 'expired';
+                                    }
+
+                                    // Determine status display
+                                    let statusDisplay = trade.status;
+                                    if (trade.status === 'open') {
+                                        statusDisplay = 'active';
+                                    } else if (trade.status === 'closed') {
+                                        if (trade.outcome === 'expired') {
+                                            statusDisplay = 'expired';
+                                        } else if (trade.outcome === 'assigned') {
+                                            statusDisplay = 'assigned';
+                                        } else {
+                                            statusDisplay = 'closed';
+                                        }
+                                    }
+
                                     return `
                                         <tr>
                                             <td>${trade.sequenceNumber}</td>
-                                            <td><span class="trade-type-badge ${typeClass}">${trade.tradeType}</span></td>
+                                            <td><span class="trade-type-badge ${typeClass}">${badgeLabel}</span></td>
                                             <td>${trade.cycleNumber}</td>
                                             <td>${new Date(trade.openDate).toLocaleDateString()}</td>
                                             <td>${trade.expirationDate}</td>
@@ -866,7 +922,7 @@
                                             <td>${trade.contracts}</td>
                                             <td>$${trade.premium.toFixed(2)}</td>
                                             <td style="color: ${trade.netProceeds >= 0 ? '#27ae60' : '#e74c3c'};">$${trade.netProceeds.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                                            <td>${trade.status}</td>
+                                            <td>${statusDisplay}</td>
                                         </tr>
                                     `;
                                 }).join('')}

@@ -78,7 +78,7 @@
           "stockPrice": 230.25,
           "assignmentPrice": null,
           "netProceeds": 274.35,
-          "status": "open",
+          "status": "active",
           "outcome": null,
           "notes": "Second CSP - expires end of this week",
           "rollDetails": null
@@ -160,8 +160,8 @@
     "stockPrice": 152.00,
     "assignmentPrice": null,
     "netProceeds": 0.00,
-    "status": "open|closed",
-    "outcome": null,
+    "status": "active|closed",
+    "outcome": "expired|assigned|null",
     "notes": "",
     "rollDetails": {
       "closedTradeId": null,
