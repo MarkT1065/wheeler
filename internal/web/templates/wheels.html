@@ -135,6 +135,11 @@
             color: white;
         }
 
+        .wheel-status-badge.input-required {
+            background: #f39c12;
+            color: white;
+        }
+
         .wheel-status-badge.closed {
             background: #7f8c8d;
             color: white;
@@ -466,6 +471,28 @@
             background: #27ae60;
             color: white;
         }
+
+        .trade-action-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 3px;
+            border: 1px solid #404040;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 5px;
+        }
+
+        .trade-action-btn:hover {
+            background: #007acc;
+            color: white;
+            border-color: #007acc;
+        }
+
+        .trade-action-btn:last-child {
+            margin-right: 0;
+        }
     </style>
 </head>
 <body>
@@ -516,10 +543,10 @@
                 <div class="wheels-grid" id="activeWheels"></div>
             </div>
 
-            <!-- Inactive Wheels -->
+            <!-- Current Wheels -->
             <div class="content-section">
                 <div class="section-title">
-                    <i class="fas fa-circle" style="color: #f39c12; font-size: 10px;"></i> Inactive Wheels
+                    <i class="fas fa-circle" style="color: #f39c12; font-size: 10px;"></i> Current Wheels
                     <span style="color: #888; font-size: 14px; margin-left: 10px;" id="inactiveCount">(0)</span>
                 </div>
                 <div class="wheels-grid" id="inactiveWheels"></div>
@@ -701,6 +728,9 @@
             const activeTrades = wheel.trades.filter(t => t.status === 'active');
             let nextExpiration = '';
             let dte = '';
+            let statusBadge = wheel.status;
+            let statusClass = wheel.status;
+
             if (activeTrades.length > 0) {
                 const sortedTrades = activeTrades.sort((a, b) => new Date(a.expirationDate) - new Date(b.expirationDate));
                 const nextTrade = sortedTrades[0];
@@ -712,6 +742,15 @@
             } else {
                 nextExpiration = 'None';
                 dte = '-';
+
+                // Check if there are any recently expired trades that need input
+                const recentExpired = wheel.trades.filter(t => t.status === 'closed' && t.outcome === 'expired');
+                const lastTrade = wheel.trades.length > 0 ? wheel.trades[wheel.trades.length - 1] : null;
+
+                if (lastTrade && lastTrade.status === 'closed' && lastTrade.outcome === 'expired' && wheel.status !== 'closed') {
+                    statusBadge = 'Expired - Input Required';
+                    statusClass = 'input-required';
+                }
             }
 
             // Get last premium from most recent trade
@@ -723,7 +762,7 @@
                 <div class="wheel-card ${wheel.status}" onclick="openWheelDetails('${wheel.id}')">
                     <div class="wheel-header">
                         <div class="wheel-symbol">${wheel.symbol}</div>
-                        <div class="wheel-status-badge ${wheel.status}">${wheel.status}</div>
+                        <div class="wheel-status-badge ${statusClass}">${statusBadge}</div>
                     </div>
 
                     <div class="wheel-summary">
@@ -876,6 +915,7 @@
                                     <th>Premium</th>
                                     <th>Net Proceeds</th>
                                     <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -923,6 +963,14 @@
                                             <td>$${trade.premium.toFixed(2)}</td>
                                             <td style="color: ${trade.netProceeds >= 0 ? '#27ae60' : '#e74c3c'};">$${trade.netProceeds.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                             <td>${statusDisplay}</td>
+                                            <td>
+                                                <button class="trade-action-btn" onclick="event.stopPropagation(); addTradeFromHistory('${wheel.id}', '${trade.id}')">
+                                                    <i class="fas fa-plus"></i> Trade
+                                                </button>
+                                                <button class="trade-action-btn" onclick="event.stopPropagation(); editTrade('${wheel.id}', '${trade.id}')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                            </td>
                                         </tr>
                                     `;
                                 }).join('')}
@@ -952,6 +1000,14 @@
 
         function addTrade(wheelId) {
             alert('Add trade interface - Coming soon!');
+        }
+
+        function addTradeFromHistory(wheelId, tradeId) {
+            alert('Add new trade from history context - Coming soon!');
+        }
+
+        function editTrade(wheelId, tradeId) {
+            alert('Edit trade dialog with Delete option - Coming soon!');
         }
 
         // Close modals when clicking outside
