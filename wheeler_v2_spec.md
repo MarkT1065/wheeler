@@ -37,20 +37,20 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
-         │                             │
-         │                             │
-         ▼ (polymorphic)               │
+         │                            │
+         │                            │
+         ▼ (polymorphic)              │
     ┌────────────────┐                │
     │  asset_type +  │                │
     │  asset_id      │                │
     └────────────────┘                │
-         │                             │
+         │                            │
     ┌────┴────┬────────┬───────┐      │
     │         │        │       │      │
     ▼         ▼        ▼       ▼      │
-┌─────────┐ ┌──────┐ ┌────┐ ┌─────┐  │
-│ STOCK   │ │OPTION│ │TREA│ │ DIV │  │
-└─────────┘ └──────┘ └────┘ └─────┘  │
+┌─────────┐ ┌──────┐ ┌────┐ ┌─────┐   │
+│ STOCK   │ │OPTION│ │TREA│ │ DIV │   │
+└─────────┘ └──────┘ └────┘ └─────┘   │
                                       │
 ┌──────────────────────────────────┐  │
 │            SYMBOL                │  │
@@ -58,7 +58,7 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │ PK  symbol              TEXT     │  │
 │     name                TEXT     │  │
 │     price               REAL     │  │
-│     dividend_yield      REAL     │  │
+│     dividend            REAL     │  │
 │     ex_dividend_date    DATE     │  │
 │     pe_ratio            REAL     │  │
 │     sector              TEXT     │  │
