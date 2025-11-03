@@ -441,6 +441,25 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/api/polygon/fetch-dividends", s.polygonFetchDividendsHandler)
 	log.Printf("[SERVER] Route registered: /api/polygon/fetch-dividends -> polygonFetchDividendsHandler")
 
+	// Wheel prototype routes (experimental)
+	http.HandleFunc("/wheels", s.WheelDashboardHandler)
+	log.Printf("[SERVER] Route registered: /wheels -> WheelDashboardHandler")
+
+	http.HandleFunc("/api/wheels/data", s.GetWheelDataHandler)
+	log.Printf("[SERVER] Route registered: /api/wheels/data -> GetWheelDataHandler")
+
+	http.HandleFunc("/api/wheels", s.GetWheelsHandler)
+	log.Printf("[SERVER] Route registered: /api/wheels -> GetWheelsHandler")
+
+	http.HandleFunc("/api/wheels/create", s.CreateWheelHandler)
+	log.Printf("[SERVER] Route registered: /api/wheels/create -> CreateWheelHandler")
+
+	http.HandleFunc("/api/wheels/trade", s.AddWheelTradeHandler)
+	log.Printf("[SERVER] Route registered: /api/wheels/trade -> AddWheelTradeHandler")
+
+	http.HandleFunc("/api/wheels/status", s.UpdateWheelStatusHandler)
+	log.Printf("[SERVER] Route registered: /api/wheels/status -> UpdateWheelStatusHandler")
+
 	log.Printf("[SERVER] All routes registered successfully")
 }
 
