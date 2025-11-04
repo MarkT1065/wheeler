@@ -508,48 +508,46 @@
 
             <!-- Account Selector -->
             <div class="account-selector-row">
-                <div>
-                    <label style="font-size: 12px; color: #888; margin-bottom: 6px; display: block;">FILTER BY ACCOUNT:</label>
-                    <select id="accountFilter" onchange="filterByAccount()">
-                        <option value="">All Accounts</option>
-                    </select>
-                </div>
-                <div class="account-stats">
-                    <div class="account-stat">
-                        <div class="account-stat-label">Total Cash</div>
-                        <div class="account-stat-value" id="totalCash">$0</div>
-                    </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Cash Secured</div>
-                        <div class="account-stat-value" id="totalCashSecured">$0</div>
-                    </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Active Wheels</div>
-                        <div class="account-stat-value" id="activeWheelsCount">0</div>
-                    </div>
-                    <div class="account-stat">
-                        <div class="account-stat-label">Total Profit</div>
-                        <div class="account-stat-value" id="totalProfit">$0</div>
+                <div style="flex: 1; display: flex; justify-content: center;">
+                    <div class="account-stats">
+                        <div class="account-stat">
+                            <div class="account-stat-label">Total Cash</div>
+                            <div class="account-stat-value" id="totalCash">$0</div>
+                        </div>
+                        <div class="account-stat">
+                            <div class="account-stat-label">Cash Secured</div>
+                            <div class="account-stat-value" id="totalCashSecured">$0</div>
+                        </div>
+                        <div class="account-stat">
+                            <div class="account-stat-label">Active Wheels</div>
+                            <div class="account-stat-value" id="activeWheelsCount">0</div>
+                        </div>
+                        <div class="account-stat">
+                            <div class="account-stat-label">Total Profit</div>
+                            <div class="account-stat-value" id="totalProfit">$0</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Active Wheels -->
-            <div class="content-section">
-                <div class="section-title">
-                    <i class="fas fa-circle" style="color: #27ae60; font-size: 10px;"></i> Active Wheels
-                    <span style="color: #888; font-size: 14px; margin-left: 10px;" id="activeCount">(0)</span>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+                    <div>
+                        <label style="font-size: 12px; color: #888; margin-bottom: 6px; display: block;">FILTER BY ACCOUNT:</label>
+                        <select id="accountFilter" onchange="filterByAccount()">
+                            <option value="">All Accounts</option>
+                        </select>
+                    </div>
+                    <button class="btn-submit" onclick="openCreateWheelModal()" style="padding: 10px 20px; white-space: nowrap;">
+                        <i class="fas fa-plus"></i> Create Wheel
+                    </button>
                 </div>
-                <div class="wheels-grid" id="activeWheels"></div>
             </div>
 
             <!-- Current Wheels -->
             <div class="content-section">
                 <div class="section-title">
-                    <i class="fas fa-circle" style="color: #f39c12; font-size: 10px;"></i> Current Wheels
-                    <span style="color: #888; font-size: 14px; margin-left: 10px;" id="inactiveCount">(0)</span>
+                    Current Wheels
+                    <span style="color: #888; font-size: 14px; margin-left: 10px;" id="currentCount">(0)</span>
                 </div>
-                <div class="wheels-grid" id="inactiveWheels"></div>
+                <div class="wheels-grid" id="currentWheels"></div>
             </div>
 
             <!-- Closed Wheels -->
@@ -560,11 +558,6 @@
                 </div>
                 <div class="wheels-grid" id="closedWheels"></div>
             </div>
-
-            <!-- Create Wheel Button -->
-            <button class="create-wheel-btn" onclick="openCreateWheelModal()">
-                <i class="fas fa-plus"></i> Create Wheel
-            </button>
 
             <!-- Create Wheel Modal -->
             <div id="createWheelModal" class="modal">
@@ -690,16 +683,13 @@
                 ? wheelData.wheels.filter(w => w.accountId === currentAccount)
                 : wheelData.wheels;
 
-            const activeWheels = filteredWheels.filter(w => w.status === 'active');
-            const inactiveWheels = filteredWheels.filter(w => w.status === 'inactive');
+            const currentWheels = filteredWheels.filter(w => w.status === 'active' || w.status === 'inactive');
             const closedWheels = filteredWheels.filter(w => w.status === 'closed');
 
-            renderWheelSection('activeWheels', activeWheels, 'active');
-            renderWheelSection('inactiveWheels', inactiveWheels, 'inactive');
+            renderWheelSection('currentWheels', currentWheels, 'current');
             renderWheelSection('closedWheels', closedWheels, 'closed');
 
-            document.getElementById('activeCount').textContent = '(' + activeWheels.length + ')';
-            document.getElementById('inactiveCount').textContent = '(' + inactiveWheels.length + ')';
+            document.getElementById('currentCount').textContent = '(' + currentWheels.length + ')';
             document.getElementById('closedCount').textContent = '(' + closedWheels.length + ')';
         }
 
@@ -951,6 +941,21 @@
                                         }
                                     }
 
+                                    // Build action buttons based on trade status
+                                    let actionButtons = '';
+                                    if (trade.status === 'active' || trade.status === 'open') {
+                                        actionButtons = `
+                                            <button class="trade-action-btn" onclick="event.stopPropagation(); addTradeFromHistory('${wheel.id}', '${trade.id}')">
+                                                <i class="fas fa-plus"></i> Trade
+                                            </button>
+                                        `;
+                                    }
+                                    actionButtons += `
+                                        <button class="trade-action-btn" onclick="event.stopPropagation(); editTrade('${wheel.id}', '${trade.id}')">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                    `;
+
                                     return `
                                         <tr>
                                             <td>${trade.sequenceNumber}</td>
@@ -963,14 +968,7 @@
                                             <td>$${trade.premium.toFixed(2)}</td>
                                             <td style="color: ${trade.netProceeds >= 0 ? '#27ae60' : '#e74c3c'};">$${trade.netProceeds.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                                             <td>${statusDisplay}</td>
-                                            <td>
-                                                <button class="trade-action-btn" onclick="event.stopPropagation(); addTradeFromHistory('${wheel.id}', '${trade.id}')">
-                                                    <i class="fas fa-plus"></i> Trade
-                                                </button>
-                                                <button class="trade-action-btn" onclick="event.stopPropagation(); editTrade('${wheel.id}', '${trade.id}')">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </button>
-                                            </td>
+                                            <td>${actionButtons}</td>
                                         </tr>
                                     `;
                                 }).join('')}
