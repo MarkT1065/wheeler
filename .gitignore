@@ -3,3 +3,5 @@ data/backups
 data/*.db
 data/wheeler.*
 *.exe
+.serena/*.*
+docs/*.md
