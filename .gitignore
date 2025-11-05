@@ -1,4 +1,5 @@
 .claude
 data/backups
-data/test_db.db
+data/*.db
 data/wheeler.*
+*.exe
