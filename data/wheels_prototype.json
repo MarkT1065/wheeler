@@ -1,0 +1,242 @@
+{
+  "accounts": [
+    {
+      "id": "acc_001",
+      "name": "Primary",
+      "startingCash": 20000.00,
+      "currentCash": 20000.00,
+      "createdAt": "2025-01-01T00:00:00Z"
+    },
+    {
+      "id": "acc_002",
+      "name": "Secondary",
+      "startingCash": 10000.00,
+      "currentCash": 10000.00,
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "wheels": [
+    {
+      "id": "wheel_001",
+      "accountId": "acc_001",
+      "symbol": "AAPL",
+      "status": "active",
+      "createdAt": "2025-10-01T10:30:00Z",
+      "closedAt": null,
+      "contractSize": 100,
+      "targetStrikeStrategy": "delta30",
+      "notes": "Testing wheel strategy with AAPL - targeting 30 delta strikes for optimal premium collection",
+      "summary": {
+        "totalPremiumCollected": 595.30,
+        "totalCapitalGains": 0.00,
+        "totalDividends": 0.00,
+        "totalProfit": 595.30,
+        "currentStockPosition": 0,
+        "currentCashSecured": 22500.00,
+        "numberOfCycles": 0,
+        "numberOfPutTrades": 2,
+        "numberOfCallTrades": 0,
+        "numberOfAssignments": 0,
+        "numberOfExpirations": 1,
+        "numberOfRolls": 0
+      },
+      "trades": [
+        {
+          "id": "trade_001",
+          "wheelId": "wheel_001",
+          "tradeType": "CSP",
+          "sequenceNumber": 1,
+          "cycleNumber": 1,
+          "openDate": "2025-10-01T09:30:00Z",
+          "expirationDate": "2025-10-18",
+          "closeDate": "2025-10-18T16:00:00Z",
+          "strike": 220.00,
+          "contracts": 1,
+          "premium": 3.25,
+          "commission": 0.65,
+          "stockPrice": 227.50,
+          "assignmentPrice": null,
+          "netProceeds": 324.35,
+          "status": "closed",
+          "outcome": "expired",
+          "notes": "First CSP - expired worthless, kept full premium",
+          "rollDetails": null
+        },
+        {
+          "id": "trade_002",
+          "wheelId": "wheel_001",
+          "tradeType": "CSP",
+          "sequenceNumber": 2,
+          "cycleNumber": 1,
+          "openDate": "2025-10-21T10:15:00Z",
+          "expirationDate": "2025-11-07",
+          "closeDate": null,
+          "strike": 225.00,
+          "contracts": 1,
+          "premium": 2.75,
+          "commission": 0.65,
+          "stockPrice": 230.25,
+          "assignmentPrice": null,
+          "netProceeds": 274.35,
+          "status": "active",
+          "outcome": null,
+          "notes": "Second CSP - expires end of this week",
+          "rollDetails": null
+        }
+      ]
+    },
+    {
+      "id": "wheel_002",
+      "accountId": "acc_001",
+      "symbol": "TSLA",
+      "status": "active",
+      "createdAt": "2025-09-15T14:20:00Z",
+      "closedAt": null,
+      "contractSize": 100,
+      "targetStrikeStrategy": "otm",
+      "notes": "Second wheel campaign on TSLA - testing out-of-money strikes",
+      "summary": {
+        "totalPremiumCollected": 387.70,
+        "totalCapitalGains": 0.00,
+        "totalDividends": 0.00,
+        "totalProfit": 387.70,
+        "currentStockPosition": 0,
+        "currentCashSecured": 0.00,
+        "numberOfCycles": 0,
+        "numberOfPutTrades": 2,
+        "numberOfCallTrades": 0,
+        "numberOfAssignments": 0,
+        "numberOfExpirations": 2,
+        "numberOfRolls": 0
+      },
+      "trades": [
+        {
+          "id": "trade_003",
+          "wheelId": "wheel_002",
+          "tradeType": "CSP",
+          "sequenceNumber": 1,
+          "cycleNumber": 1,
+          "openDate": "2025-09-15T10:00:00Z",
+          "expirationDate": "2025-10-04",
+          "closeDate": "2025-10-04T16:00:00Z",
+          "strike": 240.00,
+          "contracts": 1,
+          "premium": 2.15,
+          "commission": 0.65,
+          "stockPrice": 252.30,
+          "assignmentPrice": null,
+          "netProceeds": 214.35,
+          "status": "closed",
+          "outcome": "expired",
+          "notes": "First TSLA put - expired OTM",
+          "rollDetails": null
+        },
+        {
+          "id": "trade_004",
+          "wheelId": "wheel_002",
+          "tradeType": "CSP",
+          "sequenceNumber": 2,
+          "cycleNumber": 1,
+          "openDate": "2025-10-07T11:30:00Z",
+          "expirationDate": "2025-10-25",
+          "closeDate": "2025-10-25T16:00:00Z",
+          "strike": 235.00,
+          "contracts": 1,
+          "premium": 1.80,
+          "commission": 0.65,
+          "stockPrice": 248.90,
+          "assignmentPrice": null,
+          "netProceeds": 179.35,
+          "status": "closed",
+          "outcome": "expired",
+          "notes": "Second TSLA put - expired OTM, needs next trade input",
+          "rollDetails": null
+        }
+      ]
+    }
+  ],
+  "tradeSequence": 4,
+  "wheelSequence": 2,
+  "accountSequence": 2,
+  "metadata": {
+    "version": "1.0",
+    "lastModified": "2025-01-01T00:00:00Z",
+    "description": "Wheeler v2 Wheel Campaign Prototype Data"
+  },
+  "tradeTypes": {
+    "cashSecuredPut": {
+      "code": "CSP",
+      "description": "Sell cash-secured put",
+      "optionType": "Put",
+      "action": "SellToOpen"
+    },
+    "putAssignment": {
+      "code": "PUT_ASSIGN",
+      "description": "Put assignment - stock purchased",
+      "optionType": "Put",
+      "action": "Assignment"
+    },
+    "putExpiration": {
+      "code": "PUT_EXPIRE",
+      "description": "Put expiration - contract expired worthless",
+      "optionType": "Put",
+      "action": "Expiration"
+    },
+    "putRoll": {
+      "code": "PUT_ROLL",
+      "description": "Roll put - close current and open new",
+      "optionType": "Put",
+      "action": "Roll"
+    },
+    "coveredCall": {
+      "code": "CC",
+      "description": "Sell covered call",
+      "optionType": "Call",
+      "action": "SellToOpen"
+    },
+    "callAssignment": {
+      "code": "CALL_ASSIGN",
+      "description": "Call assignment - stock sold",
+      "optionType": "Call",
+      "action": "Assignment"
+    },
+    "callExpiration": {
+      "code": "CALL_EXPIRE",
+      "description": "Call expiration - contract expired worthless",
+      "optionType": "Call",
+      "action": "Expiration"
+    },
+    "callRoll": {
+      "code": "CALL_ROLL",
+      "description": "Roll call - close current and open new",
+      "optionType": "Call",
+      "action": "Roll"
+    }
+  },
+  "tradeTemplate": {
+    "id": "trade_XXX",
+    "wheelId": "wheel_XXX",
+    "tradeType": "CSP|PUT_ASSIGN|PUT_EXPIRE|PUT_ROLL|CC|CALL_ASSIGN|CALL_EXPIRE|CALL_ROLL",
+    "sequenceNumber": 1,
+    "cycleNumber": 1,
+    "openDate": "2025-01-15T10:30:00Z",
+    "expirationDate": "2025-02-15",
+    "closeDate": null,
+    "strike": 150.00,
+    "contracts": 1,
+    "premium": 2.50,
+    "commission": 0.65,
+    "stockPrice": 152.00,
+    "assignmentPrice": null,
+    "netProceeds": 0.00,
+    "status": "active|closed",
+    "outcome": "expired|assigned|null",
+    "notes": "",
+    "rollDetails": {
+      "closedTradeId": null,
+      "closePremium": 0.00,
+      "closeCommission": 0.00,
+      "netRollCredit": 0.00
+    }
+  }
+}
