@@ -10,9 +10,29 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ├──────────────────────────────────┤
 │ PK  id                  INTEGER  │
 │     name                TEXT     │
-│     account_type        TEXT     │  -- 'CASH', 'MARGIN', 'IRA'
-│     balance             REAL     │
+│     total_value         REAL     │
 │     cash_balance        REAL     │
+│     created_at          DATETIME │
+│     updated_at          DATETIME │
+└──────────────────────────────────┘
+                  │
+                  │ 1:N
+                  ▼
+┌──────────────────────────────────┐
+│            TRADE                 │
+├──────────────────────────────────┤
+│ PK  id                  INTEGER  │
+│ FK  account_id          INTEGER  │
+│ FK  symbol              TEXT     │
+│     strategy_type       TEXT     │  -- 'WHEEL', 'LONG_STOCK', 'COVERED_CALL',
+│                                  │  -- 'CASH_SECURED_PUT', 'IRON_CONDOR'
+│     opened_date         DATE     │
+│     closed_date         DATE     │
+│     status              TEXT     │  -- 'OPEN', 'CLOSED', 'PARTIALLY_CLOSED'
+│     realized_pl         REAL     │  -- Actual P&L for closed trades
+│     unrealized_pl       REAL     │  -- Mark-to-market for open trades
+│     total_pl            REAL     │  -- realized_pl + unrealized_pl
+│     notes               TEXT     │
 │     created_at          DATETIME │
 │     updated_at          DATETIME │
 └──────────────────────────────────┘
@@ -24,11 +44,12 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ├──────────────────────────────────┤
 │ PK  id                  INTEGER  │
 │ FK  account_id          INTEGER  │──┐
-│     asset_type          TEXT     │  │  -- 'STOCK', 'OPTION', 'TREASURY', 'DIVIDEND'
+│ FK  trade_id            INTEGER  │  │  -- Links transaction to trade
+│     asset_type          TEXT     │  │  -- 'CASH', 'STOCK', 'OPTION', 'TREASURY', 'DIVIDEND'
 │     asset_id            INTEGER  │  │  -- Polymorphic FK to asset tables
-│     trade_type          TEXT     │  │  -- 'BUY_TO_OPEN', 'SELL_TO_CLOSE', 
-│     transaction_date    DATE     │  │  --  'SELL_TO_OPEN', 'BUY_TO_CLOSE',
-│     quantity            INTEGER  │  │  --  'ASSIGNED', 'EXPIRED', 'RECEIVE', 'INTEREST'
+│     action              TEXT     │  │  -- 'RECEIVE', 'BUY_TO_OPEN', 'SELL_TO_CLOSE',
+│     transaction_date    DATE     │  │  -- 'SELL_TO_OPEN', 'BUY_TO_CLOSE',
+│     quantity            INTEGER  │  │  -- 'ASSIGNED', 'EXPIRED', 'WITHDRAW'
 │     price               REAL     │  │
 │     total_amount        REAL     │  │  -- quantity * price (signed: + credit, - debit)
 │     commission          REAL     │  │
@@ -152,12 +173,16 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 ## Relationships
 
 ```
+Account 1 ────── N Trade           (account_id FK)
 Account 1 ────── N Transaction    (account_id FK)
 Account 1 ────── N Stock           (account_id FK)
 Account 1 ────── N Option          (account_id FK)
 Account 1 ────── N Treasury        (account_id FK)
 Account 1 ────── N Dividend        (account_id FK)
 
+Trade   1 ────── N Transaction    (trade_id FK)
+
+Symbol  1 ────── N Trade           (symbol FK)
 Symbol  1 ────── N Stock           (symbol FK)
 Symbol  1 ────── N Option          (symbol FK)
 Symbol  1 ────── N Dividend        (symbol FK)
@@ -179,41 +204,59 @@ Account:     id=1, name='Trading Account', account_type='CASH', balance=$0, cash
 
 ### 1. Deposit Cash
 ```
-Transaction: trade_type='RECEIVE', asset_type='CASH', net_amount=+$10,000
+Transaction: action='RECEIVE', asset_type='CASH', net_amount=+$10,000
 Account:     cash_balance=$10,000, balance=$10,000
 ```
 
-### 2. Sell Put to Open
+### 2. Open Wheel Strategy Trade
 ```
-Transaction: trade_type='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$150
-Option:      status='OPEN', premium_received=$150
-Account:     cash_balance=$10,150, balance=$10,150
+Trade:       id=1, account_id=1, symbol='AAPL', strategy_type='WHEEL', status='OPEN'
 ```
 
-### 3. Put Assignment
+### 3. Sell Put to Open
 ```
-Transaction: trade_type='ASSIGNED', asset_type='OPTION', asset_id=option.id, net_amount=$0
+Transaction: trade_id=1, action='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$150
+Option:      status='OPEN', premium_received=$150
+Account:     cash_balance=$10,150, balance=$10,150
+Trade:       realized_pl=$150, unrealized_pl=$0, total_pl=$150
+```
+
+### 4. Put Assignment
+```
+Transaction: trade_id=1, action='ASSIGNED', asset_type='OPTION', asset_id=option.id, net_amount=$0
 Option:      status='ASSIGNED', assignment_tx_id=stock_tx.id
-Transaction: trade_type='BUY_TO_OPEN', asset_type='STOCK', asset_id=stock.id, net_amount=-$5,000
+Transaction: trade_id=1, action='BUY_TO_OPEN', asset_type='STOCK', asset_id=stock.id, net_amount=-$5,000
 Stock:       status='OPEN', shares=100, cost_basis=$5,000
 Account:     cash_balance=$5,150, balance=$10,150 (Cash $5,150 + Stock $5,000)
 ```
 
-### 4. Sell Call to Open
+### 5. Sell Call to Open
 ```
-Transaction: trade_type='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$200
+Transaction: trade_id=1, action='SELL_TO_OPEN', asset_type='OPTION', asset_id=option.id, net_amount=+$200
 Option:      status='OPEN', premium_received=$200
 Account:     cash_balance=$5,350, balance=$10,350
+Trade:       realized_pl=$350, unrealized_pl=$0, total_pl=$350
 ```
 
-### 5. Dividend Received
+### 6. Dividend Received
 ```
-Transaction: trade_type='RECEIVE', asset_type='DIVIDEND', asset_id=dividend.id, net_amount=+$50
+Transaction: trade_id=1, action='RECEIVE', asset_type='DIVIDEND', asset_id=dividend.id, net_amount=+$50
 Dividend:    total_amount=$50
 Account:     cash_balance=$5,400, balance=$10,400
+Trade:       realized_pl=$400, unrealized_pl=$0, total_pl=$400
 ```
 
-### 6. Account Value Calculation
+### 7. Call Assignment (Close Trade)
+```
+Transaction: trade_id=1, action='ASSIGNED', asset_type='OPTION', asset_id=option.id, net_amount=$0
+Option:      status='ASSIGNED'
+Transaction: trade_id=1, action='SELL_TO_CLOSE', asset_type='STOCK', asset_id=stock.id, net_amount=+$5,250
+Stock:       status='CLOSED'
+Account:     cash_balance=$10,650, balance=$10,650
+Trade:       status='CLOSED', realized_pl=$650, unrealized_pl=$0, total_pl=$650
+```
+
+### 8. Account Value Calculation
 ```
 Cash Balance:        account.cash_balance
 Stock Value:         SUM(stock.shares * current_price) WHERE account_id = X
@@ -229,7 +272,12 @@ SUM(transactions.net_amount WHERE account_id = X) = Current Account Value
 ## Database Indexes
 
 ```sql
+CREATE INDEX idx_trade_account_id            ON trade(account_id);
+CREATE INDEX idx_trade_symbol                ON trade(symbol);
+CREATE INDEX idx_trade_status                ON trade(status);
+CREATE INDEX idx_trade_strategy_type         ON trade(strategy_type);
 CREATE INDEX idx_transaction_account_id      ON transaction(account_id);
+CREATE INDEX idx_transaction_trade_id        ON transaction(trade_id);
 CREATE INDEX idx_transaction_asset           ON transaction(asset_type, asset_id);
 CREATE INDEX idx_transaction_date            ON transaction(transaction_date);
 CREATE INDEX idx_stock_account_symbol        ON stock(account_id, symbol);
@@ -248,27 +296,43 @@ CREATE INDEX idx_dividend_payment_date       ON dividend(payment_date);
 ### 1. Multi-Account Support
 All asset tables (Stock, Option, Treasury, Dividend) reference an Account via `account_id` foreign key. This enables tracking multiple portfolios or accounts within a single database. Each account maintains its own cash balance via the `cash_balance` attribute.
 
-### 2. Transaction-Centric Accounting
-The Transaction table serves as the source of truth for all financial movements. Account value is calculated as the sum of all transaction net amounts for that account.
+### 2. Trade-Centric Strategy Tracking
+The Trade table groups related transactions into strategic trading operations (e.g., complete wheel strategy). This enables P&L tracking at the strategy level, not just individual transactions.
 
-### 3. Polymorphic Asset References
+### 3. Transaction-Centric Accounting
+The Transaction table serves as the source of truth for all financial movements. Account value is calculated as the sum of all transaction net amounts for that account. Each transaction can optionally link to a Trade for strategy-level analysis.
+
+### 4. Polymorphic Asset References
 Transactions use `asset_type` (enum) and `asset_id` (integer) to reference different asset tables. This flexible design supports diverse transaction types while maintaining referential integrity.
 
-### 4. Bidirectional Transaction-Asset Linking
+### 5. Bidirectional Transaction-Asset Linking
 - Transactions reference assets via `asset_type` + `asset_id`
 - Assets reference their opening transaction via `tx_id`
 - This dual linking enables both transaction→asset and asset→transaction queries
 
-### 5. Symbol Independence
+### 6. Symbol Independence
 The Symbol table stands independent without account_id, representing universal market data. Multiple accounts can hold the same symbol.
 
-### 6. Status Tracking
+### 7. Status Tracking
 Assets maintain explicit status fields ('OPEN', 'CLOSED', 'ASSIGNED', 'EXPIRED', etc.) enabling lifecycle management and filtering.
 
-### 7. Audit Trail
+### 8. Audit Trail
 All tables include `created_at` and `updated_at` timestamps for comprehensive audit trails.
 
-## Trade Type Enumeration
+## Strategy Type Enumeration (TRADE.strategy_type)
+
+```
+WHEEL                - Complete wheel strategy (put → assignment → call)
+LONG_STOCK           - Simple buy and hold stock position
+COVERED_CALL         - Own stock + sell call against it
+CASH_SECURED_PUT     - Sell put with cash collateral
+IRON_CONDOR          - Multi-leg option spread
+BUTTERFLY            - Option butterfly spread
+STRADDLE             - Buy/sell call and put at same strike
+STRANGLE             - Buy/sell call and put at different strikes
+```
+
+## Transaction Action Enumeration (TRANSACTION.action)
 
 ```
 RECEIVE              - Cash deposit or dividend/interest receipt
