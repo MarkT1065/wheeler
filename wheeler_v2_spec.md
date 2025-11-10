@@ -24,15 +24,12 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │ PK  id                  INTEGER  │
 │ FK  account_id          INTEGER  │
 │ FK  symbol              TEXT     │
-│     strategy_type       TEXT     │  -- 'WHEEL', 'LONG_STOCK', 'COVERED_CALL',
-│                                  │  -- 'CASH_SECURED_PUT', 'IRON_CONDOR'
 │     opened_date         DATE     │
 │     closed_date         DATE     │
 │     status              TEXT     │  -- 'OPEN', 'CLOSED', 'PARTIALLY_CLOSED'
 │     realized_pl         REAL     │  -- Actual P&L for closed trades
 │     unrealized_pl       REAL     │  -- Mark-to-market for open trades
 │     total_pl            REAL     │  -- realized_pl + unrealized_pl
-│     notes               TEXT     │
 │     created_at          DATETIME │
 │     updated_at          DATETIME │
 └──────────────────────────────────┘
@@ -54,7 +51,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     total_amount        REAL     │  │  -- quantity * price (signed: + credit, - debit)
 │     commission          REAL     │  │
 │     net_amount          REAL     │  │  -- total_amount - commission
-│     notes               TEXT     │  │
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
@@ -82,7 +78,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     dividend            REAL     │  │
 │     ex_dividend_date    DATE     │  │
 │     pe_ratio            REAL     │  │
-│     sector              TEXT     │  │
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
@@ -102,7 +97,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     opened_date         DATE     │  │
 │     closed_date         DATE     │  │
 │     status              TEXT     │  │  -- 'OPEN', 'CLOSED'
-│     notes               TEXT     │  │
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
@@ -125,7 +119,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     status              TEXT     │  │  -- 'OPEN', 'CLOSED', 'ASSIGNED', 'EXPIRED'
 │     assignment_tx_id    INTEGER  │  │  -- References assignment transaction if applicable
 │     current_price       REAL     │  │
-│     notes               TEXT     │  │
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
@@ -145,7 +138,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     maturity_date       DATE     │  │
 │     sold_date           DATE     │  │
 │     status              TEXT     │  │  -- 'HELD', 'SOLD', 'MATURED'
-│     notes               TEXT     │  │
 │     created_at          DATETIME │  │
 │     updated_at          DATETIME │  │
 └──────────────────────────────────┘  │
@@ -164,7 +156,6 @@ This document defines the enhanced data model for Wheeler V2, a financial tradin
 │     amount_per_share    REAL     │
 │     total_amount        REAL     │  -- shares * amount_per_share
 │     dividend_type       TEXT     │  -- 'CASH', 'QUALIFIED', 'SPECIAL'
-│     notes               TEXT     │
 │     created_at          DATETIME │
 │     updated_at          DATETIME │
 └──────────────────────────────────┘
@@ -199,7 +190,7 @@ Stock       1 ── N Dividend        (stock_id FK)
 
 ### 0. Open Account
 ```
-Account:     id=1, name='Trading Account', account_type='CASH', balance=$0, cash_balance=$0
+Account:     id=1, name='Trading Account', balance=$0, cash_balance=$0
 ```
 
 ### 1. Deposit Cash
@@ -275,7 +266,6 @@ SUM(transactions.net_amount WHERE account_id = X) = Current Account Value
 CREATE INDEX idx_trade_account_id            ON trade(account_id);
 CREATE INDEX idx_trade_symbol                ON trade(symbol);
 CREATE INDEX idx_trade_status                ON trade(status);
-CREATE INDEX idx_trade_strategy_type         ON trade(strategy_type);
 CREATE INDEX idx_transaction_account_id      ON transaction(account_id);
 CREATE INDEX idx_transaction_trade_id        ON transaction(trade_id);
 CREATE INDEX idx_transaction_asset           ON transaction(asset_type, asset_id);
@@ -363,14 +353,6 @@ PUT                  - Put option
 CALL                 - Call option
 ```
 
-## Account Type Enumeration
-
-```
-CASH                 - Cash account
-MARGIN               - Margin account
-IRA                  - Individual Retirement Account
-```
-
 ## Dividend Type Enumeration
 
 ```
@@ -451,16 +433,15 @@ func (db *DB) runMigrations() error {
 CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    account_type TEXT NOT NULL CHECK (account_type IN ('CASH', 'MARGIN', 'IRA')),
-    balance REAL DEFAULT 0.0,
+    total_value REAL DEFAULT 0.0,
     cash_balance REAL DEFAULT 0.0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create default account for existing data
-INSERT OR IGNORE INTO accounts (id, name, account_type, balance, cash_balance)
-VALUES (1, 'Default Account', 'CASH', 0.0, 0.0);
+INSERT OR IGNORE INTO accounts (id, name, balance, cash_balance)
+VALUES (1, 'Default Account', 0.0, 0.0);
 ```
 
 #### `internal/database/migrations/20250103000002_create_transactions.sql`
@@ -478,7 +459,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     total_amount REAL NOT NULL,
     commission REAL DEFAULT 0.0,
     net_amount REAL NOT NULL,
-    notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (account_id) REFERENCES accounts(id)
@@ -497,7 +477,6 @@ ALTER TABLE long_positions ADD COLUMN tx_id INTEGER;
 ALTER TABLE long_positions ADD COLUMN cost_basis REAL;
 ALTER TABLE long_positions ADD COLUMN avg_price REAL;
 ALTER TABLE long_positions ADD COLUMN status TEXT DEFAULT 'OPEN';
-ALTER TABLE long_positions ADD COLUMN notes TEXT;
 
 -- Backfill cost_basis and avg_price
 UPDATE long_positions SET cost_basis = shares * buy_price WHERE cost_basis IS NULL;
@@ -511,7 +490,6 @@ ALTER TABLE options ADD COLUMN premium_received REAL;
 ALTER TABLE options ADD COLUMN premium_paid REAL;
 ALTER TABLE options ADD COLUMN status TEXT DEFAULT 'OPEN';
 ALTER TABLE options ADD COLUMN assignment_tx_id INTEGER;
-ALTER TABLE options ADD COLUMN notes TEXT;
 
 -- Backfill premium fields based on option type
 UPDATE options SET premium_received = premium WHERE type IN ('Put', 'Call') AND premium_received IS NULL;
@@ -526,7 +504,6 @@ ALTER TABLE dividends ADD COLUMN shares INTEGER;
 ALTER TABLE dividends ADD COLUMN amount_per_share REAL;
 ALTER TABLE dividends ADD COLUMN total_amount REAL;
 ALTER TABLE dividends ADD COLUMN dividend_type TEXT DEFAULT 'CASH';
-ALTER TABLE dividends ADD COLUMN notes TEXT;
 ALTER TABLE dividends ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP;
 
 -- Backfill total_amount from amount
@@ -537,7 +514,6 @@ ALTER TABLE treasuries ADD COLUMN id INTEGER;
 ALTER TABLE treasuries ADD COLUMN account_id INTEGER DEFAULT 1;
 ALTER TABLE treasuries ADD COLUMN tx_id INTEGER;
 ALTER TABLE treasuries ADD COLUMN status TEXT DEFAULT 'HELD';
-ALTER TABLE treasuries ADD COLUMN notes TEXT;
 
 -- Backfill treasury status
 UPDATE treasuries SET status = CASE WHEN exit_price IS NOT NULL THEN 'SOLD' ELSE 'HELD' END WHERE status IS NULL;
@@ -548,7 +524,6 @@ UPDATE treasuries SET status = CASE WHEN exit_price IS NOT NULL THEN 'SOLD' ELSE
 -- Add symbol table enhancements
 ALTER TABLE symbols ADD COLUMN name TEXT;
 ALTER TABLE symbols ADD COLUMN dividend_yield REAL;
-ALTER TABLE symbols ADD COLUMN sector TEXT;
 
 -- Backfill dividend_yield from existing dividend field
 UPDATE symbols SET dividend_yield = dividend WHERE dividend_yield IS NULL;
