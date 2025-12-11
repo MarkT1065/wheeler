@@ -128,7 +128,7 @@ Wheeler is designed to be Unraid-compatible:
 
 | Setting | Value | Description |
 |---------|-------|-------------|
-| External Port | 8077 | Web interface port (avoids conflict with SABnzbd on 8080) |
+| External Port | 8077 | Web interface port |
 | Internal Port | 8080 | Go web server port |
 | Data Volume | `/app/data` | SQLite database and backups |
 | Restart Policy | `unless-stopped` | Auto-restart on failure |

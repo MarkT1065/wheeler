@@ -3,8 +3,7 @@ services:
     build: .
     container_name: wheeler
     ports:
-      # External port 8077 (Unraid-friendly, avoids SABnzbd conflict)
-      # Internal port 8080 (Go web server)
+      # External port 8077, internal port 8080 (Go web server)
       - "8077:8080"
     volumes:
       # Persistent data storage for SQLite database
