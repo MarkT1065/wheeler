@@ -1,0 +1,33 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+bin/
+wheeler
+*.exe
+
+# Data files (will be mounted as volume)
+data/
+
+# Test files
+test/
+*_test.go
+*.test
+
+# Documentation
+*.md
+!README.md
+LICENSE
+screenshots/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude/AI assistant files
+.claude/
+CLAUDE.md

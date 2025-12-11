@@ -1,0 +1,18 @@
+services:
+  wheeler:
+    build: .
+    container_name: wheeler
+    ports:
+      # External port 8077, internal port 8080 (Go web server)
+      - "8077:8080"
+    volumes:
+      # Persistent data storage for SQLite database
+      # Customize this path for your environment:
+      # - Unraid: /mnt/user/appdata/wheeler:/app/data
+      # - Linux: ./data:/app/data
+      # - Windows: C:/wheeler/data:/app/data
+      - ./data:/app/data
+    restart: unless-stopped
+    # Optional: uncomment to set environment variables
+    # environment:
+    #   - POLYGON_API_KEY=your_api_key_here
