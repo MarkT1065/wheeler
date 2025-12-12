@@ -85,6 +85,67 @@ go run main.go
 3. Explore the dashboard to see realistic portfolio tracking in action
 4. View the tutorial content to understand the trading strategy
 
+## Docker Setup
+
+Wheeler can be run with Docker Compose for easy deployment.
+
+### Quick Start with Docker
+
+```bash
+# Clone and navigate to project
+cd wheeler
+
+# Build and start Wheeler
+docker compose up -d
+
+# Open your browser to:
+# http://localhost:8077
+```
+
+### Unraid Setup
+
+Wheeler is designed to be Unraid-compatible:
+
+1. **Create app directory** (if using custom path):
+   ```bash
+   mkdir -p /mnt/user/appdata/wheeler
+   ```
+
+2. **Edit docker-compose.yml** to customize the volume path:
+   ```yaml
+   volumes:
+     - /mnt/user/appdata/wheeler:/app/data
+   ```
+
+3. **Start Wheeler**:
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Access Wheeler** at `http://your-unraid-ip:8077`
+
+### Docker Configuration
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| External Port | 8077 | Web interface port |
+| Internal Port | 8080 | Go web server port |
+| Data Volume | `/app/data` | SQLite database and backups |
+| Restart Policy | `unless-stopped` | Auto-restart on failure |
+
+### Customization
+
+Edit `docker-compose.yml` to customize:
+
+- **Port**: Change `8077:8080` to use a different external port
+- **Volume**: Change `./data:/app/data` to your preferred data path
+- **Environment**: Uncomment and set `POLYGON_API_KEY` for market data
+
+### Stopping Wheeler
+
+```bash
+docker compose down
+```
 
 ## Application Overview
 
