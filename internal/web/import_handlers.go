@@ -1353,6 +1353,8 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 	s.treasuryService = models.NewTreasuryService(dbWrapper.DB)
 	s.longPositionService = models.NewLongPositionService(dbWrapper.DB)
 	s.dividendService = models.NewDividendService(dbWrapper.DB)
+	s.settingService = models.NewSettingService(dbWrapper.DB)
+	s.metricService = models.NewMetricService(dbWrapper.DB)
 
 	log.Printf("[SET_DATABASE] Successfully switched to database: %s", dbName)
 

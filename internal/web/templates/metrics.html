@@ -114,7 +114,7 @@
                     </div>
                     
                     <div class="chart-card">
-                        <div class="chart-title">Call Premium</div>
+                        <div class="chart-title">Open Call Premium</div>
                         <div class="chart-container">
                             <canvas id="callPremiumChart"></canvas>
                         </div>
@@ -270,8 +270,8 @@
                     // Long Positions  chart: Long Value + Call Premium as % of Long Value
                     createExposurePremiumChart('longValueChart', 'Long Value', data.long_value || [], data.open_call_premium || [], 'Premium % of Long', '#36A2EB');
                     
-                    //  Call Premium chart: Call Premium + Call Count as second Y-axis
-                    createDualAxisChartWithCount('callPremiumChart', 'Call Premium', data.open_call_premium || [], data.open_call_count || [], 'Call Count', '#9966FF');
+                    //  Call Premium chart: Open Call Premium + Call Count + Closed Call Profit
+                    createTripleAxisCallChart('callPremiumChart', 'Open Call Premium', data.open_call_premium || [], data.open_call_count || [], 'Call Count', data.closed_call_profit || [], 'Closed Call Profit', '#9966FF');
                 })
                 .fail(function(jqXHR, textStatus, errorThrown) {
                     console.error('Failed to load chart data:', textStatus, errorThrown);
@@ -699,6 +699,217 @@
                 });
             } catch (error) {
                 console.error('Error creating dual-axis count chart:', canvasId, error);
+                const container = document.getElementById(canvasId).parentElement;
+                container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
+            }
+        }
+
+        // Function to create triple-axis chart for Call Premium (open premium + count + closed profit)
+        function createTripleAxisCallChart(canvasId, premiumLabel, premiumData, countData, countLabel, profitData, profitLabel, color) {
+            try {
+                if (!premiumData || premiumData.length === 0) {
+                    console.log('No premium data for triple-axis call chart:', canvasId);
+                    const container = document.getElementById(canvasId).parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No data available</div>';
+                    return;
+                }
+
+                const ctx = document.getElementById(canvasId);
+                if (!ctx) {
+                    console.error('Canvas element not found:', canvasId);
+                    return;
+                }
+                const context = ctx.getContext('2d');
+                
+                // Create maps for count and profit values by date for easy lookup
+                const countValuesByDate = {};
+                const profitValuesByDate = {};
+                
+                if (countData) {
+                    countData.forEach(point => {
+                        if (point && point.date && typeof point.value === 'number') {
+                            countValuesByDate[point.date] = point.value;
+                        }
+                    });
+                }
+                
+                if (profitData) {
+                    profitData.forEach(point => {
+                        if (point && point.date && typeof point.value === 'number') {
+                            profitValuesByDate[point.date] = point.value;
+                        }
+                    });
+                }
+                
+                // Process premium data
+                const validPremiumData = premiumData.filter(point => 
+                    point && 
+                    point.date && 
+                    typeof point.value === 'number' && 
+                    !isNaN(point.value)
+                );
+                
+                if (validPremiumData.length === 0) {
+                    console.log('No valid premium data points for triple-axis call chart:', canvasId);
+                    const container = ctx.parentElement;
+                    container.innerHTML = '<div style="color: #999; text-align: center; padding: 50px; font-style: italic;">No valid data points</div>';
+                    return;
+                }
+
+                // Sort data by date
+                validPremiumData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                // Build datasets
+                const datasets = [
+                    {
+                        label: premiumLabel,
+                        data: validPremiumData.map(point => ({
+                            x: point.date,
+                            y: point.value
+                        })),
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 1,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y'
+                    }
+                ];
+
+                // Add count dataset if available
+                if (countData && countData.length > 0) {
+                    datasets.push({
+                        label: countLabel,
+                        data: validPremiumData.map(point => ({
+                            x: point.date,
+                            y: countValuesByDate[point.date] || 0
+                        })),
+                        borderColor: '#FFD700',
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 1,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y1',
+                        borderDash: [5, 5]
+                    });
+                }
+
+                // Add closed profit dataset if available
+                if (profitData && profitData.length > 0) {
+                    datasets.push({
+                        label: profitLabel,
+                        data: validPremiumData.map(point => ({
+                            x: point.date,
+                            y: profitValuesByDate[point.date] || 0
+                        })),
+                        borderColor: '#00FF00',
+                        backgroundColor: 'transparent',
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 1,
+                        pointHoverRadius: 4,
+                        yAxisID: 'y2',
+                        borderDash: [2, 2]
+                    });
+                }
+
+                new Chart(context, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#999',
+                                    usePointStyle: true,
+                                    pointStyle: 'line'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    parser: 'yyyy-MM-dd',
+                                    displayFormats: {
+                                        day: 'MMM d'
+                                    }
+                                },
+                                ticks: {
+                                    color: '#999',
+                                    maxTicksLimit: 8
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                ticks: {
+                                    color: '#999',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '$0';
+                                        }
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    color: '#404040'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                ticks: {
+                                    color: '#FFD700',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '0';
+                                        }
+                                        return Math.round(value);
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                            },
+                            y2: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                ticks: {
+                                    color: '#00FF00',
+                                    callback: function(value) {
+                                        if (typeof value !== 'number' || isNaN(value)) {
+                                            return '$0';
+                                        }
+                                        return '$' + value.toLocaleString();
+                                    }
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                },
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error creating triple-axis call chart:', canvasId, error);
                 const container = document.getElementById(canvasId).parentElement;
                 container.innerHTML = '<div style="color: #ff6384; text-align: center; padding: 50px;">Chart creation failed</div>';
             }
