@@ -21,7 +21,8 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 	treasuryService := NewTreasuryService(testDB.DB)
 	symbolService := NewSymbolService(testDB.DB)
 	positionService := NewLongPositionService(testDB.DB)
-	optionService := NewOptionService(testDB.DB)
+	settingService := NewSettingService(testDB.DB)
+	optionService := NewOptionService(testDB.DB, settingService)
 
 	// Create test treasury data with specific dates spanning several months
 	testDate1 := time.Now().AddDate(0, -4, 0) // 4 months ago
@@ -94,19 +95,22 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 	expirationDate := testDate3.AddDate(0, 1, 0) // 1 month after testDate3
 	
 	// Put option 1: AAPL opened before testDate1, still active (strike $140, 2 contracts, exposure = 140 * 2 * 100 = $28000)
-	_, err = optionService.Create("AAPL", "Put", testDate1.AddDate(0, 0, -1), 140.0, expirationDate, 3.50, 2)
+	// Commission: 0.65 * 2 = 1.30 total
+	_, err = optionService.CreateWithCommission("AAPL", "Put", testDate1.AddDate(0, 0, -1), 140.0, expirationDate, 3.50, 2, 1.30)
 	if err != nil {
 		t.Fatalf("Failed to create AAPL put option: %v", err)
 	}
 
 	// Put option 2: TSLA opened on testDate2, still active (strike $230, 1 contract, exposure = 230 * 1 * 100 = $23000)
-	_, err = optionService.Create("TSLA", "Put", testDate2, 230.0, expirationDate, 5.00, 1)
+	// Commission: 0.65 * 1 = 0.65 total
+	_, err = optionService.CreateWithCommission("TSLA", "Put", testDate2, 230.0, expirationDate, 5.00, 1, 0.65)
 	if err != nil {
 		t.Fatalf("Failed to create TSLA put option: %v", err)
 	}
 
 	// Put option 3: AAPL opened before testDate1, closed on testDate2 (strike $135, 1 contract, exposure = 135 * 1 * 100 = $13500)
-	closedPutOption, err := optionService.Create("AAPL", "Put", testDate1.AddDate(0, 0, -2), 135.0, expirationDate, 2.75, 1)
+	// Commission: 0.65 * 1 = 0.65 total (will be doubled on close)
+	closedPutOption, err := optionService.CreateWithCommission("AAPL", "Put", testDate1.AddDate(0, 0, -2), 135.0, expirationDate, 2.75, 1, 0.65)
 	if err != nil {
 		t.Fatalf("Failed to create closed AAPL put option: %v", err)
 	}
@@ -118,19 +122,22 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 
 	// Create test call options with specific dates
 	// Call option 1: AAPL opened before testDate1, still active (premium $2.25, 3 contracts, premium = 2.25 * 3 * 100 = $675)
-	_, err = optionService.Create("AAPL", "Call", testDate1.AddDate(0, 0, -1), 160.0, expirationDate, 2.25, 3)
+	// Commission: 0.65 * 3 = 1.95 total
+	_, err = optionService.CreateWithCommission("AAPL", "Call", testDate1.AddDate(0, 0, -1), 160.0, expirationDate, 2.25, 3, 1.95)
 	if err != nil {
 		t.Fatalf("Failed to create AAPL call option: %v", err)
 	}
 
 	// Call option 2: TSLA opened on testDate2, still active (premium $4.75, 2 contracts, premium = 4.75 * 2 * 100 = $950)
-	_, err = optionService.Create("TSLA", "Call", testDate2, 270.0, expirationDate, 4.75, 2)
+	// Commission: 0.65 * 2 = 1.30 total
+	_, err = optionService.CreateWithCommission("TSLA", "Call", testDate2, 270.0, expirationDate, 4.75, 2, 1.30)
 	if err != nil {
 		t.Fatalf("Failed to create TSLA call option: %v", err)
 	}
 
 	// Call option 3: AAPL opened before testDate1, closed on testDate2 (premium $1.85, 1 contract, premium = 1.85 * 1 * 100 = $185)
-	closedCallOption, err := optionService.Create("AAPL", "Call", testDate1.AddDate(0, 0, -2), 155.0, expirationDate, 1.85, 1)
+	// Commission: 0.65 * 1 = 0.65 total (will be doubled on close)
+	closedCallOption, err := optionService.CreateWithCommission("AAPL", "Call", testDate1.AddDate(0, 0, -2), 155.0, expirationDate, 1.85, 1, 0.65)
 	if err != nil {
 		t.Fatalf("Failed to create closed AAPL call option: %v", err)
 	}

@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -38,6 +41,11 @@ func NewDB(dataSourceName string) (*DB, error) {
 	dbWrapper := &DB{DB: db}
 	if err := dbWrapper.InitSchema(); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+	}
+
+	// Run migrations after schema is initialized
+	if err := dbWrapper.runMigrations(dataSourceName); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return dbWrapper, nil
@@ -79,6 +87,115 @@ func (db *DB) runMigrations() error {
 
 func (db *DB) Close() error {
 	return db.DB.Close()
+}
+
+// BackupDatabase creates a timestamped backup of the specified database
+func BackupDatabase(dbPath string) (string, error) {
+	// Ensure backup directory exists
+	backupDir := "./data/backups"
+	if err := os.MkdirAll(backupDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create backup directory: %w", err)
+	}
+
+	// Create backup filename with timestamp
+	timestamp := time.Now().Format("2006-01-02-15-04-05")
+	baseName := strings.TrimSuffix(filepath.Base(dbPath), ".db")
+	backupFileName := fmt.Sprintf("%s.%s.db", baseName, timestamp)
+	backupPath := filepath.Join(backupDir, backupFileName)
+
+	// Copy the file
+	sourceFile, err := os.Open(dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open source: %w", err)
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(backupPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create backup: %w", err)
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return "", fmt.Errorf("failed to copy data: %w", err)
+	}
+
+	if err := destFile.Sync(); err != nil {
+		return "", fmt.Errorf("failed to sync data: %w", err)
+	}
+
+	log.Printf("Database backup created: %s", backupPath)
+	return backupPath, nil
+}
+
+// runMigrations performs database migrations with automatic backup
+func (db *DB) runMigrations(dbPath string) error {
+	// Check if commission migration has run
+	var value string
+	err := db.QueryRow("SELECT value FROM settings WHERE name = 'COMMISSION_DATA_MIGRATION_V1'").Scan(&value)
+	if err == nil && value == "completed" {
+		// Migration already completed
+		log.Println("[MIGRATION] Commission data migration already completed, skipping")
+		return nil
+	}
+
+	log.Println("[MIGRATION] Commission data migration needed - converting per-contract to total commission")
+
+	// Create backup before migration (skip for in-memory databases)
+	if dbPath != ":memory:" && dbPath != "file::memory:?cache=shared" {
+		backupPath, err := BackupDatabase(dbPath)
+		if err != nil {
+			return fmt.Errorf("failed to create pre-migration backup: %w", err)
+		}
+		log.Printf("[MIGRATION] Pre-migration backup created: %s", backupPath)
+	} else {
+		log.Println("[MIGRATION] Skipping backup for in-memory database")
+	}
+
+	// Start transaction for migration
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start migration transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Update commission from per-contract to total
+	// For open/expired positions: total = commission * contracts
+	// For closed positions (buy-to-close): total = commission * contracts * 2
+	updateSQL := `
+		UPDATE options
+		SET commission = CASE
+			WHEN closed IS NOT NULL AND exit_price IS NOT NULL AND exit_price > 0
+			THEN commission * contracts * 2.0
+			ELSE commission * contracts
+		END
+		WHERE commission > 0
+	`
+
+	result, err := tx.Exec(updateSQL)
+	if err != nil {
+		return fmt.Errorf("failed to update commission data: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	log.Printf("[MIGRATION] Updated %d option records with total commission", rowsAffected)
+
+	// Mark migration as complete
+	_, err = tx.Exec(`
+		INSERT OR REPLACE INTO settings (name, value, description)
+		VALUES ('COMMISSION_DATA_MIGRATION_V1', 'completed', 'Commission data migrated from per-contract to total')
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to mark migration as complete: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit migration: %w", err)
+	}
+
+	log.Println("[MIGRATION] Commission data migration completed successfully")
+	return nil
 }
 
 // GetCurrentDatabase reads the current database filename from ./data/currentdb

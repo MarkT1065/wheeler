@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS long_positions (
     FOREIGN KEY (symbol) REFERENCES symbols(symbol)
 );
 
+-- Options table: tracks options trades (Puts and Calls)
+-- Note: commission field stores TOTAL commission paid
+--   - For open/expired positions: total = per_contract_rate * contracts
+--   - For closed positions (buy-to-close): total = per_contract_rate * contracts * 2
 CREATE TABLE IF NOT EXISTS options (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
@@ -32,7 +36,7 @@ CREATE TABLE IF NOT EXISTS options (
     premium REAL NOT NULL,
     contracts INTEGER NOT NULL,
     exit_price REAL,
-    commission REAL DEFAULT 0.0,
+    commission REAL DEFAULT 0.0, -- Total commission (not per-contract)
     current_price REAL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,8 +82,12 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 
 -- Insert default POLYGON_API_KEY setting
-INSERT OR IGNORE INTO settings (name, value, description) 
+INSERT OR IGNORE INTO settings (name, value, description)
 VALUES ('POLYGON_API_KEY', '', 'API key for Polygon.io stock market data integration');
+
+-- Insert default OPTION_COMMISSION_PER_CONTRACT setting
+INSERT OR IGNORE INTO settings (name, value, description)
+VALUES ('OPTION_COMMISSION_PER_CONTRACT', '0.65', 'Default commission per options contract');
 
 -- Indexes for performance
 -- Note: Primary key columns automatically have indexes, so we don't need explicit indexes for:

@@ -7,21 +7,33 @@ import (
 	"time"
 )
 
-// Commission constants
-const OptionCommissionPerContract = 0.65
-
 type OptionService struct {
-	db *sql.DB
+	db             *sql.DB
+	settingService *SettingService
 }
 
-func NewOptionService(db *sql.DB) *OptionService {
-	return &OptionService{db: db}
+func NewOptionService(db *sql.DB, settingService *SettingService) *OptionService {
+	return &OptionService{
+		db:             db,
+		settingService: settingService,
+	}
 }
 
-func (s *OptionService) Create(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int) (*Option, error) {
-	// Automatically calculate opening commission: $0.65 per contract
-	openingCommission := OptionCommissionPerContract * float64(contracts)
-	return s.CreateWithCommission(symbol, optionType, opened, strike, expiration, premium, contracts, openingCommission)
+// GetCommissionPerContract retrieves the current commission setting
+// Returns 0.0 if setting doesn't exist (no fallback)
+func (s *OptionService) GetCommissionPerContract() float64 {
+	if s.settingService == nil {
+		return 0.0
+	}
+
+	// Get from settings with validation (min: 0, max: 50)
+	// Default to 0.0 if setting doesn't exist
+	return s.settingService.GetFloatValueWithValidation(
+		"OPTION_COMMISSION_PER_CONTRACT",
+		0.0,  // default
+		0.0,  // min
+		50.0, // max
+	)
 }
 
 func (s *OptionService) CreateWithCommission(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commission float64) (*Option, error) {
@@ -131,14 +143,16 @@ func (s *OptionService) GetOpen() ([]*Option, error) {
 }
 
 func (s *OptionService) Close(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, closed time.Time, exitPrice float64) error {
-	// Calculate closing commission: $0.65 per contract
-	closingCommission := OptionCommissionPerContract * float64(contracts)
-
-	query := `UPDATE options 
-			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
+	// If closing with exitPrice > 0 (buy-to-close), double the commission
+	// If exitPrice == 0 (expired), keep existing commission
+	query := `UPDATE options
+			  SET closed = ?,
+			      exit_price = ?,
+			      commission = CASE WHEN ? > 0 THEN commission * 2 ELSE commission END,
+			      updated_at = CURRENT_TIMESTAMP
 			  WHERE symbol = ? AND type = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
 
-	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, symbol, optionType, opened, strike, expiration, premium, contracts)
+	result, err := s.db.Exec(query, closed, exitPrice, exitPrice, symbol, optionType, opened, strike, expiration, premium, contracts)
 	if err != nil {
 		return fmt.Errorf("failed to close option: %w", err)
 	}
@@ -244,20 +258,16 @@ func (s *OptionService) DeleteByID(id int) error {
 
 // CloseByID closes an option by its ID
 func (s *OptionService) CloseByID(id int, closed time.Time, exitPrice float64) error {
-	// First get the option to find out the number of contracts for commission calculation
-	option, err := s.GetByID(id)
-	if err != nil {
-		return fmt.Errorf("failed to get option for commission calculation: %w", err)
-	}
-
-	// Calculate closing commission: $0.65 per contract
-	closingCommission := OptionCommissionPerContract * float64(option.Contracts)
-
-	query := `UPDATE options 
-			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
+	// If closing with exitPrice > 0 (buy-to-close), double the commission
+	// If exitPrice == 0 (expired), keep existing commission
+	query := `UPDATE options
+			  SET closed = ?,
+			      exit_price = ?,
+			      commission = CASE WHEN ? > 0 THEN commission * 2 ELSE commission END,
+			      updated_at = CURRENT_TIMESTAMP
 			  WHERE id = ?`
 
-	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, id)
+	result, err := s.db.Exec(query, closed, exitPrice, exitPrice, id)
 	if err != nil {
 		return fmt.Errorf("failed to close option: %w", err)
 	}
