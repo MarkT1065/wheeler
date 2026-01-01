@@ -18,6 +18,7 @@ type SymbolUpdateRequest struct {
 	Dividend       *float64 `json:"dividend,omitempty"`
 	ExDividendDate *string  `json:"ex_dividend_date,omitempty"`
 	PERatio        *float64 `json:"pe_ratio,omitempty"`
+	Currency       *string  `json:"currency,omitempty"`
 }
 
 type TreasuryUpdateRequest struct {
@@ -258,6 +259,7 @@ type SymbolData struct {
 	PERatioValue      float64                `json:"peRatioValue"`
 	HasPERatio        bool                   `json:"hasPERatio"`
 	Yield             float64                `json:"yield"`
+	Currency          string                 `json:"currency"`
 	OptionsGains      string                 `json:"optionsGains"`
 	CapGains          string                 `json:"capGains"`
 	Dividends         string                 `json:"dividends"`

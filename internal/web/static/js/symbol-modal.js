@@ -79,7 +79,8 @@ class SymbolModal {
             const dividendInput = document.getElementById('dividendInput');
             const exDividendDateInput = document.getElementById('exDividendDateInput');
             const peRatioInput = document.getElementById('peRatioInput');
-            
+            const currencyInput = document.getElementById('currencyInput');
+
             if (symbolInput) {
                 symbolInput.value = symbolData.symbol;
                 symbolInput.disabled = true;
@@ -88,14 +89,17 @@ class SymbolModal {
             if (dividendInput) dividendInput.value = symbolData.dividend || '';
             if (exDividendDateInput) exDividendDateInput.value = symbolData.ex_dividend_date || '';
             if (peRatioInput) peRatioInput.value = symbolData.pe_ratio || '';
+            if (currencyInput) currencyInput.value = symbolData.currency || 'USD';
         } else {
             if (this.symbolForm) {
                 this.symbolForm.reset();
             }
             const symbolInput = document.getElementById('symbolInput');
+            const currencyInput = document.getElementById('currencyInput');
             if (symbolInput) {
                 symbolInput.disabled = false;
             }
+            if (currencyInput) currencyInput.value = 'USD';
             this.editingSymbol = null;
         }
         
@@ -121,23 +125,25 @@ class SymbolModal {
         const dividendInput = document.getElementById('dividendInput');
         const exDividendDateInput = document.getElementById('exDividendDateInput');
         const peRatioInput = document.getElementById('peRatioInput');
-        
+        const currencyInput = document.getElementById('currencyInput');
+
         if (!symbolInput) {
             console.error('Symbol input not found');
             return;
         }
-        
+
         const symbolData = {
             symbol: symbolInput.value.toUpperCase(),
             price: parseFloat(priceInput?.value) || 0,
             dividend: parseFloat(dividendInput?.value) || 0,
             ex_dividend_date: exDividendDateInput?.value || null,
-            pe_ratio: parseFloat(peRatioInput?.value) || null
+            pe_ratio: parseFloat(peRatioInput?.value) || null,
+            currency: currencyInput?.value || 'USD'
         };
-        
+
         const url = `/api/symbols/${symbolData.symbol}`;
         const method = 'PUT'; // Using PUT for both create and update
-        
+
         fetch(url, {
             method: method,
             headers: { 'Content-Type': 'application/json' },
@@ -145,7 +151,8 @@ class SymbolModal {
                 price: symbolData.price,
                 dividend: symbolData.dividend,
                 ex_dividend_date: symbolData.ex_dividend_date,
-                pe_ratio: symbolData.pe_ratio
+                pe_ratio: symbolData.pe_ratio,
+                currency: symbolData.currency
             })
         })
         .then(response => {

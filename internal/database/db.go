@@ -74,6 +74,20 @@ func (db *DB) runMigrations() error {
 		}
 	}
 
+	// Check if currency column exists in symbols table
+	var hasCurrency bool
+	err = db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('symbols') WHERE name = 'currency'").Scan(&hasCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to check for currency column: %w", err)
+	}
+
+	if !hasCurrency {
+		_, err := db.Exec("ALTER TABLE symbols ADD COLUMN currency TEXT DEFAULT 'USD'")
+		if err != nil {
+			return fmt.Errorf("failed to add currency column: %w", err)
+		}
+	}
+
 	return nil
 }
 

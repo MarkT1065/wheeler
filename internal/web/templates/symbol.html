@@ -647,7 +647,8 @@
                 price: '{{printf "%.2f" .Price}}',
                 dividend: '{{printf "%.2f" .Dividend}}',
                 exDividendDate: {{if .ExDividendDate}}'{{.ExDividendDate.Format "2006-01-02"}}'{{else}}null{{end}},
-                pe_ratio: {{if .PERatio}}'{{printf "%.2f" .PERatioValue}}'{{else}}null{{end}}
+                pe_ratio: {{if .PERatio}}'{{printf "%.2f" .PERatioValue}}'{{else}}null{{end}},
+                currency: '{{.Currency}}'
             });
         });
         console.log('EditSymbolBtn setup completed');
@@ -690,9 +691,11 @@
                 document.getElementById('dividendInput').value = symbolData.dividend || '';
                 document.getElementById('exDividendDateInput').value = symbolData.exDividendDate || '';
                 document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
+                document.getElementById('currencyInput').value = symbolData.currency || 'USD';
                 document.getElementById('symbolInput').disabled = true;
             } else {
                 symbolForm.reset();
+                document.getElementById('currencyInput').value = 'USD';
                 document.getElementById('symbolInput').disabled = false;
             }
             
@@ -714,11 +717,12 @@
                 price: parseFloat(document.getElementById('priceInput').value) || 0,
                 dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
                 ex_dividend_date: exDivDateValue || null,
-                pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
+                pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null,
+                currency: document.getElementById('currencyInput').value
             };
-            
+
             const url = `/api/symbols/${symbolData.symbol}`;
-            
+
             fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -726,7 +730,8 @@
                     price: symbolData.price,
                     dividend: symbolData.dividend,
                     ex_dividend_date: symbolData.ex_dividend_date,
-                    pe_ratio: symbolData.pe_ratio
+                    pe_ratio: symbolData.pe_ratio,
+                    currency: symbolData.currency
                 })
             })
             .then(response => {

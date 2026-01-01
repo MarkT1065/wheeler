@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS symbols (
     dividend REAL DEFAULT 0.0,
     ex_dividend_date DATE,
     pe_ratio REAL,
+    currency TEXT DEFAULT 'USD',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
