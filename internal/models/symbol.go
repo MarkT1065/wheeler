@@ -94,6 +94,7 @@ type Option struct {
 	ExitPrice    *float64   `json:"exit_price"`
 	Commission   float64    `json:"commission"`
 	CurrentPrice *float64   `json:"current_price"`
+	Currency     string     `json:"currency"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }

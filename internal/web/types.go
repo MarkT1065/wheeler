@@ -429,6 +429,7 @@ type DividendSymbolData struct {
 	DividendCount     int        `json:"dividendCount"`
 	Shares            int        `json:"shares"`            // Total number of shares held
 	TotalAnnualIncome float64    `json:"totalAnnualIncome"` // Shares x annual dividend
+	Currency          string     `json:"currency"`          // Symbol currency
 	Positions         []*models.LongPosition `json:"positions"` // Individual positions
 	DividendPayments  []*models.Dividend     `json:"dividendPayments"` // Historical dividend payments
 }

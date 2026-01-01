@@ -47,8 +47,13 @@ func (s *OptionService) CreateWithCommission(symbol, optionType string, opened t
 }
 
 func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
-			  FROM options WHERE symbol = ? ORDER BY expiration DESC, opened DESC`
+	query := `SELECT o.id, o.symbol, o.type, o.opened, o.closed, o.strike, o.expiration, o.premium,
+			  o.contracts, o.exit_price, o.commission, o.current_price,
+			  COALESCE(s.currency, 'USD') as currency,
+			  o.created_at, o.updated_at
+			  FROM options o
+			  LEFT JOIN symbols s ON o.symbol = s.symbol
+			  WHERE o.symbol = ? ORDER BY o.expiration DESC, o.opened DESC`
 
 	rows, err := s.db.Query(query, symbol)
 	if err != nil {
@@ -61,7 +66,8 @@ func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 		var option Option
 		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
 			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
-			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt); err != nil {
+			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.Currency,
+			&option.CreatedAt, &option.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan option: %w", err)
 		}
 		options = append(options, &option)
@@ -75,8 +81,13 @@ func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 }
 
 func (s *OptionService) GetAll() ([]*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
-			  FROM options ORDER BY expiration DESC, opened DESC`
+	query := `SELECT o.id, o.symbol, o.type, o.opened, o.closed, o.strike, o.expiration, o.premium,
+			  o.contracts, o.exit_price, o.commission, o.current_price,
+			  COALESCE(s.currency, 'USD') as currency,
+			  o.created_at, o.updated_at
+			  FROM options o
+			  LEFT JOIN symbols s ON o.symbol = s.symbol
+			  ORDER BY o.expiration DESC, o.opened DESC`
 
 	rows, err := s.db.Query(query)
 	if err != nil {
@@ -89,7 +100,8 @@ func (s *OptionService) GetAll() ([]*Option, error) {
 		var option Option
 		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
 			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
-			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt); err != nil {
+			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.Currency,
+			&option.CreatedAt, &option.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan option: %w", err)
 		}
 		options = append(options, &option)
@@ -307,6 +319,7 @@ type OpenPositionData struct {
 	DaysToExpiration int       `json:"days_to_expiration"`
 	Status           string    `json:"status"`
 	EntryDate        time.Time `json:"entry_date"`
+	Currency         string    `json:"currency"`
 }
 
 // GetOptionsSummaryBySymbol returns options summary data grouped by symbol
@@ -353,15 +366,33 @@ func (s *OptionService) GetOptionsSummaryBySymbol() ([]*OptionSummary, error) {
 
 // GetOpenPositionsWithDetails returns open positions with calculated fields
 func (s *OptionService) GetOpenPositionsWithDetails() ([]*OpenPositionData, error) {
-	options, err := s.GetOpen()
+	query := `SELECT o.id, o.symbol, o.type, o.opened, o.closed, o.strike, o.expiration, o.premium,
+			  o.contracts, o.exit_price, o.commission, o.current_price, o.created_at, o.updated_at,
+			  COALESCE(s.currency, 'USD') as currency
+			  FROM options o
+			  LEFT JOIN symbols s ON o.symbol = s.symbol
+			  WHERE o.closed IS NULL
+			  ORDER BY o.expiration ASC`
+
+	rows, err := s.db.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get open options with details: %w", err)
 	}
+	defer rows.Close()
 
 	var openPositions []*OpenPositionData
 	now := time.Now()
 
-	for _, option := range options {
+	for rows.Next() {
+		var option Option
+		var currency string
+		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
+			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt,
+			&currency); err != nil {
+			return nil, fmt.Errorf("failed to scan option with details: %w", err)
+		}
+
 		// Calculate days to expiration - use ceiling to avoid off-by-one error
 		// An option expiring tomorrow should show 1 day, not 0
 		daysToExp := int(math.Ceil(option.Expiration.Sub(now).Hours() / 24))
@@ -377,12 +408,17 @@ func (s *OptionService) GetOpenPositionsWithDetails() ([]*OpenPositionData, erro
 		}
 
 		openPosition := &OpenPositionData{
-			Option:           option,
+			Option:           &option,
 			DaysToExpiration: daysToExp,
 			Status:           status,
 			EntryDate:        option.Opened,
+			Currency:         currency,
 		}
 		openPositions = append(openPositions, openPosition)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating open positions: %w", err)
 	}
 
 	return openPositions, nil

@@ -629,43 +629,6 @@
             console.log('Current symbol:', currentSymbol);
             console.log('Current currency:', currentCurrency);
 
-            // Currency symbol mapping
-            const currencySymbols = {
-                'USD': { symbol: '$', position: 'before' },
-                'EUR': { symbol: '€', position: 'after' },
-                'GBP': { symbol: '£', position: 'before' },
-                'JPY': { symbol: '¥', position: 'before' },
-                'CHF': { symbol: 'CHF', position: 'after' },
-                'CAD': { symbol: 'C$', position: 'before' },
-                'AUD': { symbol: 'A$', position: 'before' },
-                'NZD': { symbol: 'NZ$', position: 'before' },
-                'CNY': { symbol: '¥', position: 'before' },
-                'HKD': { symbol: 'HK$', position: 'before' },
-                'SGD': { symbol: 'S$', position: 'before' },
-                'INR': { symbol: '₹', position: 'before' },
-                'MXN': { symbol: '$', position: 'before' },
-                'BRL': { symbol: 'R$', position: 'before' },
-                'KRW': { symbol: '₩', position: 'before' },
-                'SEK': { symbol: 'kr', position: 'after' },
-                'NOK': { symbol: 'kr', position: 'after' },
-                'DKK': { symbol: 'kr', position: 'after' },
-                'PLN': { symbol: 'zł', position: 'after' },
-                'RUB': { symbol: '₽', position: 'before' },
-                'ZAR': { symbol: 'R', position: 'before' },
-                'TRY': { symbol: '₺', position: 'before' }
-            };
-
-            // Format currency with symbol
-            function formatCurrencyWithSymbol(value, currencyCode) {
-                const currency = currencySymbols[currencyCode] || currencySymbols['USD'];
-                const formatted = value.toFixed(2);
-                if (currency.position === 'after') {
-                    return formatted + currency.symbol;
-                }
-                return currency.symbol + formatted;
-            }
-
-            
             // Symbol Modal functionality (custom implementation for this page)
             // Mark that custom modal implementation is present
             window.symbolModalInitialized = true;
@@ -1718,6 +1681,7 @@
         }); // End of DOMContentLoaded
     </script>
     <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/currency.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
 </body>
