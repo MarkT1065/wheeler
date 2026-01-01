@@ -18,6 +18,14 @@ type SettingsData struct {
 	ActivePage string            `json:"activePage"`
 }
 
+// SetupData holds data for the setup template
+type SetupData struct {
+	AllSymbols  []string `json:"allSymbols"`
+	CurrentDB   string   `json:"currentDB"`
+	BaseCurrency string  `json:"baseCurrency"`
+	ActivePage  string   `json:"activePage"`
+}
+
 // settingsHandler serves the settings management page
 func (s *Server) settingsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[SETTINGS] Handling settings page request")
@@ -167,7 +175,7 @@ func (s *Server) createSettingAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// updateSettingAPI updates an existing setting
+// updateSettingAPI updates an existing setting (or creates it if it doesn't exist)
 func (s *Server) updateSettingAPI(w http.ResponseWriter, r *http.Request, name string) {
 	var req SettingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -176,19 +184,15 @@ func (s *Server) updateSettingAPI(w http.ResponseWriter, r *http.Request, name s
 		return
 	}
 
-	// Update the setting
-	setting, err := s.settingService.Update(name, req.Value, req.Description)
+	// Upsert the setting (create if doesn't exist, update if it does)
+	setting, err := s.settingService.Upsert(name, req.Value, req.Description)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Setting not found", http.StatusNotFound)
-			return
-		}
-		log.Printf("[SETTINGS API] Error updating setting %s: %v", name, err)
-		http.Error(w, "Failed to update setting", http.StatusInternalServerError)
+		log.Printf("[SETTINGS API] Error upserting setting %s: %v", name, err)
+		http.Error(w, "Failed to save setting", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[SETTINGS API] Successfully updated setting: %s", setting.Name)
+	log.Printf("[SETTINGS API] Successfully upserted setting: %s", setting.Name)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(setting); err != nil {
@@ -212,4 +216,31 @@ func (s *Server) deleteSettingAPI(w http.ResponseWriter, r *http.Request, name s
 	log.Printf("[SETTINGS API] Successfully deleted setting: %s", name)
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// setupHandler serves the setup configuration page
+func (s *Server) setupHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[SETUP] Handling setup page request")
+
+	// Get all symbols for navigation
+	symbols, err := s.symbolService.GetDistinctSymbols()
+	if err != nil {
+		log.Printf("[SETUP] Error getting symbols: %v", err)
+		symbols = []string{}
+	}
+
+	// Get base currency setting
+	baseCurrency := s.settingService.GetValue("BASE_CURRENCY")
+	if baseCurrency == "" {
+		baseCurrency = "USD" // Default to USD if not set
+	}
+
+	data := SetupData{
+		AllSymbols:   symbols,
+		CurrentDB:    s.getCurrentDatabaseName(),
+		BaseCurrency: baseCurrency,
+		ActivePage:   "setup",
+	}
+
+	s.renderTemplate(w, "setup.html", data)
 }

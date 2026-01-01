@@ -456,6 +456,9 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/settings", s.settingsHandler)
 	log.Printf("[SERVER] Route registered: /settings -> settingsHandler")
 
+	http.HandleFunc("/setup", s.setupHandler)
+	log.Printf("[SERVER] Route registered: /setup -> setupHandler")
+
 	http.HandleFunc("/api/settings", s.settingsAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/settings -> settingsAPIHandler")
 
