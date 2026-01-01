@@ -111,7 +111,7 @@ func (s *Server) allOptionsHandler(w http.ResponseWriter, r *http.Request) {
 		OptionsIndex:    optionsIndex,
 		OptionsIndexJSON: template.JS(string(indexJSON)),
 		CurrentDB:       s.getCurrentDatabaseName(),
-		ActivePage:      "options",
+		ActivePage:      "all-options",
 	}
 
 	log.Printf("[ALL OPTIONS PAGE] Rendering all-options.html template with index containing %d options", totalOptions)

@@ -18,7 +18,7 @@
             Monthly
         </a>
         
-        {{if eq .ActivePage "options"}}
+        {{if or (eq .ActivePage "options") (eq .ActivePage "all-options")}}
         <!-- Collapsible Options Section -->
         <div class="options-section">
             <button class="options-toggle expanded" id="optionsToggle">
@@ -27,11 +27,11 @@
                 <i class="fas fa-chevron-right chevron"></i>
             </button>
             <div class="options-list expanded" id="optionsList">
-                <a href="/options" class="option-nav-item active">
+                <a href="/options" class="option-nav-item {{if eq .ActivePage "options"}}active{{end}}">
                     <i class="fas fa-chart-bar"></i>
                     Overview
                 </a>
-                <a href="/all-options" class="option-nav-item">
+                <a href="/all-options" class="option-nav-item {{if eq .ActivePage "all-options"}}active{{end}}">
                     <i class="fas fa-list"></i>
                     All Options
                 </a>
