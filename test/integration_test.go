@@ -47,8 +47,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupTestDatabase() error {
-	testDB := "integration_test.db"
-	testDBPath := "./data/" + testDB
+	testDBPath := getTestDBPath()
 	
 	// Remove existing test database if it exists
 	if err := os.Remove(testDBPath); err != nil && !os.IsNotExist(err) {
@@ -56,12 +55,12 @@ func setupTestDatabase() error {
 	}
 	
 	// Create fresh test database
-	if err := database.CreateNewDatabase(testDB); err != nil {
+	if err := database.CreateNewDatabase(testDBName); err != nil {
 		return err
 	}
 	
 	// Set it as current
-	return database.SetCurrentDatabase(testDB)
+	return database.SetCurrentDatabase(testDBName)
 }
 
 func startTestServer() error {

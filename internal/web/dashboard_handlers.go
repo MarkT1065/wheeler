@@ -43,7 +43,7 @@ func (s *Server) buildDashboardData(symbols []string) (DashboardData, error) {
 	options, _ := s.optionService.GetAll()
 	longPositions, _ := s.longPositionService.GetAll()
 	dividends, _ := s.dividendService.GetAll()
-	treasuries, _ := s.treasuryService.GetAll()
+	totalTreasuries, _ := s.treasuryService.GetTotalOpenValue()
 
 	// Build symbol summaries
 	symbolSummaries := s.buildSymbolSummaries(symbols, options, longPositions, dividends)
@@ -51,10 +51,10 @@ func (s *Server) buildDashboardData(symbols []string) (DashboardData, error) {
 	// Build chart data
 	longByTicker := s.buildLongByTickerChart(longPositions)
 	putsByTicker := s.buildPutsByTickerChart(options)
-	totalAllocation := s.buildTotalAllocationChart(longPositions, options, treasuries)
+	totalAllocation := s.buildTotalAllocationChart(longPositions, options, totalTreasuries)
 
 	// Calculate totals
-	totals := s.calculateDashboardTotals(symbolSummaries, treasuries)
+	totals := s.calculateDashboardTotals(symbolSummaries, totalTreasuries)
 
 	log.Printf("[DASHBOARD] Building dashboard data with %d symbols: %v", len(symbols), symbols)
 	log.Printf("[DASHBOARD] Built %d symbol summaries", len(symbolSummaries))
@@ -222,8 +222,8 @@ func (s *Server) buildPutsByTickerChart(options []*models.Option) []ChartData {
 	return chartData
 }
 
-func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition, options []*models.Option, treasuries []*models.Treasury) []ChartData {
-	var totalLong, totalPuts, totalTreasuries float64
+func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition, options []*models.Option, totalTreasuries float64) []ChartData {
+	var totalLong, totalPuts float64
 
 	// Only count open long positions for current allocation
 	for _, pos := range longPositions {
@@ -239,11 +239,6 @@ func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition,
 		}
 	}
 
-	// Count all treasury holdings (bonds are typically held to maturity)
-	for _, treasury := range treasuries {
-		totalTreasuries += treasury.Amount
-	}
-
 	return []ChartData{
 		{Label: "Long Stock", Value: totalLong, Color: "#36A2EB"},
 		{Label: "Put Exposure", Value: totalPuts, Color: "#FF6384"},
@@ -251,8 +246,8 @@ func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition,
 	}
 }
 
-func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treasuries []*models.Treasury) DashboardTotals {
-	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalTreasuries, totalOptionable float64
+func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, totalTreasuries float64) DashboardTotals {
+	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalOptionable float64
 
 	// Sum from symbol summaries
 	for _, summary := range symbolSummaries {
@@ -263,11 +258,6 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, treas
 		totalCapGains += summary.CapGains
 		totalDividends += summary.Dividends
 		totalOptionable += summary.Optionable
-	}
-
-	// Sum treasuries
-	for _, treasury := range treasuries {
-		totalTreasuries += treasury.Amount
 	}
 
 	totalNet := totalPutPremiums + totalCallPremiums + totalCapGains + totalDividends
@@ -340,20 +330,12 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get open treasuries (no exit price)
-	treasuries, err := s.treasuryService.GetAll()
+	// Get total open treasuries value
+	totalTreasuries, err := s.treasuryService.GetTotalOpenValue()
 	if err != nil {
-		log.Printf("[ALLOCATION API] Error getting treasuries: %v", err)
+		log.Printf("[ALLOCATION API] Error getting treasury total: %v", err)
 		http.Error(w, "Failed to get treasuries", http.StatusInternalServerError)
 		return
-	}
-
-	var totalTreasuries float64
-	for _, treasury := range treasuries {
-		// Only count open positions (no exit price)
-		if treasury.ExitPrice == nil {
-			totalTreasuries += treasury.Amount
-		}
 	}
 
 	// Get open long positions (no exit price)

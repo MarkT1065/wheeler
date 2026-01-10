@@ -3,7 +3,6 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -16,39 +15,29 @@ import (
 
 // TestAllChartStructuresComprehensive runs comprehensive tests on all chart data structures
 func TestAllChartStructuresComprehensive(t *testing.T) {
-	// This test validates ALL chart data structures together in a single comprehensive test
-	
+	// Setup shared test database once for all subtests
+	testDB := setupTestDB(t)
+	createComprehensiveTestData(t, testDB)
+
 	t.Run("Dashboard Charts", func(t *testing.T) {
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test AllocationData (4 charts)
 		allocationData := buildComprehensiveAllocationData(t, testDB)
 		validateAllocationDataComprehensive(t, allocationData)
 	})
 
 	t.Run("Monthly Charts", func(t *testing.T) {
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test MonthlyData (8+ charts)
 		monthlyData := buildComprehensiveMonthlyData(t, testDB)
 		validateMonthlyDataComprehensive(t, monthlyData)
 	})
 
 	t.Run("Symbol Charts", func(t *testing.T) {
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test SymbolData (monthly results chart)
 		symbolData := buildComprehensiveSymbolData(t, testDB)
 		validateSymbolDataComprehensive(t, symbolData)
 	})
 
 	t.Run("Metrics Charts", func(t *testing.T) {
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test metrics chart data (7 time series charts)
 		metricsData := buildComprehensiveMetricsData(t, testDB)
 		validateMetricsDataComprehensive(t, metricsData)
@@ -61,15 +50,12 @@ func TestAllChartStructuresComprehensive(t *testing.T) {
 	})
 
 	t.Run("Tutorial Chart", func(t *testing.T) {
-		// Test proposed TutorialChartData structure  
+		// Test proposed TutorialChartData structure
 		tutorialData := buildComprehensiveTutorialData(t)
 		validateTutorialDataComprehensive(t, tutorialData)
 	})
 
 	t.Run("Treasury Charts", func(t *testing.T) {
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test TreasuriesData structure
 		treasuryData := buildComprehensiveTreasuryData(t, testDB)
 		validateTreasuryDataComprehensive(t, treasuryData)
@@ -78,49 +64,46 @@ func TestAllChartStructuresComprehensive(t *testing.T) {
 
 // TestChartDataConsistency tests that all charts use consistent data patterns
 func TestChartDataConsistency(t *testing.T) {
+	// Setup shared test database once for all subtests
+	testDB := setupTestDB(t)
+	createComprehensiveTestData(t, testDB)
+
 	t.Run("ColorConsistency", func(t *testing.T) {
 		// Test that all charts use the same color palette
 		expectedColors := []string{"#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"}
-		
-		// Test dashboard allocation data colors
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
+
 		allocationData := buildComprehensiveAllocationData(t, testDB)
-		
+
 		// Validate colors are from expected palette
 		for _, chartData := range allocationData.LongByTicker {
 			if !contains(expectedColors, chartData.Color) {
 				t.Errorf("LongByTicker uses unexpected color: %s", chartData.Color)
 			}
 		}
-		
+
 		for _, chartData := range allocationData.PutsByTicker {
 			if !contains(expectedColors, chartData.Color) {
 				t.Errorf("PutsByTicker uses unexpected color: %s", chartData.Color)
 			}
 		}
-		
+
 		t.Logf("✅ Chart color consistency validated")
 	})
 
 	t.Run("DateFormatConsistency", func(t *testing.T) {
 		// Test that all charts use consistent date formats
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		// Test monthly data date format (YYYY-MM)
 		monthlyData := buildComprehensiveMonthlyData(t, testDB)
-		
+
 		for i, monthData := range monthlyData.PutsData.ByMonth {
 			if len(monthData.Month) != 7 || monthData.Month[4] != '-' {
 				t.Errorf("Monthly data %d has inconsistent date format: %s", i, monthData.Month)
 			}
 		}
-		
+
 		// Test metrics data date format (YYYY-MM-DD)
 		metricsData := buildComprehensiveMetricsData(t, testDB)
-		
+
 		for metricType, points := range metricsData {
 			for i, point := range points {
 				if _, err := time.Parse("2006-01-02", point.Date); err != nil {
@@ -128,38 +111,31 @@ func TestChartDataConsistency(t *testing.T) {
 				}
 			}
 		}
-		
+
 		t.Logf("✅ Date format consistency validated")
 	})
 
 	t.Run("FinancialPrecisionConsistency", func(t *testing.T) {
 		// Test that all financial amounts use consistent precision
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		allocationData := buildComprehensiveAllocationData(t, testDB)
-		
+
 		// All financial amounts should be reasonable (not NaN, Inf, or extreme values)
 		for i, chartData := range allocationData.LongByTicker {
 			validateFinancialAmount(t, "LongByTicker", i, chartData.Value)
 		}
-		
+
 		monthlyData := buildComprehensiveMonthlyData(t, testDB)
-		
+
 		for i, monthData := range monthlyData.PutsData.ByMonth {
 			validateFinancialAmount(t, "PutsData.ByMonth", i, monthData.Amount)
 		}
-		
+
 		t.Logf("✅ Financial precision consistency validated")
 	})
 
 	t.Run("StructuralConsistency", func(t *testing.T) {
 		// Test that all chart data structures follow consistent patterns
-		
 		// All chart data should serialize/deserialize without loss
-		testDB := setupComprehensiveTestDatabase(t)
-		defer testDB.Close()
-		
 		structures := map[string]interface{}{
 			"AllocationData": buildComprehensiveAllocationData(t, testDB),
 			"MonthlyData":    buildComprehensiveMonthlyData(t, testDB),
@@ -167,27 +143,27 @@ func TestChartDataConsistency(t *testing.T) {
 			"MetricsData":    buildComprehensiveMetricsData(t, testDB),
 			"TreasuryData":   buildComprehensiveTreasuryData(t, testDB),
 		}
-		
+
 		for structName, structData := range structures {
 			jsonData, err := json.Marshal(structData)
 			if err != nil {
 				t.Errorf("Failed to marshal %s: %v", structName, err)
 				continue
 			}
-			
+
 			// Validate JSON is not empty
 			if len(jsonData) == 0 {
 				t.Errorf("%s marshaled to empty JSON", structName)
 				continue
 			}
-			
+
 			// Validate JSON is valid (by unmarshaling to interface{})
 			var unmarshalled interface{}
 			if err := json.Unmarshal(jsonData, &unmarshalled); err != nil {
 				t.Errorf("Failed to unmarshal %s: %v", structName, err)
 				continue
 			}
-			
+
 			t.Logf("✅ %s structural consistency validated (%d bytes JSON)", structName, len(jsonData))
 		}
 	})
@@ -201,21 +177,21 @@ func TestChartPerformanceAndScaling(t *testing.T) {
 
 	t.Run("LargeDatasetHandling", func(t *testing.T) {
 		// Test with larger datasets to ensure charts can handle real-world data volumes
-		testDB := setupLargeTestDatabase(t)
-		defer testDB.Close()
-		
+		testDB := setupTestDB(t)
+		createLargeTestData(t, testDB)
+
 		start := time.Now()
-		
+
 		// Build larger dataset
 		allocationData := buildComprehensiveAllocationData(t, testDB)
-		
+
 		buildTime := time.Since(start)
-		
+
 		// Validate data was built successfully
 		if len(allocationData.LongByTicker) == 0 {
 			t.Error("Large dataset should have data")
 		}
-		
+
 		// Test JSON serialization performance
 		start = time.Now()
 		jsonData, err := json.Marshal(allocationData)
@@ -223,7 +199,7 @@ func TestChartPerformanceAndScaling(t *testing.T) {
 			t.Fatalf("Failed to marshal large dataset: %v", err)
 		}
 		serializationTime := time.Since(start)
-		
+
 		// Test JSON deserialization performance
 		start = time.Now()
 		var unmarshalled web.AllocationData
@@ -231,10 +207,10 @@ func TestChartPerformanceAndScaling(t *testing.T) {
 			t.Fatalf("Failed to unmarshal large dataset: %v", err)
 		}
 		deserializationTime := time.Since(start)
-		
+
 		t.Logf("✅ Large dataset performance: Build=%v, Serialize=%v, Deserialize=%v, JSON Size=%d bytes",
 			buildTime, serializationTime, deserializationTime, len(jsonData))
-		
+
 		// Performance thresholds (adjust as needed)
 		if buildTime > 5*time.Second {
 			t.Errorf("Build time too slow: %v", buildTime)
@@ -250,46 +226,6 @@ func TestChartPerformanceAndScaling(t *testing.T) {
 
 // Helper functions for comprehensive testing
 
-func setupComprehensiveTestDatabase(t *testing.T) *database.DB {
-	testDBPath := "test_comprehensive.db"
-	os.Remove(testDBPath)
-
-	db, err := database.NewDB(testDBPath)
-	if err != nil {
-		t.Fatalf("Failed to create comprehensive test database: %v", err)
-	}
-
-	// Create comprehensive test data
-	createComprehensiveTestData(t, db)
-
-	t.Cleanup(func() {
-		db.Close()
-		os.Remove(testDBPath)
-	})
-
-	return db
-}
-
-func setupLargeTestDatabase(t *testing.T) *database.DB {
-	testDBPath := "test_large.db"
-	os.Remove(testDBPath)
-
-	db, err := database.NewDB(testDBPath)
-	if err != nil {
-		t.Fatalf("Failed to create large test database: %v", err)
-	}
-
-	// Create larger test dataset
-	createLargeTestData(t, db)
-
-	t.Cleanup(func() {
-		db.Close()
-		os.Remove(testDBPath)
-	})
-
-	return db
-}
-
 func createComprehensiveTestData(t *testing.T, db *database.DB) {
 	// Create comprehensive test data for all chart types
 	symbolService := models.NewSymbolService(db.DB)
@@ -301,7 +237,7 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 	// Create multiple symbols
 	symbols := []string{"AAPL", "TSLA", "NVDA", "MSFT", "GOOGL"}
 	prices := []float64{150.0, 200.0, 400.0, 350.0, 2500.0}
-	
+
 	for i, symbol := range symbols {
 		if _, err := symbolService.Create(symbol); err != nil {
 			t.Fatalf("Failed to create symbol %s: %v", symbol, err)
@@ -313,24 +249,24 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 
 	// Create historical data for 12 months
 	baseDate := time.Date(2023, 12, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	for month := 0; month < 12; month++ {
 		monthDate := baseDate.AddDate(0, month, 0)
-		
+
 		for i, symbol := range symbols {
 			// Create closed options
 			openDate := monthDate.AddDate(0, 0, -30)
 			_ = monthDate.AddDate(0, 0, -5) // closeDate
 			expirationDate := monthDate.AddDate(0, 0, 15)
-			
+
 			premium := 5.0 + float64(i)*2.0 + float64(month)*0.5
 			_ = 3.0 + float64(i)*1.0 + float64(month)*0.25 // exitPrice
-			
+
 			// Create puts and calls
 			if _, err := optionService.Create(symbol, "Put", openDate, prices[i]*0.95, expirationDate, premium, 2); err != nil {
 				t.Fatalf("Failed to create %s put for month %d: %v", symbol, month, err)
 			}
-			
+
 			if month%2 == 0 { // Calls every other month
 				callPremium := premium * 0.8
 				_ = premium * 0.8 * 0.7 // callExitPrice
@@ -338,7 +274,7 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 					t.Fatalf("Failed to create %s call for month %d: %v", symbol, month, err)
 				}
 			}
-			
+
 			// Create long positions
 			if month%3 == 0 {
 				shares := 100 + i*25
@@ -347,7 +283,7 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 					t.Fatalf("Failed to create %s long position for month %d: %v", symbol, month, err)
 				}
 			}
-			
+
 			// Create dividends
 			if i < 3 && month%3 == 0 { // Only some symbols pay dividends
 				dividendAmount := 25.0 + float64(i)*10.0
@@ -357,7 +293,7 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 				}
 			}
 		}
-		
+
 		// Create treasury data
 		if month%4 == 0 { // Quarterly treasuries
 			cuspid := fmt.Sprintf("TREASURY-%03d", month/4+1)
@@ -367,12 +303,12 @@ func createComprehensiveTestData(t *testing.T, db *database.DB) {
 			yield := 4.0 + float64(month)*0.1
 			buyPrice := amount * 0.995
 			_ = amount * (1.0 + float64(month)*0.005) // currentValue
-			
+
 			if _, err := treasuryService.Create(cuspid, purchaseDate, maturityDate, amount, yield, buyPrice); err != nil {
 				t.Fatalf("Failed to create treasury for month %d: %v", month, err)
 			}
 		}
-		
+
 		// Create metrics data
 		createMetricsData(t, db, monthDate, month)
 	}
@@ -384,7 +320,7 @@ func createLargeTestData(t *testing.T, db *database.DB) {
 	// Create larger dataset for performance testing
 	symbolService := models.NewSymbolService(db.DB)
 	optionService := models.NewOptionService(db.DB)
-	
+
 	// Create many symbols
 	for i := 0; i < 50; i++ {
 		symbol := fmt.Sprintf("SYMBOL%03d", i+1)
@@ -398,7 +334,7 @@ func createLargeTestData(t *testing.T, db *database.DB) {
 
 	// Create many options (1000+ total)
 	baseDate := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	for month := 0; month < 24; month++ { // 24 months of data
 		for i := 0; i < 10; i++ { // 10 options per month
 			symbol := fmt.Sprintf("SYMBOL%03d", (i%50)+1)
@@ -406,10 +342,10 @@ func createLargeTestData(t *testing.T, db *database.DB) {
 			openDate := monthDate.AddDate(0, 0, -30)
 			_ = monthDate.AddDate(0, 0, -5) // closeDate
 			expirationDate := monthDate.AddDate(0, 0, 15)
-			
+
 			premium := 1.0 + float64(i)*0.5 + float64(month)*0.1
 			_ = premium * 0.6 // exitPrice
-			
+
 			if _, err := optionService.Create(symbol, "Put", openDate, 100.0+float64(i), expirationDate, premium, 1); err != nil {
 				t.Fatalf("Failed to create large dataset option: %v", err)
 			}
@@ -426,12 +362,12 @@ func createMetricsData(t *testing.T, db *database.DB, date time.Time, index int)
 		"long_value", "open_call_premium", "open_call_count",
 		"treasury_value", "total_value",
 	}
-	
+
 	baseValues := []float64{45000.0, 1200.0, 5.0, 65000.0, 800.0, 3.0, 50000.0, 115000.0}
-	
+
 	for i, metricType := range metricsTypes {
 		value := baseValues[i] + float64(index)*100.0
-		
+
 		query := `INSERT INTO metrics (created, type, value) VALUES (?, ?, ?)`
 		if _, err := db.DB.Exec(query, date.Format("2006-01-02 15:04:05"), metricType, value); err != nil {
 			t.Fatalf("Failed to insert metric %s: %v", metricType, err)
@@ -451,7 +387,7 @@ func validateAllocationDataComprehensive(t *testing.T, data web.AllocationData) 
 	if len(data.TotalAllocation) == 0 {
 		t.Error("TotalAllocation should have data")
 	}
-	t.Logf("✅ AllocationData validated: %d long, %d puts, %d total", 
+	t.Logf("✅ AllocationData validated: %d long, %d puts, %d total",
 		len(data.LongByTicker), len(data.PutsByTicker), len(data.TotalAllocation))
 }
 
@@ -465,7 +401,7 @@ func validateMonthlyDataComprehensive(t *testing.T, data web.MonthlyData) {
 	if len(data.TotalsByMonth) == 0 {
 		t.Error("TotalsByMonth should have data")
 	}
-	t.Logf("✅ MonthlyData validated: %d months puts, %d months calls", 
+	t.Logf("✅ MonthlyData validated: %d months puts, %d months calls",
 		len(data.PutsData.ByMonth), len(data.CallsData.ByMonth))
 }
 
@@ -476,7 +412,7 @@ func validateSymbolDataComprehensive(t *testing.T, data web.SymbolData) {
 	if len(data.MonthlyResults) == 0 {
 		t.Error("MonthlyResults should have data")
 	}
-	t.Logf("✅ SymbolData validated: %s with %d monthly results", 
+	t.Logf("✅ SymbolData validated: %s with %d monthly results",
 		data.Symbol, len(data.MonthlyResults))
 }
 
@@ -507,7 +443,7 @@ func validateTutorialDataComprehensive(t *testing.T, data web.TutorialChartData)
 	if data.TotalReturn <= 0 {
 		t.Error("TotalReturn should be positive")
 	}
-	t.Logf("✅ TutorialChartData validated: %d categories, total $%.2f", 
+	t.Logf("✅ TutorialChartData validated: %d categories, total $%.2f",
 		len(data.IncomeBreakdown), data.TotalReturn)
 }
 
@@ -518,7 +454,7 @@ func validateTreasuryDataComprehensive(t *testing.T, data web.TreasuriesData) {
 	if data.Summary.TotalAmount <= 0 {
 		t.Error("TotalAmount should be positive")
 	}
-	t.Logf("✅ TreasuryData validated: %d treasuries, total $%.2f", 
+	t.Logf("✅ TreasuryData validated: %d treasuries, total $%.2f",
 		len(data.Treasuries), data.Summary.TotalAmount)
 }
 
@@ -626,7 +562,7 @@ func buildComprehensiveMonthlyData(t *testing.T, db *database.DB) web.MonthlyDat
 				Months: [12]float64{500, 550, 600, 650, 700, 750, 0, 0, 0, 0, 0, 0},
 			},
 			{
-				Ticker: "TSLA", 
+				Ticker: "TSLA",
 				Total:  4250.00,
 				Months: [12]float64{400, 450, 500, 550, 600, 650, 0, 0, 0, 0, 0, 0},
 			},
@@ -648,7 +584,7 @@ func buildComprehensiveMonthlyData(t *testing.T, db *database.DB) web.MonthlyDat
 				},
 			},
 			{
-				Month: "2024-02", 
+				Month: "2024-02",
 				Symbols: []web.SymbolPremiumData{
 					{Symbol: "AAPL", Amount: 1500.00},
 					{Symbol: "TSLA", Amount: 1050.00},
@@ -765,11 +701,11 @@ func buildComprehensiveTreasuryData(t *testing.T, db *database.DB) web.Treasurie
 	maturityDate1 := time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)
 	maturityDate2 := time.Date(2025, 7, 15, 0, 0, 0, 0, time.UTC)
 	maturityDate3 := time.Date(2024, 12, 15, 0, 0, 0, 0, time.UTC)
-	
+
 	currentValue1 := 75125.00
 	currentValue2 := 100850.00
 	exitPrice3 := 51250.00
-	
+
 	mockTreasuries := []*models.Treasury{
 		{
 			CUSPID:       "TREASURY-001",
@@ -784,7 +720,7 @@ func buildComprehensiveTreasuryData(t *testing.T, db *database.DB) web.Treasurie
 			UpdatedAt:    baseDate,
 		},
 		{
-			CUSPID:       "TREASURY-002", 
+			CUSPID:       "TREASURY-002",
 			Purchased:    baseDate,
 			Maturity:     maturityDate2,
 			Amount:       100000.00,
@@ -808,7 +744,7 @@ func buildComprehensiveTreasuryData(t *testing.T, db *database.DB) web.Treasurie
 			UpdatedAt:    baseDate,
 		},
 	}
-	
+
 	return web.TreasuriesData{
 		Symbols:    []string{"AAPL", "TSLA", "NVDA", "MSFT", "GOOGL"},
 		Treasuries: mockTreasuries,
@@ -823,4 +759,3 @@ func buildComprehensiveTreasuryData(t *testing.T, db *database.DB) web.Treasurie
 		CurrentDB: "test_comprehensive.db",
 	}
 }
-

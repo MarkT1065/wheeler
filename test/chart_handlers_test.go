@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -18,8 +17,8 @@ import (
 // TestAllocationDataHandler tests the /api/allocation-data endpoint
 func TestAllocationDataHandler(t *testing.T) {
 	// Setup test database with deterministic data
-	testDB := setupChartTestDatabase(t)
-	defer testDB.Close()
+	testDB := setupTestDB(t)
+	createDeterministicChartData(t, testDB)
 
 	// Create test server
 	server := createTestServer(testDB)
@@ -125,8 +124,8 @@ func TestAllocationDataHandler(t *testing.T) {
 // TestMetricsChartDataHandler tests the /api/metrics/chart-data endpoint
 func TestMetricsChartDataHandler(t *testing.T) {
 	// Setup test database with metrics data
-	testDB := setupMetricsTestDatabase(t)
-	defer testDB.Close()
+	testDB := setupTestDB(t)
+	createDeterministicMetricsData(t, testDB)
 
 	// Create test server
 	server := createTestServer(testDB)
@@ -384,47 +383,7 @@ func TestTutorialChartDataStructure(t *testing.T) {
 		unmarshalled.TotalReturn, unmarshalled.AnnualizedROI)
 }
 
-// Helper function to create test database with deterministic chart data
-func setupChartTestDatabase(t *testing.T) *database.DB {
-	testDBPath := "test_charts.db"
-	os.Remove(testDBPath)
 
-	db, err := database.NewDB(testDBPath)
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Create deterministic test data
-	createDeterministicChartData(t, db)
-
-	t.Cleanup(func() {
-		db.Close()
-		os.Remove(testDBPath)
-	})
-
-	return db
-}
-
-// Helper function to create metrics test database
-func setupMetricsTestDatabase(t *testing.T) *database.DB {
-	testDBPath := "test_metrics.db"
-	os.Remove(testDBPath)
-
-	db, err := database.NewDB(testDBPath)
-	if err != nil {
-		t.Fatalf("Failed to create test database: %v", err)
-	}
-
-	// Create deterministic metrics data
-	createDeterministicMetricsData(t, db)
-
-	t.Cleanup(func() {
-		db.Close()
-		os.Remove(testDBPath)
-	})
-
-	return db
-}
 
 // Helper function to create deterministic test data for charts
 func createDeterministicChartData(t *testing.T, db *database.DB) {
