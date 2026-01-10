@@ -224,6 +224,25 @@ func (s *TreasuryService) GetAll() ([]*Treasury, error) {
 	return treasuries, nil
 }
 
+func (s *TreasuryService) GetTotalOpenValue() (float64, error) {
+	log.Printf("[TREASURY SERVICE] GetTotalOpenValue: Starting to calculate total open treasury value")
+	
+	query := `SELECT COALESCE(SUM(amount), 0) FROM treasuries WHERE exit_price IS NULL`
+	
+	log.Printf("[TREASURY SERVICE] GetTotalOpenValue: Executing SQL query")
+	log.Printf("[TREASURY SERVICE] GetTotalOpenValue: SQL = %s", query)
+	
+	var total float64
+	err := s.db.QueryRow(query).Scan(&total)
+	if err != nil {
+		log.Printf("[TREASURY SERVICE] GetTotalOpenValue: ERROR - SQL query failed: %v", err)
+		return 0, fmt.Errorf("failed to get total open treasury value: %w", err)
+	}
+	
+	log.Printf("[TREASURY SERVICE] GetTotalOpenValue: Successfully calculated total = $%.2f", total)
+	return total, nil
+}
+
 func (s *TreasuryService) GetByCUSPID(cuspid string) (*Treasury, error) {
 	log.Printf("[TREASURY SERVICE] GetByCUSPID: Starting to retrieve treasury for CUSPID=%s", cuspid)
 	

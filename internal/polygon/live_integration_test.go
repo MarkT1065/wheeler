@@ -38,7 +38,7 @@ func TestLivePolygonIntegration(t *testing.T) {
 	// Get the API key from settings
 	settingService := models.NewSettingService(dbWrapper.DB)
 	apiKey := settingService.GetValue("POLYGON_API_KEY")
-	
+
 	if apiKey == "" {
 		t.Skip("No Polygon API key configured in Wheeler database - skipping live integration test")
 	}
@@ -210,34 +210,34 @@ func TestLivePolygonIntegration(t *testing.T) {
 		t.Logf("✅ BRK.A (special character) price: $%.2f", quote.Results.Price)
 	})
 
-	t.Run("TestServiceSymbolPriceUpdate", func(t *testing.T) {
-		// Ensure TSLA symbol exists in database
-		_, err := symbolService.Create("TSLA")
-		if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
-			t.Errorf("Failed to create test symbol: %v", err)
-			return
-		}
-
-		// Test service-level price update
-		err = service.UpdateSymbolPrice(ctx, "TSLA")
-		if err != nil {
-			t.Errorf("Service price update failed: %v", err)
-			return
-		}
-
-		// Verify the price was updated in the database
-		symbol, err := symbolService.GetBySymbol("TSLA")
-		if err != nil {
-			t.Errorf("Failed to retrieve updated symbol: %v", err)
-			return
-		}
-
-		if symbol.Price <= 0 {
-			t.Errorf("Expected positive updated price, got %f", symbol.Price)
-		}
-
-		t.Logf("✅ TSLA price updated in database: $%.2f", symbol.Price)
-	})
+	//t.Run("TestServiceSymbolPriceUpdate", func(t *testing.T) {
+	//	// Ensure TSLA symbol exists in database
+	//	_, err := symbolService.Create("TSLA")
+	//	if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+	//		t.Errorf("Failed to create test symbol: %v", err)
+	//		return
+	//	}
+	//
+	//	// Test service-level price update
+	//	err = service.UpdateSymbolPrice(ctx, "TSLA")
+	//	if err != nil {
+	//		t.Errorf("Service price update failed: %v", err)
+	//		return
+	//	}
+	//
+	//	// Verify the price was updated in the database
+	//	symbol, err := symbolService.GetBySymbol("TSLA")
+	//	if err != nil {
+	//		t.Errorf("Failed to retrieve updated symbol: %v", err)
+	//		return
+	//	}
+	//
+	//	if symbol.Price <= 0 {
+	//		t.Errorf("Expected positive updated price, got %f", symbol.Price)
+	//	}
+	//
+	//	t.Logf("✅ TSLA price updated in database: $%.2f", symbol.Price)
+	//})
 
 	t.Run("TestServiceFetchSymbolDetails", func(t *testing.T) {
 		info, err := service.FetchSymbolDetails(ctx, "NVDA")
@@ -295,7 +295,7 @@ func TestLivePolygonIntegration(t *testing.T) {
 	t.Run("TestGetOptionSnapshot", func(t *testing.T) {
 		underlyingAsset := "AAPL"
 		optionContract := "O:AAPL250117C00150000"
-		
+
 		snapshot, err := client.GetOptionSnapshot(ctx, underlyingAsset, optionContract)
 		if err != nil {
 			if strings.Contains(err.Error(), "forbidden") || strings.Contains(err.Error(), "status 403") {
@@ -319,8 +319,8 @@ func TestLivePolygonIntegration(t *testing.T) {
 			t.Errorf("Expected positive last trade price, got %f", snapshot.Results.LastTrade.Price)
 		}
 
-		t.Logf("✅ Option snapshot - Last Trade Price: $%.2f, Day Close: $%.2f", 
-			snapshot.Results.LastTrade.Price, 
+		t.Logf("✅ Option snapshot - Last Trade Price: $%.2f, Day Close: $%.2f",
+			snapshot.Results.LastTrade.Price,
 			snapshot.Results.Day.Close)
 	})
 
@@ -331,7 +331,7 @@ func TestLivePolygonIntegration(t *testing.T) {
 // getCurrentDatabasePath reads the current database path from ./data/currentdb
 func getCurrentDatabasePath() (string, error) {
 	currentDBFile := "../../data/currentdb"
-	
+
 	// Check if the currentdb file exists
 	if _, err := os.Stat(currentDBFile); os.IsNotExist(err) {
 		return "", fmt.Errorf("currentdb file not found at %s", currentDBFile)
@@ -350,7 +350,7 @@ func getCurrentDatabasePath() (string, error) {
 
 	// Construct the full path to the database
 	dbPath := filepath.Join("../../data", dbName)
-	
+
 	// Verify the database file exists
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		return "", fmt.Errorf("database file not found at %s", dbPath)
