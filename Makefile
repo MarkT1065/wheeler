@@ -1,44 +1,55 @@
-.PHONY: build test clean run install-deps
+.PHONY: build test clean run help
 
 BINARY_NAME=wheeler
 BUILD_DIR=./bin
 
-build: install-deps
-	@echo "Building $(BINARY_NAME)..."
-	@mkdir -p $(BUILD_DIR)
-	@export GOROOT=/home/mturansk/go/go1.24.4.linux-amd64/go && \
-	 export PATH=$$GOROOT/bin:$$PATH && \
-	 export GOPATH=/home/mturansk/go && \
-	 CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+# Detect Go installation
+GO_BIN := $(shell which go 2>/dev/null)
+ifndef GO_BIN
+    $(error Go is not installed or not in PATH)
+endif
 
-test: install-deps
-	@echo "Running tests..."
-	@export GOROOT=/home/mturansk/go/go1.24.4.linux-amd64/go && \
-	 export PATH=$$GOROOT/bin:$$PATH && \
-	 export GOPATH=/home/mturansk/go && \
-	 go test -v ./...
+# Get the actual GOROOT and GOPATH from the go binary
+DETECTED_GOROOT := $(shell $(GO_BIN) env GOROOT)
+DETECTED_GOPATH := $(shell $(GO_BIN) env GOPATH)
+
+# Override any incorrect environment settings
+export GOROOT := $(DETECTED_GOROOT)
+export GOPATH := $(DETECTED_GOPATH)
+
+build:
+	@echo "Building $(BINARY_NAME)..."
+	@echo "Using Go: $(shell go version)"
+	@mkdir -p $(BUILD_DIR)
+	@CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+
+test:
+	@echo "Running all tests..."
+	@CGO_ENABLED=1 go test -v ./...
+	@echo ""
+	@echo "All tests complete!"
 
 run: build
 	@echo "Running $(BINARY_NAME)..."
 	@./$(BUILD_DIR)/$(BINARY_NAME)
 
-install-deps:
-	@echo "Installing system dependencies..."
-	@which pkg-config >/dev/null || which pkgconf >/dev/null || (echo "pkg-config is required" && exit 1)
-	@echo "Checking for GTK+2..."
-	@pkg-config --exists gtk+-2.0 2>/dev/null || pkgconf --exists gtk+-2.0 2>/dev/null || (echo "GTK+2 development headers are required. Install with: sudo dnf install gtk2-devel" && exit 1)
-	@echo "Dependencies satisfied!"
-
 clean:
-	@echo "Cleaning build artifacts..."
+	@echo "Cleaning..."
 	@rm -rf $(BUILD_DIR)
-	@rm -f wheeler.db
+	@rm -f test_*.db
+	@rm -f ./data/integration_test.db*
+	@echo "Clean complete"
 
 help:
-	@echo "Available targets:"
-	@echo "  build       - Build the application"
-	@echo "  test        - Run tests"
-	@echo "  run         - Build and run the application"
-	@echo "  clean       - Clean build artifacts"
-	@echo "  install-deps- Check system dependencies"
-	@echo "  help        - Show this help"
+	@echo "Wheeler - Available Commands:"
+	@echo ""
+	@echo "  make test      - Run all tests"
+	@echo "  make build     - Build the application"
+	@echo "  make run       - Build and run"
+	@echo "  make clean     - Clean build artifacts"
+	@echo "  make help      - Show this help"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - Go 1.19+ with CGO support"
+	@echo "  - SQLite3 development libraries"

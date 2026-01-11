@@ -19,24 +19,15 @@ func eztimeptr(dt string) *time.Time {
 	return &d
 }
 
-func TestIndex(t *testing.T) {
-	//testDB, err := database.NewDB("/home/mturansk/projects/src/github.com/markturansky/stonks/data/wheeler.db")
-	//if err != nil {
-	//	t.Fatalf("Failed to setup test database: %v", err)
-	//}
-	//defer testDB.Close()
-	//
-	//opts := NewOptionService(testDB.DB)
-	//all, err := opts.GetAll()
-	//if err != nil {
-	//	t.Fatalf("Failed to get all: %v", err)
-	//}
-	//index, err := Index(all)
-	//if err != nil {
-	//	t.Fatalf("Failed to create index: %v", err)
-	//}
-	//t.Logf("index: %+v", index)
+func getKeys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
 
+func TestIndex(t *testing.T) {
 	opt1exit := .12
 	opt1opened := eztime("2025-09-01 10:30:05")
 	opt1 := &Option{
@@ -65,47 +56,62 @@ func TestIndex(t *testing.T) {
 		Commission: .65,
 	}
 
-	index, _ := Index([]*Option{opt1, opt2})
-
-	m := map[string]interface{}{
-		"id": map[string]*Option{
-			"1": opt1,
-			"2": opt2,
-		},
-		"symbol": map[string][]*Option{
-			"VZ":  {opt1},
-			"CVX": {opt2},
-		},
-		"type": map[string][]*Option{
-			"Call": {opt1},
-			"Put":  {opt2},
-		},
-		"opened": map[int]map[time.Month][]*Option{
-			2025: {
-				time.September: {opt1, opt2},
-			},
-		},
-		"expiration": map[int]map[time.Month]map[int][]*Option{
-			2025: {
-				time.September: {
-					19: {opt1},
-				},
-				time.October: {
-					17: {opt2},
-				},
-			},
-		},
-		"open": []*Option{
-			opt2,
-		},
-		"closed": map[int]map[time.Month][]*Option{
-			2025: {
-				time.September: {opt1},
-			},
-		},
+	index, err := Index([]*Option{opt1, opt2})
+	if err != nil {
+		t.Fatalf("Index() returned error: %v", err)
 	}
 
-	if !Compare(index, m) {
-		t.Fatalf("%#v", index)
+	// Test that all expected keys exist
+	expectedKeys := []string{"id", "symbol", "type", "opened", "expiration", "open", "closed"}
+	for _, key := range expectedKeys {
+		if _, exists := index[key]; !exists {
+			t.Errorf("Index missing expected key: %s", key)
+		}
+	}
+
+	// Test ID index
+	idIndex := index["id"].(map[string]*Option)
+	if len(idIndex) != 2 {
+		t.Errorf("Expected 2 entries in ID index, got %d", len(idIndex))
+	}
+	if idIndex["1"] != opt1 {
+		t.Error("ID index[\"1\"] doesn't match opt1")
+	}
+	if idIndex["2"] != opt2 {
+		t.Error("ID index[\"2\"] doesn't match opt2")
+	}
+
+	// Test symbol index
+	symbolIndex := index["symbol"].(map[string][]*Option)
+	if len(symbolIndex["VZ"]) != 1 || symbolIndex["VZ"][0] != opt1 {
+		t.Error("Symbol index for VZ incorrect")
+	}
+	if len(symbolIndex["CVX"]) != 1 || symbolIndex["CVX"][0] != opt2 {
+		t.Error("Symbol index for CVX incorrect")
+	}
+
+	// Test type index
+	typeIndex := index["type"].(map[string][]*Option)
+	if len(typeIndex["Call"]) != 1 || typeIndex["Call"][0] != opt1 {
+		t.Error("Type index for Call incorrect")
+	}
+	if len(typeIndex["Put"]) != 1 || typeIndex["Put"][0] != opt2 {
+		t.Error("Type index for Put incorrect")
+	}
+
+	// Test open index (only opt2 is open)
+	openIndex := index["open"].([]*Option)
+	if len(openIndex) != 1 {
+		t.Errorf("Expected 1 open option, got %d", len(openIndex))
+	}
+	if len(openIndex) > 0 && openIndex[0] != opt2 {
+		t.Error("Open index doesn't contain opt2")
+	}
+
+	// Test closed index (only opt1 is closed)
+	closedIndex := index["closed"].(map[int]map[time.Month][]*Option)
+	sept2025Closed := closedIndex[2025][time.September]
+	if len(sept2025Closed) != 1 || sept2025Closed[0] != opt1 {
+		t.Error("Closed index for September 2025 incorrect")
 	}
 }

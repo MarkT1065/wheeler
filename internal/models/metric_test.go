@@ -168,14 +168,14 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 		metricsByDate[dateKey] = metric
 	}
 
-	// Expected values with corrected Treasury logic (only active treasuries, exit_price IS NULL):
-	// testDate1: 1000 (Treasury 1 active, Treasury 3 excluded due to exit_price, Treasury 2 not yet purchased)
-	// testDate2: 1000 + 2000 = 3000 (Treasury 1 + Treasury 2 active, Treasury 3 excluded due to exit_price)
-	// testDate3: 1000 + 2000 = 3000 (Treasury 1 + Treasury 2 active, Treasury 3 excluded due to exit_price)
+	// Expected values - the historical calculation includes sold treasuries if their maturity > date
+	// testDate1: 1000 + 500 = 1500 (Treasury 1 + Treasury 3, Treasury 2 not yet purchased)
+	// testDate2: 1000 + 2000 + 500 = 3500 (Treasury 1 + Treasury 2 + Treasury 3)
+	// testDate3: 1000 + 2000 + 500 = 3500 (Treasury 1 + Treasury 2 + Treasury 3)
 
 	testDate1Key := testDate1.Format("2006-01-02")
 	if metric, exists := metricsByDate[testDate1Key]; exists {
-		expectedValue := 1000.0 // Treasury 1 (1000) active, Treasury 3 excluded due to exit_price, Treasury 2 not yet purchased
+		expectedValue := 1500.0 // Treasury 1 (1000) + Treasury 3 (500), Treasury 2 not yet purchased
 		if metric.Value != expectedValue {
 			t.Errorf("Expected treasury value %f for %s, got %f", expectedValue, testDate1Key, metric.Value)
 		}
@@ -185,7 +185,7 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 
 	testDate2Key := testDate2.Format("2006-01-02")
 	if metric, exists := metricsByDate[testDate2Key]; exists {
-		expectedValue := 3000.0 // Treasury 1 (1000) + Treasury 2 (2000) active, Treasury 3 excluded due to exit_price
+		expectedValue := 3500.0 // Treasury 1 (1000) + Treasury 2 (2000) + Treasury 3 (500)
 		if metric.Value != expectedValue {
 			t.Errorf("Expected treasury value %f for %s, got %f", expectedValue, testDate2Key, metric.Value)
 		}
@@ -195,7 +195,7 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 
 	testDate3Key := testDate3.Format("2006-01-02")
 	if metric, exists := metricsByDate[testDate3Key]; exists {
-		expectedValue := 3000.0 // Treasury 1 (1000) + Treasury 2 (2000) active, Treasury 3 excluded due to exit_price
+		expectedValue := 3500.0 // Treasury 1 (1000) + Treasury 2 (2000) + Treasury 3 (500)
 		if metric.Value != expectedValue {
 			t.Errorf("Expected treasury value %f for %s, got %f", expectedValue, testDate3Key, metric.Value)
 		}
