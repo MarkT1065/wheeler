@@ -14,6 +14,9 @@ import (
 //go:embed schema.sql
 var schemaFS embed.FS
 
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
 type DB struct {
 	*sql.DB
 }
@@ -61,16 +64,36 @@ func (db *DB) InitSchema() error {
 }
 
 func (db *DB) runMigrations() error {
-	var hasCurrentPrice bool
-	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('options') WHERE name = 'current_price'").Scan(&hasCurrentPrice)
+	// Read all migration files from the migrations directory
+	migrationFiles, err := migrationsFS.ReadDir("migrations")
 	if err != nil {
-		return fmt.Errorf("failed to check for current_price column: %w", err)
+		return fmt.Errorf("failed to read migrations directory: %w", err)
 	}
 
-	if !hasCurrentPrice {
-		_, err := db.Exec("ALTER TABLE options ADD COLUMN current_price REAL")
+	// Execute each migration file in lexicographical order
+	for _, file := range migrationFiles {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".sql") {
+			continue
+		}
+
+		// Check if migration already applied
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = ?", 
+			strings.TrimSuffix(file.Name(), ".sql")).Scan(&count)
+		
+		// If schema_migrations table doesn't exist yet, we'll apply all migrations
+		if err == nil && count > 0 {
+			continue // Migration already applied
+		}
+
+		// Read and execute migration
+		content, err := migrationsFS.ReadFile(filepath.Join("migrations", file.Name()))
 		if err != nil {
-			return fmt.Errorf("failed to add current_price column: %w", err)
+			return fmt.Errorf("failed to read migration %s: %w", file.Name(), err)
+		}
+
+		if _, err := db.Exec(string(content)); err != nil {
+			return fmt.Errorf("failed to execute migration %s: %w", file.Name(), err)
 		}
 	}
 
