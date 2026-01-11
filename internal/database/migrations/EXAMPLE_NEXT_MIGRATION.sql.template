@@ -1,0 +1,35 @@
+-- ============================================================================
+-- EXAMPLE MIGRATION: Add Performance Indexes
+-- ============================================================================
+-- This is a TEMPLATE showing how to create your next migration
+-- 
+-- To use this:
+-- 1. Copy this file with a real timestamp:
+--    cp EXAMPLE_NEXT_MIGRATION.sql.template $(date +%Y%m%d%H%M%S)_add_performance_indexes.sql
+-- 2. Edit the new file
+-- 3. Delete this template or leave it as reference
+-- ============================================================================
+
+-- Add index for monthly queries (closed date is used frequently)
+CREATE INDEX IF NOT EXISTS idx_options_closed ON options(closed);
+
+-- Add index for open position queries
+CREATE INDEX IF NOT EXISTS idx_long_positions_closed ON long_positions(closed);
+
+-- Add index for symbol + type queries (used in dashboard)
+CREATE INDEX IF NOT EXISTS idx_options_symbol_type ON options(symbol, type);
+
+-- Add index for treasury queries by maturity
+CREATE INDEX IF NOT EXISTS idx_treasuries_maturity_status ON treasuries(maturity, exit_price);
+
+-- Record this migration (change version to match your filename!)
+INSERT OR IGNORE INTO schema_migrations (version) 
+VALUES ('YYYYMMDDHHMMSS_add_performance_indexes');
+
+-- ============================================================================
+-- NOTES:
+-- - All indexes use IF NOT EXISTS - safe to run multiple times
+-- - Migration is automatically tracked in schema_migrations table
+-- - Indexes are cheap to add, expensive to not have
+-- - Measure impact: EXPLAIN QUERY PLAN before and after
+-- ============================================================================
