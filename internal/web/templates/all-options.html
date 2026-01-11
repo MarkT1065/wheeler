@@ -1175,8 +1175,6 @@
             const ctx = document.getElementById('monthlyPremiumsBySymbolChart');
             if (!ctx) return;
             
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            
             // Build chart data from options index
             const chartData = buildMonthlyChartData();
             
@@ -1184,7 +1182,7 @@
             window.monthlyChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: monthNames,
+                    labels: chartData.labels,
                     datasets: [
                         {
                             label: 'Max Profit',
@@ -1267,25 +1265,34 @@
         }
         
         function buildMonthlyChartData() {
-            const maxProfit = Array(12).fill(0);
-            const actualProfit = Array(12).fill(0);
-            const openValue = Array(12).fill(0);
+            const monthlyData = {};
             
             if (!optionsIndex || !optionsIndex.id) {
-                return { maxProfit, actualProfit, openValue };
+                return { labels: [], maxProfit: [], actualProfit: [], openValue: [] };
             }
             
             // Process all options from the index
             Object.values(optionsIndex.id).forEach(option => {
-                const openedMonth = new Date(option.opened).getMonth(); // 0-11
+                const openedYearMonth = option.opened.substring(0, 7);
                 const maxProfitValue = option.premium * option.contracts * 100;
                 
+                // Initialize month if needed
+                if (!monthlyData[openedYearMonth]) {
+                    monthlyData[openedYearMonth] = { maxProfit: 0, actualProfit: 0, openValue: 0 };
+                }
+                
                 // Max profit is always based on opened month
-                maxProfit[openedMonth] += maxProfitValue;
+                monthlyData[openedYearMonth].maxProfit += maxProfitValue;
                 
                 if (option.closed) {
                     // Closed option - calculate actual profit and add to closed month
-                    const closedMonth = new Date(option.closed).getMonth();
+                    const closedYearMonth = option.closed.substring(0, 7);
+                    
+                    // Initialize closed month if needed
+                    if (!monthlyData[closedYearMonth]) {
+                        monthlyData[closedYearMonth] = { maxProfit: 0, actualProfit: 0, openValue: 0 };
+                    }
+                    
                     let actualProfitValue = maxProfitValue;
                     
                     if (option.exit_price) {
@@ -1296,19 +1303,32 @@
                         actualProfitValue -= option.commission;
                     }
                     
-                    actualProfit[closedMonth] += actualProfitValue;
+                    monthlyData[closedYearMonth].actualProfit += actualProfitValue;
                 } else {
                     // Open option - add to open value in opened month
-                    openValue[openedMonth] += maxProfitValue;
+                    monthlyData[openedYearMonth].openValue += maxProfitValue;
                 }
             });
             
-            return { maxProfit, actualProfit, openValue };
+            // Sort year-month keys and extract data arrays
+            const sortedYearMonths = Object.keys(monthlyData).sort();
+            const labels = sortedYearMonths.map(ym => {
+                const [year, month] = ym.split('-');
+                const date = new Date(year, parseInt(month) - 1);
+                return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            });
+            
+            const maxProfit = sortedYearMonths.map(ym => monthlyData[ym].maxProfit);
+            const actualProfit = sortedYearMonths.map(ym => monthlyData[ym].actualProfit);
+            const openValue = sortedYearMonths.map(ym => monthlyData[ym].openValue);
+            
+            return { labels, maxProfit, actualProfit, openValue };
         }
         
         function updateMonthlyChart() {
             if (window.monthlyChart) {
                 const chartData = buildMonthlyChartData();
+                window.monthlyChart.data.labels = chartData.labels;
                 window.monthlyChart.data.datasets[0].data = chartData.maxProfit;
                 window.monthlyChart.data.datasets[1].data = chartData.actualProfit;
                 window.monthlyChart.data.datasets[2].data = chartData.openValue;
@@ -1319,21 +1339,30 @@
         function updateMonthlyChartWithFilters(filteredOptions) {
             if (!window.monthlyChart) return;
             
-            const maxProfit = Array(12).fill(0);
-            const actualProfit = Array(12).fill(0);
-            const openValue = Array(12).fill(0);
+            const monthlyData = {};
             
             // Process filtered options
             filteredOptions.forEach(option => {
-                const openedMonth = new Date(option.opened).getMonth(); // 0-11
+                const openedYearMonth = option.opened.substring(0, 7);
                 const maxProfitValue = option.premium * option.contracts * 100;
                 
+                // Initialize month if needed
+                if (!monthlyData[openedYearMonth]) {
+                    monthlyData[openedYearMonth] = { maxProfit: 0, actualProfit: 0, openValue: 0 };
+                }
+                
                 // Max profit is always based on opened month
-                maxProfit[openedMonth] += maxProfitValue;
+                monthlyData[openedYearMonth].maxProfit += maxProfitValue;
                 
                 if (option.closed) {
                     // Closed option - calculate actual profit and add to closed month
-                    const closedMonth = new Date(option.closed).getMonth();
+                    const closedYearMonth = option.closed.substring(0, 7);
+                    
+                    // Initialize closed month if needed
+                    if (!monthlyData[closedYearMonth]) {
+                        monthlyData[closedYearMonth] = { maxProfit: 0, actualProfit: 0, openValue: 0 };
+                    }
+                    
                     let actualProfitValue = maxProfitValue;
                     
                     if (option.exit_price) {
@@ -1344,14 +1373,27 @@
                         actualProfitValue -= option.commission;
                     }
                     
-                    actualProfit[closedMonth] += actualProfitValue;
+                    monthlyData[closedYearMonth].actualProfit += actualProfitValue;
                 } else {
                     // Open option - add to open value in opened month
-                    openValue[openedMonth] += maxProfitValue;
+                    monthlyData[openedYearMonth].openValue += maxProfitValue;
                 }
             });
             
+            // Sort year-month keys and extract data arrays
+            const sortedYearMonths = Object.keys(monthlyData).sort();
+            const labels = sortedYearMonths.map(ym => {
+                const [year, month] = ym.split('-');
+                const date = new Date(year, parseInt(month) - 1);
+                return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            });
+            
+            const maxProfit = sortedYearMonths.map(ym => monthlyData[ym].maxProfit);
+            const actualProfit = sortedYearMonths.map(ym => monthlyData[ym].actualProfit);
+            const openValue = sortedYearMonths.map(ym => monthlyData[ym].openValue);
+            
             // Update chart with filtered data
+            window.monthlyChart.data.labels = labels;
             window.monthlyChart.data.datasets[0].data = maxProfit;
             window.monthlyChart.data.datasets[1].data = actualProfit;
             window.monthlyChart.data.datasets[2].data = openValue;
