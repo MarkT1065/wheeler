@@ -559,12 +559,18 @@ func buildComprehensiveMonthlyData(t *testing.T, db *database.DB) web.MonthlyDat
 			{
 				Ticker: "AAPL",
 				Total:  4700.00,
-				Months: [12]float64{500, 550, 600, 650, 700, 750, 0, 0, 0, 0, 0, 0},
+				MonthValues: map[string]float64{
+					"2023-12": 500, "2024-01": 550, "2024-02": 600,
+					"2024-03": 650, "2024-04": 700, "2024-05": 750,
+				},
 			},
 			{
 				Ticker: "TSLA",
 				Total:  4250.00,
-				Months: [12]float64{400, 450, 500, 550, 600, 650, 0, 0, 0, 0, 0, 0},
+				MonthValues: map[string]float64{
+					"2023-12": 400, "2024-01": 450, "2024-02": 500,
+					"2024-03": 550, "2024-04": 600, "2024-05": 650,
+				},
 			},
 		},
 		TotalsByMonth: []web.MonthlyTotal{
