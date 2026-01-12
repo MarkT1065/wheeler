@@ -49,89 +49,101 @@
                 </div>
             </div>
             
-            <!-- Puts and Calls Sections -->
-            <div class="content-section" style="margin-bottom: 30px;">
-                <div class="options-section-row" style="margin-top: 0;">
-                <!-- Puts Section -->
-                <div class="content-section">
-                    <div class="section-title">Puts</div>
-                    <div class="charts-row">
-                        <div class="chart-column">
-                            <h4>By Month</h4>
-                            <div class="chart-container-small">
-                                <canvas id="putsMonthChart"></canvas>
+            <!-- All Charts with Legend -->
+            <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+                <!-- Left: All Charts (90% width) -->
+                <div style="flex: 9;">
+                    <div class="content-section">
+                        <div class="options-section-row" style="margin-top: 0;">
+                        <!-- Puts Section -->
+                        <div class="content-section">
+                            <div class="section-title">Puts</div>
+                            <div class="charts-row">
+                                <div class="chart-column">
+                                    <h4>By Month</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="putsMonthChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-column">
+                                    <h4>By Ticker</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="putsTickerChart"></canvas>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="chart-column">
-                            <h4>By Ticker</h4>
-                            <div class="chart-container-small">
-                                <canvas id="putsTickerChart"></canvas>
+                        
+                        <!-- Calls Section -->
+                        <div class="content-section">
+                            <div class="section-title">Calls</div>
+                            <div class="charts-row">
+                                <div class="chart-column">
+                                    <h4>By Month</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="callsMonthChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-column">
+                                    <h4>By Ticker</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="callsTickerChart"></canvas>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+                        </div>
+                        
+                        <div class="options-section-row" style="margin-top: 0;">
+                        <!-- Capital Gains Section -->
+                        <div class="content-section">
+                            <div class="section-title">Capital Gains</div>
+                            <div class="charts-row">
+                                <div class="chart-column">
+                                    <h4>By Month</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="capGainsMonthChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-column">
+                                    <h4>By Ticker</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="capGainsTickerChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Dividends Section -->
+                        <div class="content-section">
+                            <div class="section-title">Dividends</div>
+                            <div class="charts-row">
+                                <div class="chart-column">
+                                    <h4>By Month</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="dividendsMonthChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-column">
+                                    <h4>By Ticker</h4>
+                                    <div class="chart-container-small">
+                                        <canvas id="dividendsTickerChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Calls Section -->
-                <div class="content-section">
-                    <div class="section-title">Calls</div>
-                    <div class="charts-row">
-                        <div class="chart-column">
-                            <h4>By Month</h4>
-                            <div class="chart-container-small">
-                                <canvas id="callsMonthChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-column">
-                            <h4>By Ticker</h4>
-                            <div class="chart-container-small">
-                                <canvas id="callsTickerChart"></canvas>
-                            </div>
+                <!-- Right: Symbol Legend (10% width) -->
+                <div style="flex: 1;">
+                    <div class="content-section">
+                        <div class="section-title">Legend</div>
+                        <div id="symbolLegend" style="padding: 20px; display: flex; flex-direction: column; gap: 8px;">
+                            <!-- Legend will be populated by JavaScript -->
                         </div>
                     </div>
-                </div>
-                </div>
-            </div>
-            
-            <!-- Capital Gains and Dividends Sections -->
-            <div class="content-section" style="margin-bottom: 30px;">
-                <div class="options-section-row" style="margin-top: 0;">
-                <!-- Capital Gains Section -->
-                <div class="content-section">
-                    <div class="section-title">Capital Gains</div>
-                    <div class="charts-row">
-                        <div class="chart-column">
-                            <h4>By Month</h4>
-                            <div class="chart-container-small">
-                                <canvas id="capGainsMonthChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-column">
-                            <h4>By Ticker</h4>
-                            <div class="chart-container-small">
-                                <canvas id="capGainsTickerChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Dividends Section -->
-                <div class="content-section">
-                    <div class="section-title">Dividends</div>
-                    <div class="charts-row">
-                        <div class="chart-column">
-                            <h4>By Month</h4>
-                            <div class="chart-container-small">
-                                <canvas id="dividendsMonthChart"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-column">
-                            <h4>By Ticker</h4>
-                            <div class="chart-container-small">
-                                <canvas id="dividendsTickerChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 </div>
             </div>
             
@@ -152,44 +164,37 @@
                             <tr>
                                 <th>Ticker</th>
                                 <th>Total</th>
-                                <th>January</th>
-                                <th>February</th>
-                                <th>March</th>
-                                <th>April</th>
-                                <th>May</th>
-                                <th>June</th>
-                                <th>July</th>
-                                <th>August</th>
-                                <th>September</th>
-                                <th>October</th>
-                                <th>November</th>
-                                <th>December</th>
+                                {{range .TableMonthLabels}}
+                                <th>{{.}}</th>
+                                {{end}}
                             </tr>
                         </thead>
                         <tbody>
                             {{if .TableData}}
-                                {{range .TableData}}
+                                {{range $row := .TableData}}
                                 <tr>
-                                    <td><strong><a href="/symbol/{{.Ticker}}" class="symbol-link">{{.Ticker}}</a></strong></td>
-                                    <td><span>${{printf "%.2f" .Total}}</span></td>
-                                    {{range .Months}}
-                                    <td>{{if eq . 0.0}}$0.00{{else}}<span>${{printf "%.2f" .}}</span>{{end}}</td>
+                                    <td><strong><a href="/symbol/{{$row.Ticker}}" class="symbol-link">{{$row.Ticker}}</a></strong></td>
+                                    <td><span>${{printf "%.0f" $row.Total}}</span></td>
+                                    {{range $yearMonth := $.TableYearMonths}}
+                                        {{$amount := index $row.MonthValues $yearMonth}}
+                                        <td>{{if $amount}}{{if ne $amount 0.0}}<span>${{printf "%.0f" $amount}}</span>{{else}}$0{{end}}{{else}}$0{{end}}</td>
                                     {{end}}
                                 </tr>
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="14" style="text-align: center; color: #a0a0a0;">No profit data available</td>
+                                    <td colspan="{{add (len .TableYearMonths) 2}}" style="text-align: center; color: #a0a0a0;">No profit data available</td>
                                 </tr>
                             {{end}}
                         </tbody>
                         <tfoot>
-                            {{if .TotalsByMonth}}
+                            {{if .TableTotalsByMonth}}
                             <tr class="table-totals-row">
                                 <td><strong>Total</strong></td>
-                                <td><span><strong>${{printf "%.2f" .GrandTotal}}</strong></span></td>
-                                {{range .TotalsByMonth}}
-                                <td><strong>{{if eq .Amount 0.0}}$0.00{{else}}<span>${{printf "%.2f" .Amount}}</span>{{end}}</strong></td>
+                                <td><span><strong>${{printf "%.0f" .GrandTotal}}</strong></span></td>
+                                {{range $yearMonth := .TableYearMonths}}
+                                    {{$total := index $.TableTotalsByMonth $yearMonth}}
+                                    <td><strong>{{if $total}}{{if ne $total 0.0}}<span>${{printf "%.0f" $total}}</span>{{else}}$0{{end}}{{else}}$0{{end}}</strong></td>
                                 {{end}}
                             </tr>
                             {{end}}
@@ -207,10 +212,18 @@
         // Register the datalabels plugin
         Chart.register(ChartDataLabels);
         
-        // Chart colors
+        // Chart colors - 25 distinct colors grouped by theme
         const chartColors = [
-            '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-            '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+            // Blues/Teals
+            '#2E5B88', '#5891AD', '#88BBE4', '#A7D8DE', '#3D6B6B',
+            // Greens/Olives
+            '#4F7942', '#86A673', '#B0C485', '#D4DF9E', '#606C38',
+            // Warm Tones
+            '#C27D65', '#E2A76F', '#E9C46A', '#F4A261', '#E76F51',
+            // Purples/Pinks
+            '#6D597A', '#B56576', '#E56B6F', '#A06CD5', '#7209B7',
+            // Greys/Neutrals
+            '#4A4E69', '#9A8C98', '#C9ADA7', '#F2E9E4', '#22223B'
         ];
         
         // Function to get consistent color for a symbol
@@ -219,14 +232,15 @@
             return chartColors[index % chartColors.length];
         }
         
-        // Function to sort ticker data alphabetically
+        // Function to sort ticker data by value (largest to smallest)
         function sortTickerData(labels, data) {
             const combined = labels.map((label, index) => ({
                 ticker: label,
                 amount: data[index]
             }));
             
-            combined.sort((a, b) => a.ticker.localeCompare(b.ticker));
+            // Sort by amount descending (largest to smallest)
+            combined.sort((a, b) => b.amount - a.amount);
             
             return {
                 labels: combined.map(item => item.ticker),
@@ -385,8 +399,8 @@
                 datasets: [{
                     data: putsTickerData,
                     backgroundColor: putsColors,
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -395,12 +409,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            font: { size: 14 },
-                            padding: 10,
-                            color: '#e0e0e0'
-                        }
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
@@ -551,8 +560,8 @@
                 datasets: [{
                     data: callsTickerData,
                     backgroundColor: callsColors,
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -561,12 +570,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            font: { size: 14 },
-                            padding: 10,
-                            color: '#e0e0e0'
-                        }
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
@@ -708,15 +712,16 @@
             {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
         const capGainsTickerSorted = sortTickerData(capGainsTickerLabelsRaw, capGainsTickerDataRaw);
+        const capGainsColors = capGainsTickerSorted.labels.map(symbol => getSymbolColor(symbol, allUniqueSymbols));
         new Chart(capGainsTickerCtx, {
             type: 'pie',
             data: {
                 labels: capGainsTickerSorted.labels,
                 datasets: [{
                     data: capGainsTickerSorted.data,
-                    backgroundColor: chartColors,
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    backgroundColor: capGainsColors,
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -725,12 +730,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            font: { size: 14 },
-                            padding: 10,
-                            color: '#e0e0e0'
-                        }
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
@@ -872,15 +872,16 @@
             {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
         const dividendsTickerSorted = sortTickerData(dividendsTickerLabelsRaw, dividendsTickerDataRaw);
+        const dividendsColors = dividendsTickerSorted.labels.map(symbol => getSymbolColor(symbol, allUniqueSymbols));
         new Chart(dividendsTickerCtx, {
             type: 'pie',
             data: {
                 labels: dividendsTickerSorted.labels,
                 datasets: [{
                     data: dividendsTickerSorted.data,
-                    backgroundColor: chartColors,
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    backgroundColor: dividendsColors,
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -889,12 +890,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
-                        labels: {
-                            font: { size: 14 },
-                            padding: 10,
-                            color: '#e0e0e0'
-                        }
+                        display: false
                     },
                     tooltip: {
                         callbacks: {
@@ -1272,24 +1268,39 @@
             // Get all options as array
             const allOptions = Object.values(optionsIndex.id);
             
-            // Process options by month and group by symbol and open/closed status
-            const monthlyData = {};
+            // Extract distinct yyyy-mm dates from options and sort them
+            const yearMonthSet = new Set();
+            allOptions.forEach(option => {
+                const dateStr = option.opened;
+                const yearMonth = dateStr.substring(0, 7); // Extract "yyyy-mm"
+                yearMonthSet.add(yearMonth);
+            });
+            
+            // Sort year-months ascending
+            const sortedYearMonths = Array.from(yearMonthSet).sort();
+            
+            // Create display labels (e.g., "2025-01" -> "Jan 2025")
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthLabels = sortedYearMonths.map(ym => {
+                const [year, month] = ym.split('-');
+                return `${monthNames[parseInt(month) - 1]} ${year}`;
+            });
+            
+            // Process options by year-month and group by symbol and open/closed status
+            const monthlyData = {};
             
             allOptions.forEach(option => {
                 // Use opened date for premium realization (when premium was received)
-                // Parse month directly from ISO date string to avoid timezone conversion issues
-                // Date format from Go: "2025-10-01T00:00:00Z" or "2025-10-01 00:00:00+00:00"
+                // Parse yyyy-mm directly from ISO date string
                 const dateStr = option.opened;
-                const month = parseInt(dateStr.substring(5, 7)) - 1; // Extract MM and convert to 0-11
-                const monthName = monthNames[month];
+                const yearMonth = dateStr.substring(0, 7); // Extract "yyyy-mm"
                 
-                if (!monthlyData[monthName]) {
-                    monthlyData[monthName] = {};
+                if (!monthlyData[yearMonth]) {
+                    monthlyData[yearMonth] = {};
                 }
                 
-                if (!monthlyData[monthName][option.symbol]) {
-                    monthlyData[monthName][option.symbol] = { open: 0, closed: 0 };
+                if (!monthlyData[yearMonth][option.symbol]) {
+                    monthlyData[yearMonth][option.symbol] = { open: 0, closed: 0 };
                 }
                 
                 // Calculate total profit for this option (same logic as Go backend)
@@ -1303,33 +1314,39 @@
                 
                 // Group by open/closed status
                 if (option.closed) {
-                    monthlyData[monthName][option.symbol].closed += totalProfit;
+                    monthlyData[yearMonth][option.symbol].closed += totalProfit;
                 } else {
-                    monthlyData[monthName][option.symbol].open += totalProfit;
+                    monthlyData[yearMonth][option.symbol].open += totalProfit;
                 }
             });
 
-            // Show all 12 months
-            const currentMonthLabels = monthNames;
+            // Use dynamic month labels based on actual data
+            const currentMonthLabels = monthLabels;
             
-            // Extract all symbols that appear in the data
-            const allSymbols = new Set();
+            // Extract all symbols that appear in the data and calculate total profit for sorting
+            const symbolTotals = {};
             Object.values(monthlyData).forEach(monthData => {
-                Object.keys(monthData).forEach(symbol => allSymbols.add(symbol));
+                Object.keys(monthData).forEach(symbol => {
+                    if (!symbolTotals[symbol]) {
+                        symbolTotals[symbol] = 0;
+                    }
+                    symbolTotals[symbol] += monthData[symbol].closed + monthData[symbol].open;
+                });
             });
-            const sortedSymbols = Array.from(allSymbols).sort();
+            
+            // Sort symbols by total profit descending (largest to smallest)
+            const sortedSymbols = Object.keys(symbolTotals).sort((a, b) => symbolTotals[b] - symbolTotals[a]);
             
             // Build datasets - one stack for Open positions, one stack for Closed positions
             // Within each stack, aggregate all symbols
             const datasets = [];
-            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF8C00', '#32CD32'];
             
             sortedSymbols.forEach((symbol, index) => {
-                const baseColor = colors[index % colors.length];
+                const baseColor = getSymbolColor(symbol, allUniqueSymbols);
                 
                 // Dataset for this symbol's closed positions (will be stacked together)
-                const closedData = currentMonthLabels.map(month => {
-                    return monthlyData[month] && monthlyData[month][symbol] ? monthlyData[month][symbol].closed : 0;
+                const closedData = sortedYearMonths.map(ym => {
+                    return monthlyData[ym] && monthlyData[ym][symbol] ? monthlyData[ym][symbol].closed : 0;
                 });
                 
                 datasets.push({
@@ -1343,8 +1360,8 @@
                 });
                 
                 // Dataset for this symbol's open positions (will be stacked together)
-                const openData = currentMonthLabels.map(month => {
-                    return monthlyData[month] && monthlyData[month][symbol] ? monthlyData[month][symbol].open : 0;
+                const openData = sortedYearMonths.map(ym => {
+                    return monthlyData[ym] && monthlyData[ym][symbol] ? monthlyData[ym][symbol].open : 0;
                 });
                 
                 // Use same color but with transparency to distinguish from closed
@@ -1404,23 +1421,7 @@
                     },
                     plugins: {
                         legend: {
-                            position: 'right',
-                            align: 'start',
-                            maxWidth: 200,
-                            labels: {
-                                color: '#e0e0e0',
-                                font: {
-                                    size: 11
-                                },
-                                padding: 8,
-                                usePointStyle: false,
-                                boxWidth: 12,
-                                filter: function(legendItem, chartData) {
-                                    // Only show legend items for datasets that have data
-                                    const dataset = chartData.datasets[legendItem.datasetIndex];
-                                    return dataset.data.some(value => value > 0);
-                                }
-                            }
+                            display: false
                         },
                         tooltip: {
                             mode: 'index',
@@ -1466,9 +1467,10 @@
                                 
                                 if (tooltip.body && tooltip.dataPoints && tooltip.dataPoints.length > 0) {
                                     const monthIndex = tooltip.dataPoints[0].dataIndex;
-                                    const monthName = currentMonthLabels[monthIndex];
+                                    const monthLabel = currentMonthLabels[monthIndex];
+                                    const yearMonth = sortedYearMonths[monthIndex];
                                     
-                                    if (!monthName || !monthlyData[monthName]) {
+                                    if (!yearMonth || !monthlyData[yearMonth]) {
                                         tooltipEl.style.opacity = 0;
                                         return;
                                     }
@@ -1479,7 +1481,7 @@
                                     const symbolSummary = {};
                                     
                                     sortedSymbols.forEach(symbol => {
-                                        const monthData = monthlyData[monthName] && monthlyData[monthName][symbol];
+                                        const monthData = monthlyData[yearMonth] && monthlyData[yearMonth][symbol];
                                         if (monthData) {
                                             const symbolOpen = monthData.open || 0;
                                             const symbolClosed = monthData.closed || 0;
@@ -1524,7 +1526,7 @@
                                                 border-bottom: 1px solid #007acc;
                                                 color: #007acc;
                                             ">
-                                                ${monthName} Monthly Premiums Summary
+                                                ${monthLabel} Monthly Premiums Summary
                                             </div>
                                             
                                             <!-- Summary Totals Table -->
@@ -1639,14 +1641,14 @@
                         
                         // Calculate totals for each month and stack
                         chart.data.labels.forEach((label, monthIndex) => {
-                            const monthName = currentMonthLabels[monthIndex];
+                            const yearMonth = sortedYearMonths[monthIndex];
                             
                             // Calculate totals for this month
                             let openTotal = 0;
                             let closedTotal = 0;
                             
                             sortedSymbols.forEach(symbol => {
-                                const monthData = monthlyData[monthName] && monthlyData[monthName][symbol];
+                                const monthData = monthlyData[yearMonth] && monthlyData[yearMonth][symbol];
                                 if (monthData) {
                                     openTotal += monthData.open;
                                     closedTotal += monthData.closed;
@@ -1697,8 +1699,31 @@
             });
         }
 
+        // Create unified symbol legend
+        function createSymbolLegend() {
+            const legendContainer = document.getElementById('symbolLegend');
+            if (!legendContainer) return;
+            
+            let html = '';
+            
+            allUniqueSymbols.forEach(symbol => {
+                const color = getSymbolColor(symbol, allUniqueSymbols);
+                html += `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 18px; height: 18px; background-color: ${color}; border: 1px solid #ccc; border-radius: 3px; flex-shrink: 0;"></div>
+                        <span style="color: #e0e0e0; font-size: 14px; font-weight: 500;">${symbol}</span>
+                    </div>
+                `;
+            });
+            
+            legendContainer.innerHTML = html;
+        }
+        
         // Create the grouped bar chart when page loads
-        document.addEventListener('DOMContentLoaded', createMonthlyPremiumsGroupedChart);
+        document.addEventListener('DOMContentLoaded', function() {
+            createMonthlyPremiumsGroupedChart();
+            createSymbolLegend();
+        });
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
