@@ -262,20 +262,30 @@
             };
         }
         
-        // Get current month index (0-11) to filter future data points for some charts
-        const currentMonth = new Date().getMonth();
-        const currentMonthIndex = currentMonth; // 0 = January, 11 = December
+        // Get actual year-month data from table columns (which have YYYY-MM format)
+        const tableYearMonths = [
+            {{range $index, $ym := .TableYearMonths}}{{if $index}}, {{end}}"{{$ym}}"{{end}}
+        ];
         
-        // Month labels for charts - show all 12 months
-        const fullMonthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentMonthLabels = fullMonthLabels; // Show all 12 months instead of limiting to current
+        // Use tableYearMonths as the master month list (YYYY-MM format)
+        const serverMonthLabels = tableYearMonths;
+        
+        // Format month labels with year (e.g., "2025-01" -> "Jan 2025")
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentMonthLabels = serverMonthLabels.map(ym => {
+            const [year, month] = ym.split('-');
+            return `${monthNames[parseInt(month) - 1]} ${year}`;
+        });
 
         // Puts - By Month Chart (with cumulative line)
         const putsMonthCtx = document.getElementById('putsMonthChart').getContext('2d');
-        const putsMonthDataFull = [
-            {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-        ];
-        const putsMonthData = putsMonthDataFull; // Show all 12 months
+        
+        // Build month-indexed data from PutsData.ByMonth
+        const putsMonthMap = new Map([
+            {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}["{{$data.Month}}", {{$data.Amount}}]{{end}}
+        ]);
+        // Align with master month labels
+        const putsMonthData = serverMonthLabels.map(ym => putsMonthMap.get(ym) || 0);
         
         // Calculate cumulative puts data for individual chart
         let putsIndividualCumulativeData = [];
@@ -450,10 +460,13 @@
 
         // Calls - By Month Chart (with cumulative line)
         const callsMonthCtx = document.getElementById('callsMonthChart').getContext('2d');
-        const callsMonthDataFull = [
-            {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-        ];
-        const callsMonthData = callsMonthDataFull; // Show all 12 months
+        
+        // Build month-indexed data from CallsData.ByMonth
+        const callsMonthMap = new Map([
+            {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}["{{$data.Month}}", {{$data.Amount}}]{{end}}
+        ]);
+        // Align with master month labels
+        const callsMonthData = serverMonthLabels.map(ym => callsMonthMap.get(ym) || 0);
         
         // Calculate cumulative calls data for individual chart
         let callsIndividualCumulativeData = [];
@@ -611,10 +624,13 @@
 
         // Capital Gains - By Month Chart (with cumulative line)
         const capGainsMonthCtx = document.getElementById('capGainsMonthChart').getContext('2d');
-        const capGainsMonthDataFull = [
-            {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-        ];
-        const capGainsMonthData = capGainsMonthDataFull; // Show all 12 months
+        
+        // Build month-indexed data from CapGainsData.ByMonth
+        const capGainsMonthMap = new Map([
+            {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}["{{$data.Month}}", {{$data.Amount}}]{{end}}
+        ]);
+        // Align with master month labels
+        const capGainsMonthData = serverMonthLabels.map(ym => capGainsMonthMap.get(ym) || 0);
         
         // Calculate cumulative capital gains data
         let capGainsIndividualCumulativeData = [];
@@ -771,10 +787,13 @@
 
         // Dividends - By Month Chart (with cumulative line)
         const dividendsMonthCtx = document.getElementById('dividendsMonthChart').getContext('2d');
-        const dividendsMonthDataFull = [
-            {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-        ];
-        const dividendsMonthData = dividendsMonthDataFull; // Show all 12 months
+        
+        // Build month-indexed data from DividendsData.ByMonth
+        const dividendsMonthMap = new Map([
+            {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}["{{$data.Month}}", {{$data.Amount}}]{{end}}
+        ]);
+        // Align with master month labels
+        const dividendsMonthData = serverMonthLabels.map(ym => dividendsMonthMap.get(ym) || 0);
         
         // Calculate cumulative dividends data
         let dividendsIndividualCumulativeData = [];
@@ -969,26 +988,15 @@
         // Function to create/update the gains chart
         function createGainsOverTimeChart(viewMode = 'cumulative') {
             const gainsOverTimeCtx = document.getElementById('cumulativeGainsChart').getContext('2d');
-            const monthLabels = [
-                {{range $index, $data := .TotalsByMonth}}{{if $index}}, {{end}}"{{$data.Month}}"{{end}}
-            ];
             
-            // Get monthly data for each category
-            const putsMonthlyData = [
-                {{range $index, $data := .PutsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-            ];
+            // Use the same formatted month labels as the other charts
+            const monthLabels = currentMonthLabels;
             
-            const callsMonthlyData = [
-                {{range $index, $data := .CallsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-            ];
-            
-            const capGainsMonthlyData = [
-                {{range $index, $data := .CapGainsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-            ];
-            
-            const dividendsMonthlyData = [
-                {{range $index, $data := .DividendsData.ByMonth}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
-            ];
+            // Use the same month-aligned data as the individual charts
+            const putsMonthlyData = putsMonthData;
+            const callsMonthlyData = callsMonthData;
+            const capGainsMonthlyData = capGainsMonthData;
+            const dividendsMonthlyData = dividendsMonthData;
             
             // Calculate cumulative data for each category
             let putsCumulativeData = [];

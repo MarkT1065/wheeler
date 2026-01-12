@@ -169,9 +169,9 @@ func TestMonthlyDataStructure(t *testing.T) {
 				t.Errorf("TableData row %d has empty ticker", i)
 			}
 
-			// Validate monthly data array (12 months)
-			if len(rowData.Months) != 12 {
-				t.Errorf("TableData row %d should have 12 months, got %d", i, len(rowData.Months))
+			// Validate monthly data map (should have entries)
+			if rowData.MonthValues == nil {
+				t.Errorf("TableData row %d should have MonthValues map", i)
 			}
 		}
 	})
@@ -311,7 +311,11 @@ func TestMonthlyChartDataTypes(t *testing.T) {
 		testData := web.MonthlyTableRow{
 			Ticker: "NVDA",
 			Total:  15750.00,
-			Months: [12]float64{1000, 1200, 1500, 1300, 1400, 1250, 1350, 1450, 1100, 1300, 1200, 1200},
+			MonthValues: map[string]float64{
+				"2024-01": 1000,
+				"2024-02": 1200,
+				"2024-03": 1500,
+			},
 		}
 
 		jsonData, err := json.Marshal(testData)
@@ -331,17 +335,17 @@ func TestMonthlyChartDataTypes(t *testing.T) {
 			t.Errorf("Expected total 15750.00, got %f", unmarshalled.Total)
 		}
 
-		// Validate array length
-		if len(unmarshalled.Months) != 12 {
-			t.Errorf("Expected 12 months, got %d", len(unmarshalled.Months))
+		// Validate map entries
+		if len(unmarshalled.MonthValues) != 3 {
+			t.Errorf("Expected 3 month values, got %d", len(unmarshalled.MonthValues))
 		}
 
-		// Validate first and last month values
-		if unmarshalled.Months[0] != 1000 {
-			t.Errorf("Expected January amount 1000, got %f", unmarshalled.Months[0])
+		// Validate specific month values
+		if unmarshalled.MonthValues["2024-01"] != 1000 {
+			t.Errorf("Expected 2024-01 amount 1000, got %f", unmarshalled.MonthValues["2024-01"])
 		}
-		if unmarshalled.Months[11] != 1200 {
-			t.Errorf("Expected December amount 1200, got %f", unmarshalled.Months[11])
+		if unmarshalled.MonthValues["2024-03"] != 1500 {
+			t.Errorf("Expected 2024-03 amount 1500, got %f", unmarshalled.MonthValues["2024-03"])
 		}
 	})
 
@@ -548,12 +552,20 @@ func buildTestMonthlyData(t *testing.T, db *database.DB) web.MonthlyData {
 			{
 				Ticker: "AAPL",
 				Total:  3450.00,
-				Months: [12]float64{1100, 1150, 1200, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				MonthValues: map[string]float64{
+					"2024-01": 1100,
+					"2024-02": 1150,
+					"2024-03": 1200,
+				},
 			},
 			{
 				Ticker: "TSLA",
 				Total:  2775.00,
-				Months: [12]float64{875, 925, 975, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+				MonthValues: map[string]float64{
+					"2024-01": 875,
+					"2024-02": 925,
+					"2024-03": 975,
+				},
 			},
 		},
 		TotalsByMonth: []web.MonthlyTotal{
