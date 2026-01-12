@@ -135,7 +135,10 @@ type MonthlyData struct {
 	CapGainsData             MonthlyFinancialData          `json:"capGainsData"`
 	DividendsData            MonthlyFinancialData          `json:"dividendsData"`
 	TableData                []MonthlyTableRow             `json:"tableData"`
-	TotalsByMonth            []MonthlyTotal                `json:"totalsByMonth"`
+	TableYearMonths          []string                      `json:"tableYearMonths"` // Sorted yyyy-mm columns for table
+	TableMonthLabels         []string                      `json:"tableMonthLabels"` // Formatted labels ("2025 Jan", etc.)
+	TableTotalsByMonth       map[string]float64            `json:"tableTotalsByMonth"` // yyyy-mm -> total for table
+	TotalsByMonth            []MonthlyTotal                `json:"totalsByMonth"` // Jan-Dec for charts
 	MonthlyPremiumsBySymbol  []MonthlyPremiumsBySymbol     `json:"monthlyPremiumsBySymbol"`
 	OptionsIndex             map[string]interface{}        `json:"options_index"`
 	OptionsIndexJSON         template.JS                   `json:"-"` // JSON-encoded for template
@@ -165,9 +168,9 @@ type TickerChartData struct {
 }
 
 type MonthlyTableRow struct {
-	Ticker string      `json:"ticker"`
-	Total  float64     `json:"total"`
-	Months [12]float64 `json:"months"` // Jan-Dec
+	Ticker      string             `json:"ticker"`
+	Total       float64            `json:"total"`
+	MonthValues map[string]float64 `json:"monthValues"` // yyyy-mm -> amount
 }
 
 type MonthlyTotal struct {

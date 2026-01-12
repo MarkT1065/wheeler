@@ -2,9 +2,11 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"sort"
 	"stonks/internal/models"
 )
 
@@ -57,8 +59,11 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 	capGainsByTicker := make(map[string]float64)  // ticker -> total
 	dividendsByTicker := make(map[string]float64) // ticker -> total
 
-	// Ticker -> Month -> Amount for table
-	tickerMonthData := make(map[string][12]float64)
+	// Ticker -> YearMonth (yyyy-mm) -> Amount for table
+	tickerMonthData := make(map[string]map[string]float64)
+	
+	// Track all unique year-months
+	yearMonthSet := make(map[string]bool)
 	
 	// Symbol -> Month -> Premium for stacked bar chart
 	symbolMonthPremiums := make(map[string][12]float64)
@@ -71,6 +76,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 		// Get the month from the opened date (when premium was realized)
 		month := int(option.Opened.Month()) - 1 // 0-11 for array indexing
+		
+		// Get yyyy-mm for table
+		yearMonth := fmt.Sprintf("%04d-%02d", option.Opened.Year(), option.Opened.Month())
+		yearMonthSet[yearMonth] = true
 
 		// Aggregate by month and type
 		if option.Type == "Put" {
@@ -83,11 +92,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 		// Aggregate for table data (both puts and calls combined)
 		if data, exists := tickerMonthData[option.Symbol]; exists {
-			data[month] += totalPremium
-			tickerMonthData[option.Symbol] = data
+			data[yearMonth] += totalPremium
 		} else {
-			var newData [12]float64
-			newData[month] = totalPremium
+			newData := make(map[string]float64)
+			newData[yearMonth] = totalPremium
 			tickerMonthData[option.Symbol] = newData
 		}
 
@@ -108,6 +116,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 		// Get the month from the received date
 		month := int(dividend.Received.Month()) - 1 // 0-11 for array indexing
+		
+		// Get yyyy-mm for table
+		yearMonth := fmt.Sprintf("%04d-%02d", dividend.Received.Year(), dividend.Received.Month())
+		yearMonthSet[yearMonth] = true
 
 		// Aggregate by month and ticker
 		dividendsByMonth[month] += amount
@@ -115,11 +127,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 		// Aggregate for table data
 		if data, exists := tickerMonthData[dividend.Symbol]; exists {
-			data[month] += amount
-			tickerMonthData[dividend.Symbol] = data
+			data[yearMonth] += amount
 		} else {
-			var newData [12]float64
-			newData[month] = amount
+			newData := make(map[string]float64)
+			newData[yearMonth] = amount
 			tickerMonthData[dividend.Symbol] = newData
 		}
 	}
@@ -132,6 +143,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 			// Get the month from the closed date
 			month := int(position.Closed.Month()) - 1 // 0-11 for array indexing
+			
+			// Get yyyy-mm for table
+			yearMonth := fmt.Sprintf("%04d-%02d", position.Closed.Year(), position.Closed.Month())
+			yearMonthSet[yearMonth] = true
 
 			// Aggregate by month and ticker
 			capGainsByMonth[month] += profit
@@ -139,11 +154,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 			// Aggregate for table data
 			if data, exists := tickerMonthData[position.Symbol]; exists {
-				data[month] += profit
-				tickerMonthData[position.Symbol] = data
+				data[yearMonth] += profit
 			} else {
-				var newData [12]float64
-				newData[month] = profit
+				newData := make(map[string]float64)
+				newData[yearMonth] = profit
 				tickerMonthData[position.Symbol] = newData
 			}
 		}
@@ -230,30 +244,58 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		}
 	}
 
+	// Convert year-month set to sorted slice
+	yearMonths := make([]string, 0, len(yearMonthSet))
+	for ym := range yearMonthSet {
+		yearMonths = append(yearMonths, ym)
+	}
+	sort.Strings(yearMonths) // Sort ascending
+	
+	// Create formatted labels ("2025 Jan", etc.)
+	monthLabels := []string{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
+	formattedLabels := make([]string, len(yearMonths))
+	for i, ym := range yearMonths {
+		// Parse yyyy-mm
+		var year, month int
+		fmt.Sscanf(ym, "%04d-%02d", &year, &month)
+		formattedLabels[i] = fmt.Sprintf("%d %s", year, monthLabels[month-1])
+	}
+	
 	// Build table data
 	tableData := []MonthlyTableRow{}
-	for ticker, months := range tickerMonthData {
+	for ticker, monthValues := range tickerMonthData {
 		// Calculate total for this ticker
 		total := 0.0
-		for _, amount := range months {
+		for _, amount := range monthValues {
 			total += amount
 		}
 
 		if total != 0 {
 			tableData = append(tableData, MonthlyTableRow{
-				Ticker: ticker,
-				Total:  total,
-				Months: months,
+				Ticker:      ticker,
+				Total:       total,
+				MonthValues: monthValues,
 			})
 		}
 	}
 
-	// Calculate totals by month for the table footer
-	totalsByMonth := []MonthlyTotal{}
+	// Calculate totals by year-month for the table footer
+	totalsByYearMonth := make(map[string]float64)
 	grandTotal := 0.0
+	
+	// Aggregate totals from all data sources
+	for ticker, monthValues := range tickerMonthData {
+		_ = ticker // Unused, just iterating
+		for ym, amount := range monthValues {
+			totalsByYearMonth[ym] += amount
+			grandTotal += amount
+		}
+	}
+	
+	// Also build traditional monthly totals for charts (Jan-Dec)
+	totalsByMonth := []MonthlyTotal{}
 	for i := 0; i < 12; i++ {
 		total := putsByMonth[i] + callsByMonth[i] + capGainsByMonth[i] + dividendsByMonth[i]
-		grandTotal += total
 		totalsByMonth = append(totalsByMonth, MonthlyTotal{
 			Month:  monthNames[i],
 			Amount: total,
@@ -309,6 +351,9 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			ByTicker: dividendsTickerChart,
 		},
 		TableData:               tableData,
+		TableYearMonths:         yearMonths,
+		TableMonthLabels:        formattedLabels,
+		TableTotalsByMonth:      totalsByYearMonth,
 		TotalsByMonth:           totalsByMonth,
 		MonthlyPremiumsBySymbol: monthlyPremiumsBySymbol,
 		OptionsIndex:            optionsIndex,
