@@ -1648,14 +1648,44 @@
                                     tooltipEl.innerHTML = html;
                                 }
                                 
-                                // Position tooltip
+                                // Position tooltip with viewport boundary detection
                                 const canvasRect = chart.canvas.getBoundingClientRect();
+                                
+                                // Calculate desired position (centered horizontally, 50px above cursor)
+                                let leftPos = canvasRect.left + window.scrollX + tooltip.caretX - 300;
+                                let topPos = canvasRect.top + window.scrollY + tooltip.caretY - 50;
+                                
+                                // Get tooltip dimensions (assume 600px width from inline style)
+                                const tooltipWidth = 600;
+                                const tooltipHeight = 400; // Approximate height
+                                
+                                // Ensure tooltip stays within horizontal viewport bounds
+                                const viewportWidth = window.innerWidth;
+                                const minLeft = 10; // 10px margin from left edge
+                                const maxLeft = viewportWidth - tooltipWidth - 10; // 10px margin from right edge
+                                
+                                if (leftPos < minLeft) {
+                                    leftPos = minLeft;
+                                } else if (leftPos > maxLeft) {
+                                    leftPos = maxLeft;
+                                }
+                                
+                                // Ensure tooltip stays within vertical viewport bounds
+                                const viewportHeight = window.innerHeight;
+                                const minTop = 10; // 10px margin from top edge
+                                const maxTop = viewportHeight - tooltipHeight - 10; // 10px margin from bottom edge
+                                
+                                if (topPos < minTop) {
+                                    topPos = minTop;
+                                } else if (topPos > maxTop) {
+                                    topPos = maxTop;
+                                }
                                 
                                 tooltipEl.style.opacity = 1;
                                 tooltipEl.style.visibility = 'visible';
                                 tooltipEl.style.position = 'absolute';
-                                tooltipEl.style.left = (canvasRect.left + window.scrollX + tooltip.caretX - 300) + 'px'; // Center tooltip
-                                tooltipEl.style.top = (canvasRect.top + window.scrollY + tooltip.caretY - 50) + 'px';
+                                tooltipEl.style.left = leftPos + 'px';
+                                tooltipEl.style.top = topPos + 'px';
                                 tooltipEl.style.pointerEvents = 'none';
                                 tooltipEl.style.zIndex = '9999';
                             }
