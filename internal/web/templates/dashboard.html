@@ -72,19 +72,19 @@
                 <div class="charts-section">
                     <!-- Long Stock by Symbol -->
                     <div class="chart-container">
-                        <div class="chart-title">Long by Symbol</div>
+                        <div class="chart-title">Long Value</div>
                         <canvas id="longByTickerChart" class="chart-canvas"></canvas>
                     </div>
                     
                     <!-- Put Exposure by Symbol -->
                     <div class="chart-container">
-                        <div class="chart-title">Put Exposure by Symbol</div>
+                        <div class="chart-title">Put Exposure</div>
                         <canvas id="putsByTickerChart" class="chart-canvas"></canvas>
                     </div>
                     
                     <!-- Total Allocation -->
                     <div class="chart-container">
-                        <div class="chart-title">Total Allocation</div>
+                        <div class="chart-title">Overall Allocation</div>
                         <canvas id="totalAllocationChart" class="chart-canvas"></canvas>
                     </div>
                 </div>
@@ -164,14 +164,14 @@
         const longByTickerData = [
             {{range $index, $data := .LongByTicker}}
             {{if $index}},{{end}}
-            {label: '{{$data.Label}}', value: {{$data.Value}}, color: '{{$data.Color}}'}
+            {label: '{{$data.Label}}', value: {{$data.Value}}}
             {{end}}
         ];
         
         const putsByTickerData = [
             {{range $index, $data := .PutsByTicker}}
             {{if $index}},{{end}}
-            {label: '{{$data.Label}}', value: {{$data.Value}}, color: '{{$data.Color}}'}
+            {label: '{{$data.Label}}', value: {{$data.Value}}}
             {{end}}
         ];
 
@@ -182,11 +182,46 @@
             {label: 'Treasuries', value: 0, color: '#FFCE56'}
         ];
 
+        // Chart colors - standardized palette matching Monthly view
+        const chartColors = [
+            '#3498db',  // Blue
+            '#e67e22',  // Orange
+            '#27ae60',  // Green
+            '#e74c3c',  // Red
+            '#f39c12',  // Yellow/Gold
+            '#9b59b6',  // Purple
+            '#1abc9c',  // Turquoise
+            '#34495e',  // Dark Blue-Grey
+            '#16a085',  // Dark Turquoise
+            '#c0392b',  // Dark Red
+            '#d35400',  // Dark Orange
+            '#8e44ad'   // Dark Purple
+        ];
+        
+        // Get unique symbols from both charts and sort alphabetically
+        const allSymbols = new Set();
+        longByTickerData.forEach(item => allSymbols.add(item.label));
+        putsByTickerData.forEach(item => allSymbols.add(item.label));
+        const sortedSymbols = Array.from(allSymbols).sort();
+        
+        // Function to get consistent color for a symbol
+        function getSymbolColor(symbol) {
+            const index = sortedSymbols.indexOf(symbol);
+            return chartColors[index % chartColors.length];
+        }
+        
+        // Apply colors to data
+        longByTickerData.forEach(item => {
+            item.color = getSymbolColor(item.label);
+        });
+        putsByTickerData.forEach(item => {
+            item.color = getSymbolColor(item.label);
+        });
+
         // Chart configuration
         const chartOptions = {
             responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 1.2,
+            maintainAspectRatio: false,
             interaction: {
                 intersect: false
             },
@@ -205,7 +240,11 @@
                         },
                         padding: 10,
                         color: '#e0e0e0',
-                        usePointStyle: true
+                        usePointStyle: true,
+                        sort: function(a, b) {
+                            // Sort legend items alphabetically
+                            return a.text.localeCompare(b.text);
+                        }
                     }
                 },
                 tooltip: {
@@ -225,7 +264,7 @@
                         weight: 'bold'
                     },
                     formatter: function(value, context) {
-                        if (value < 1000) return '';
+                        if (value < 500) return '';
                         return '$' + Math.round(value).toLocaleString();
                     }
                 }
@@ -240,16 +279,20 @@
             }
         };
 
+        // Sort data by size (descending) for pie chart display
+        const longByTickerSorted = [...longByTickerData].sort((a, b) => b.value - a.value);
+        const putsByTickerSorted = [...putsByTickerData].sort((a, b) => b.value - a.value);
+
         // Long by Ticker Chart
         new Chart(document.getElementById('longByTickerChart'), {
             type: 'pie',
             data: {
-                labels: longByTickerData.map(item => item.label),
+                labels: longByTickerSorted.map(item => item.label),
                 datasets: [{
-                    data: longByTickerData.map(item => item.value),
-                    backgroundColor: longByTickerData.map(item => item.color),
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    data: longByTickerSorted.map(item => item.value),
+                    backgroundColor: longByTickerSorted.map(item => item.color),
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -260,12 +303,12 @@
         new Chart(document.getElementById('putsByTickerChart'), {
             type: 'pie',
             data: {
-                labels: putsByTickerData.map(item => item.label),
+                labels: putsByTickerSorted.map(item => item.label),
                 datasets: [{
-                    data: putsByTickerData.map(item => item.value),
-                    backgroundColor: putsByTickerData.map(item => item.color),
-                    borderWidth: 0.7,
-                    borderColor: '#ccc'
+                    data: putsByTickerSorted.map(item => item.value),
+                    backgroundColor: putsByTickerSorted.map(item => item.color),
+                    borderWidth: 0.5,
+                    borderColor: '#666666'
                 }]
             },
             plugins: [ChartDataLabels],
@@ -369,15 +412,18 @@
                 ];
             }
             
+            // Sort by size (descending) for pie chart display
+            const totalAllocationSorted = [...totalAllocationData].sort((a, b) => b.value - a.value);
+            
             totalAllocationChart = new Chart(document.getElementById('totalAllocationChart'), {
                 type: 'pie',
                 data: {
-                    labels: totalAllocationData.map(item => item.label),
+                    labels: totalAllocationSorted.map(item => item.label),
                     datasets: [{
-                        data: totalAllocationData.map(item => item.value),
-                        backgroundColor: totalAllocationData.map(item => item.color),
-                        borderWidth: 0.7,
-                        borderColor: '#ccc'
+                        data: totalAllocationSorted.map(item => item.value),
+                        backgroundColor: totalAllocationSorted.map(item => item.color),
+                        borderWidth: 0.5,
+                        borderColor: '#666666'
                     }]
                 },
                 plugins: [ChartDataLabels],
