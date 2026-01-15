@@ -453,8 +453,21 @@
             {{range $index, $data := .CallsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
         
-        // Create unified symbol list for consistent coloring
-        const allUniqueSymbols = [...new Set([...putsTickerLabelsUnsorted, ...callsTickerLabelsUnsorted])].sort();
+        // Get capital gains and dividends ticker labels
+        const capGainsTickerLabelsRaw = [
+            {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        const dividendsTickerLabelsRaw = [
+            {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
+        ];
+        
+        // Create unified symbol list for consistent coloring from ALL data sources
+        const allUniqueSymbols = [...new Set([
+            ...putsTickerLabelsUnsorted, 
+            ...callsTickerLabelsUnsorted,
+            ...capGainsTickerLabelsRaw,
+            ...dividendsTickerLabelsRaw
+        ])].sort();
         
         // Puts - By Ticker Chart
         const putsTickerCtx = document.getElementById('putsTickerChart').getContext('2d');
@@ -786,9 +799,6 @@
 
         // Capital Gains - By Ticker Chart
         const capGainsTickerCtx = document.getElementById('capGainsTickerChart').getContext('2d');
-        const capGainsTickerLabelsRaw = [
-            {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
-        ];
         const capGainsTickerDataRaw = [
             {{range $index, $data := .CapGainsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
@@ -949,9 +959,6 @@
 
         // Dividends - By Ticker Chart
         const dividendsTickerCtx = document.getElementById('dividendsTickerChart').getContext('2d');
-        const dividendsTickerLabelsRaw = [
-            {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}"{{$data.Ticker}}"{{end}}
-        ];
         const dividendsTickerDataRaw = [
             {{range $index, $data := .DividendsData.ByTicker}}{{if $index}}, {{end}}{{$data.Amount}}{{end}}
         ];
@@ -1298,10 +1305,22 @@
                 return;
             }
 
-            // Get all options as array
-            const allOptions = Object.values(optionsIndex.id);
+            // Get date filter from template (backend-provided date range)
+            const fromMonth = '{{.SelectedFromDate}}';
+            const toMonth = '{{.SelectedToDate}}';
             
-            // Extract distinct yyyy-mm dates from options and sort them
+            // Get all options as array and filter by date range
+            const allOptions = Object.values(optionsIndex.id).filter(option => {
+                const yearMonth = option.opened.substring(0, 7); // Extract "yyyy-mm"
+                
+                // Apply same date filtering as backend
+                if (fromMonth && yearMonth < fromMonth) return false;
+                if (toMonth && yearMonth > toMonth) return false;
+                
+                return true;
+            });
+            
+            // Extract distinct yyyy-mm dates from filtered options and sort them
             const yearMonthSet = new Set();
             allOptions.forEach(option => {
                 const dateStr = option.opened;
