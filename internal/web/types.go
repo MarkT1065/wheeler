@@ -145,6 +145,8 @@ type MonthlyData struct {
 	GrandTotal               float64                       `json:"grandTotal"`
 	CurrentDB                string                        `json:"currentDB"`
 	ActivePage               string                        `json:"activePage"`
+	SelectedFromDate         string                        `json:"selectedFromDate"`
+	SelectedToDate           string                        `json:"selectedToDate"`
 }
 
 type MonthlyOptionData struct {

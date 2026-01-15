@@ -5,10 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monthly View - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .daterangepicker {
+            background: #2d2d2d;
+            border: 1px solid #575757;
+        }
+        .daterangepicker .calendar-table {
+            background: #2d2d2d;
+            border: 1px solid #575757;
+        }
+        .daterangepicker .calendar-table .table-condensed {
+            display: none;
+        }
+        .daterangepicker .month-picker {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 20px;
+        }
+        .daterangepicker .month-picker .month-cell {
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            background: #1a1a1a;
+            border: 1px solid #575757;
+            border-radius: 4px;
+            color: #e0e0e0;
+        }
+        .daterangepicker .month-picker .month-cell:hover {
+            background-color: #404040;
+        }
+        .daterangepicker .month-picker .month-cell.active {
+            background-color: #27ae60 !important;
+        }
+        .daterangepicker td, .daterangepicker th {
+            color: #e0e0e0;
+        }
+        .daterangepicker td.available:hover {
+            background-color: #404040;
+        }
+        .daterangepicker td.active {
+            background-color: #27ae60 !important;
+        }
+        .daterangepicker .ranges li:hover {
+            background-color: #404040;
+        }
+        .daterangepicker .ranges li.active {
+            background-color: #27ae60;
+        }
+        .daterangepicker select {
+            background: #1a1a1a;
+            color: #e0e0e0;
+            border: 1px solid #575757;
+        }
+        .daterangepicker .drp-calendar {
+            max-width: 300px;
+        }
+        .daterangepicker .calendar-table thead,
+        .daterangepicker .calendar-table tbody {
+            display: none;
+        }
+    </style>
 </head>
 <body class="monthly-page">
     <div class="app-container">
@@ -20,16 +84,27 @@
             
             <!-- Aggregated Totals Panel -->
             <div class="content-section" style="margin-bottom: 20px;">
-                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; text-align: center; font-size: 20px;">
-                    <span style="color: #a0a0a0;">Total:</span> <span id="grandTotal" style="color: #27ae60;">$0</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Calls:</span> <span id="totalCalls" style="color: #27ae60;">$0</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Capital Gains:</span> <span id="totalCapGains" style="color: #27ae60;">$0</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Dividends:</span> <span id="totalDividends" style="color: #27ae60;">$0</span>
+                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; display: flex; align-items: center; justify-content: space-between;">
+                    <!-- Month Range Picker (Left) -->
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 14px;">
+                        <input type="text" id="monthRange" readonly value="" style="padding: 8px 12px; background: #1a1a1a; border: 1px solid #575757; border-radius: 4px; color: #e0e0e0; font-size: 14px; cursor: pointer; width: 200px;">
+                    </div>
+                    
+                    <!-- Totals (Center) -->
+                    <div style="text-align: center; font-size: 20px;">
+                        <span style="color: #a0a0a0;">Total:</span> <span id="grandTotal" style="color: #27ae60;">$0</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color: #a0a0a0;">Calls:</span> <span id="totalCalls" style="color: #27ae60;">$0</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color: #a0a0a0;">Capital Gains:</span> <span id="totalCapGains" style="color: #27ae60;">$0</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span style="color: #a0a0a0;">Dividends:</span> <span id="totalDividends" style="color: #27ae60;">$0</span>
+                    </div>
+                    
+                    <!-- Placeholder for balance (Right) -->
+                    <div style="width: 200px;"></div>
                 </div>
             </div>
             
@@ -1801,6 +1876,287 @@
         document.addEventListener('DOMContentLoaded', function() {
             createMonthlyPremiumsGroupedChart();
             createSymbolLegend();
+            
+            // Get initial values from template
+            const initialFrom = '{{.SelectedFromDate}}';
+            const initialTo = '{{.SelectedToDate}}';
+            
+            // Set initial display value (default to "Last 12 months")
+            if (initialFrom && initialTo) {
+                const fromMoment = moment(initialFrom + '-01', 'YYYY-MM-DD');
+                const toMoment = moment(initialTo + '-01', 'YYYY-MM-DD');
+                $('#monthRange').val(fromMoment.format('MMM YYYY') + ' - ' + toMoment.format('MMM YYYY'));
+            } else {
+                $('#monthRange').val('Last 12 months');
+            }
+            
+            // Create custom month picker
+            let startMonth = null;
+            let endMonth = null;
+            let pickerOpen = false;
+            
+            $('#monthRange').on('click', function() {
+                if (pickerOpen) return;
+                pickerOpen = true;
+                
+                const input = $(this);
+                const offset = input.offset();
+                
+                // Create month picker overlay
+                const $overlay = $('<div class="month-range-overlay"></div>').css({
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 9998
+                });
+                
+                // Create shortcuts panel
+                const $shortcuts = $('<div class="shortcuts"></div>').css({
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '5px',
+                    borderRight: '1px solid #575757',
+                    paddingRight: '15px'
+                });
+                
+                const shortcuts = [
+                    { label: 'This year', calc: () => [moment().startOf('year'), moment().startOf('month')] },
+                    { label: 'Last year', calc: () => [moment().subtract(1, 'year').startOf('year'), moment().subtract(1, 'year').endOf('year')] },
+                    { label: 'Last 6 months', calc: () => [moment().subtract(5, 'months').startOf('month'), moment().startOf('month')] },
+                    { label: 'Last 12 months', calc: () => [moment().subtract(11, 'months').startOf('month'), moment().startOf('month')] }
+                ];
+                
+                shortcuts.forEach(sc => {
+                    const $btn = $('<button></button>').text(sc.label).css({
+                        padding: '8px 12px',
+                        background: '#1a1a1a',
+                        border: '1px solid #575757',
+                        borderRadius: '4px',
+                        color: '#e0e0e0',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        whiteSpace: 'nowrap'
+                    }).on('mouseenter', function() {
+                        $(this).css('background', '#404040');
+                    }).on('mouseleave', function() {
+                        $(this).css('background', '#1a1a1a');
+                    }).on('click', function() {
+                        const [start, end] = sc.calc();
+                        applyRange(start, end);
+                    });
+                    $shortcuts.append($btn);
+                });
+                
+                // Create calendars container
+                const $calendars = $('<div class="calendars"></div>').css({
+                    display: 'flex',
+                    gap: '15px'
+                });
+                
+                // Create two year-month pickers
+                function createYearMonthPicker(year, isStart) {
+                    const $container = $('<div class="year-month-picker"></div>');
+                    
+                    const $header = $('<div class="picker-header"></div>').css({
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '10px'
+                    });
+                    
+                    const $prevBtn = $('<button>&lt;</button>').css({
+                        background: '#1a1a1a',
+                        border: '1px solid #575757',
+                        color: '#e0e0e0',
+                        padding: '5px 10px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }).on('click', function() {
+                        updateYearMonthPicker(isStart, year - 1);
+                    });
+                    
+                    const $yearLabel = $('<span></span>').text(year).css({
+                        color: '#e0e0e0',
+                        fontSize: '16px',
+                        fontWeight: 'bold'
+                    });
+                    
+                    const $nextBtn = $('<button>&gt;</button>').css({
+                        background: '#1a1a1a',
+                        border: '1px solid #575757',
+                        color: '#e0e0e0',
+                        padding: '5px 10px',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                    }).on('click', function() {
+                        updateYearMonthPicker(isStart, year + 1);
+                    });
+                    
+                    $header.append($prevBtn, $yearLabel, $nextBtn);
+                    
+                    const $months = $('<div class="months-grid"></div>').css({
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '8px'
+                    });
+                    
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    monthNames.forEach((name, idx) => {
+                        const $month = $('<div></div>').text(name).css({
+                            padding: '12px',
+                            textAlign: 'center',
+                            background: '#1a1a1a',
+                            border: '1px solid #575757',
+                            borderRadius: '4px',
+                            color: '#e0e0e0',
+                            cursor: 'pointer'
+                        }).on('mouseenter', function() {
+                            if (!$(this).hasClass('active')) {
+                                $(this).css('background', '#404040');
+                            }
+                        }).on('mouseleave', function() {
+                            if (!$(this).hasClass('active')) {
+                                $(this).css('background', '#1a1a1a');
+                            }
+                        }).on('click', function() {
+                            const selectedMoment = moment().year(year).month(idx).startOf('month');
+                            if (isStart) {
+                                startMonth = selectedMoment;
+                                if (endMonth && startMonth.isAfter(endMonth)) {
+                                    endMonth = startMonth.clone();
+                                }
+                            } else {
+                                endMonth = selectedMoment;
+                                if (startMonth && endMonth.isBefore(startMonth)) {
+                                    startMonth = endMonth.clone();
+                                }
+                            }
+                            updateSelection();
+                        });
+                        $months.append($month);
+                    });
+                    
+                    $container.append($header, $months);
+                    return $container;
+                }
+                
+                function updateYearMonthPicker(isStart, newYear) {
+                    $calendars.empty();
+                    const startYear = isStart ? newYear : (startMonth ? startMonth.year() : moment().subtract(1, 'year').year());
+                    const endYear = !isStart ? newYear : (endMonth ? endMonth.year() : moment().year());
+                    $calendars.append(createYearMonthPicker(startYear, true));
+                    $calendars.append(createYearMonthPicker(endYear, false));
+                    updateSelection();
+                }
+                
+                function updateSelection() {
+                    $('.months-grid div').removeClass('active').css('background', '#1a1a1a');
+                    if (startMonth) {
+                        const startIdx = startMonth.month();
+                        $('.months-grid').eq(0).find('div').eq(startIdx).addClass('active').css('background', '#27ae60');
+                    }
+                    if (endMonth) {
+                        const endIdx = endMonth.month();
+                        $('.months-grid').eq(1).find('div').eq(endIdx).addClass('active').css('background', '#27ae60');
+                    }
+                }
+                
+                function applyRange(start, end) {
+                    const fromMonth = start.format('YYYY-MM');
+                    const toMonth = end.format('YYYY-MM');
+                    
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('from', fromMonth);
+                    url.searchParams.set('to', toMonth);
+                    window.location.href = url.toString();
+                }
+                
+                // Initialize with current selection
+                if (initialFrom) {
+                    startMonth = moment(initialFrom + '-01', 'YYYY-MM-DD');
+                }
+                if (initialTo) {
+                    endMonth = moment(initialTo + '-01', 'YYYY-MM-DD');
+                }
+                
+                const startYear = startMonth ? startMonth.year() : moment().subtract(1, 'year').year();
+                const endYear = endMonth ? endMonth.year() : moment().year();
+                
+                $calendars.append(createYearMonthPicker(startYear, true));
+                $calendars.append(createYearMonthPicker(endYear, false));
+                
+                // Create buttons
+                const $buttons = $('<div class="picker-buttons"></div>').css({
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '10px',
+                    marginTop: '15px',
+                    paddingTop: '15px',
+                    borderTop: '1px solid #575757'
+                });
+                
+                const $cancelBtn = $('<button>Cancel</button>').css({
+                    padding: '8px 16px',
+                    background: '#1a1a1a',
+                    border: '1px solid #575757',
+                    borderRadius: '4px',
+                    color: '#e0e0e0',
+                    cursor: 'pointer'
+                }).on('click', function() {
+                    closePicker();
+                });
+                
+                const $applyBtn = $('<button>Apply</button>').css({
+                    padding: '8px 16px',
+                    background: '#27ae60',
+                    border: 'none',
+                    borderRadius: '4px',
+                    color: '#fff',
+                    cursor: 'pointer'
+                }).on('click', function() {
+                    if (startMonth && endMonth) {
+                        applyRange(startMonth, endMonth);
+                    }
+                });
+                
+                $buttons.append($cancelBtn, $applyBtn);
+                
+                // Create main container
+                const $mainContainer = $('<div class="calendars-container"></div>').css({
+                    display: 'flex',
+                    gap: '15px'
+                });
+                $mainContainer.append($shortcuts, $calendars);
+                
+                // Build picker wrapper
+                const $pickerWrapper = $('<div></div>').css({
+                    position: 'absolute',
+                    top: offset.top + input.outerHeight() + 5,
+                    left: offset.left,
+                    background: '#2d2d2d',
+                    border: '1px solid #575757',
+                    borderRadius: '4px',
+                    padding: '15px',
+                    zIndex: 9999,
+                    minWidth: '600px'
+                });
+                
+                $pickerWrapper.append($mainContainer, $buttons);
+                
+                function closePicker() {
+                    $overlay.remove();
+                    $pickerWrapper.remove();
+                    pickerOpen = false;
+                }
+                
+                $overlay.on('click', closePicker);
+                
+                $('body').append($overlay, $pickerWrapper);
+                updateSelection();
+            });
         });
     </script>
     <script src="/static/js/navigation.js"></script>
