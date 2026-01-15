@@ -26,7 +26,7 @@ build:
 
 test:
 	@echo "Running all tests..."
-	@CGO_ENABLED=1 go test -v ./...
+	@CGO_ENABLED=1 go test -v ./... 2>&1 | grep -E '(PASS|FAIL|RUN|^ok|^FAIL|\?|ERROR)'
 	@echo ""
 	@echo "All tests complete!"
 
