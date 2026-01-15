@@ -8,10 +8,23 @@ import (
 	"net/http"
 	"sort"
 	"stonks/internal/models"
+	"time"
 )
 
 // monthlyHandler serves the monthly performance view
 func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse query parameters for month filtering (YYYY-MM format)
+	fromMonth := r.URL.Query().Get("from")
+	toMonth := r.URL.Query().Get("to")
+	
+	// Set default date range to 1 year (12 months: current month back 11 months)
+	if fromMonth == "" || toMonth == "" {
+		now := time.Now()
+		toMonth = fmt.Sprintf("%04d-%02d", now.Year(), now.Month())
+		elevenMonthsAgo := now.AddDate(0, -11, 0)
+		fromMonth = fmt.Sprintf("%04d-%02d", elevenMonthsAgo.Year(), elevenMonthsAgo.Month())
+	}
+	
 	symbols, err := s.symbolService.GetDistinctSymbols()
 	if err != nil {
 		symbols = []string{}
@@ -41,14 +54,14 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 		longPositions = []*models.LongPosition{}
 	}
 
-	// Build monthly data
-	data := s.buildMonthlyData(symbols, options, dividends, longPositions, optionsIndex)
+	// Build monthly data with month filtering
+	data := s.buildMonthlyData(symbols, options, dividends, longPositions, optionsIndex, fromMonth, toMonth)
 
 	s.renderTemplate(w, "monthly.html", data)
 }
 
 // buildMonthlyData creates comprehensive monthly financial data based on transaction dates
-func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition, optionsIndex map[string]interface{}) MonthlyData {
+func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition, optionsIndex map[string]interface{}, fromMonth, toMonth string) MonthlyData {
 	// Initialize data structures - use YYYY-MM keys instead of month indexes
 	putsByYearMonth := make(map[string]float64)      // yyyy-mm -> total
 	callsByYearMonth := make(map[string]float64)     // yyyy-mm -> total
@@ -73,6 +86,15 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		
 		// Get yyyy-mm for all aggregations
 		yearMonth := fmt.Sprintf("%04d-%02d", option.Opened.Year(), option.Opened.Month())
+		
+		// Apply date range filter
+		if fromMonth != "" && yearMonth < fromMonth {
+			continue
+		}
+		if toMonth != "" && yearMonth > toMonth {
+			continue
+		}
+		
 		yearMonthSet[yearMonth] = true
 
 		// Aggregate by year-month and type
@@ -101,6 +123,15 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		
 		// Get yyyy-mm
 		yearMonth := fmt.Sprintf("%04d-%02d", dividend.Received.Year(), dividend.Received.Month())
+		
+		// Apply date range filter
+		if fromMonth != "" && yearMonth < fromMonth {
+			continue
+		}
+		if toMonth != "" && yearMonth > toMonth {
+			continue
+		}
+		
 		yearMonthSet[yearMonth] = true
 
 		// Aggregate by year-month and ticker
@@ -125,6 +156,15 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			
 			// Get yyyy-mm
 			yearMonth := fmt.Sprintf("%04d-%02d", position.Closed.Year(), position.Closed.Month())
+			
+			// Apply date range filter
+			if fromMonth != "" && yearMonth < fromMonth {
+				continue
+			}
+			if toMonth != "" && yearMonth > toMonth {
+				continue
+			}
+			
 			yearMonthSet[yearMonth] = true
 
 			// Aggregate by year-month and ticker
@@ -320,5 +360,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		GrandTotal:              grandTotal,
 		CurrentDB:               s.getCurrentDatabaseName(),
 		ActivePage:              "monthly",
+		SelectedFromDate:        fromMonth,
+		SelectedToDate:          toMonth,
 	}
 }
