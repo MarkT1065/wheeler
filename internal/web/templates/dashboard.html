@@ -156,7 +156,18 @@
     <!-- Include Shared Symbol Modal -->
     {{template "_symbol_modal.html"}}
 
-    <script>
+    <script type="module">
+        // Import shared utilities
+        import { 
+            CHART_COLORS, 
+            getSymbolColor, 
+            formatCurrency, 
+            formatPercentage,
+            PIE_CHART_OPTIONS 
+        } from '/static/js/chart-utils.js';
+        
+        import { applyWatchlistTableColoring } from '/static/js/table-utils.js';
+        
         // Register the datalabels plugin
         Chart.register(ChartDataLabels);
         
@@ -182,102 +193,22 @@
             {label: 'Treasuries', value: 0, color: '#FFCE56'}
         ];
 
-        // Chart colors - standardized palette matching Monthly view
-        const chartColors = [
-            '#3498db',  // Blue
-            '#e67e22',  // Orange
-            '#27ae60',  // Green
-            '#e74c3c',  // Red
-            '#f39c12',  // Yellow/Gold
-            '#9b59b6',  // Purple
-            '#1abc9c',  // Turquoise
-            '#34495e',  // Dark Blue-Grey
-            '#16a085',  // Dark Turquoise
-            '#c0392b',  // Dark Red
-            '#d35400',  // Dark Orange
-            '#8e44ad'   // Dark Purple
-        ];
-        
         // Get unique symbols from both charts and sort alphabetically
         const allSymbols = new Set();
         longByTickerData.forEach(item => allSymbols.add(item.label));
         putsByTickerData.forEach(item => allSymbols.add(item.label));
         const sortedSymbols = Array.from(allSymbols).sort();
         
-        // Function to get consistent color for a symbol
-        function getSymbolColor(symbol) {
-            const index = sortedSymbols.indexOf(symbol);
-            return chartColors[index % chartColors.length];
-        }
-        
-        // Apply colors to data
+        // Apply colors to data using shared utility
         longByTickerData.forEach(item => {
-            item.color = getSymbolColor(item.label);
+            item.color = getSymbolColor(item.label, sortedSymbols);
         });
         putsByTickerData.forEach(item => {
-            item.color = getSymbolColor(item.label);
+            item.color = getSymbolColor(item.label, sortedSymbols);
         });
 
-        // Chart configuration
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false
-            },
-            animation: {
-                duration: 750
-            },
-            plugins: {
-                legend: {
-                    position: 'right',
-                    align: 'start',
-                    maxWidth: 200,
-                    labels: {
-                        boxWidth: 12,
-                        font: {
-                            size: 14
-                        },
-                        padding: 10,
-                        color: '#e0e0e0',
-                        usePointStyle: true,
-                        sort: function(a, b) {
-                            // Sort legend items alphabetically
-                            return a.text.localeCompare(b.text);
-                        }
-                    }
-                },
-                tooltip: {
-                    enabled: true,
-                    mode: 'nearest',
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': $' + context.parsed.toLocaleString();
-                        }
-                    }
-                },
-                datalabels: {
-                    display: true,
-                    color: '#e0e0e0',
-                    font: {
-                        size: 12,
-                        weight: 'bold'
-                    },
-                    formatter: function(value, context) {
-                        if (value < 500) return '';
-                        return '$' + Math.round(value).toLocaleString();
-                    }
-                }
-            },
-            layout: {
-                padding: {
-                    top: 10,
-                    bottom: 10,
-                    left: 10,
-                    right: 120
-                }
-            }
-        };
+        // Use shared pie chart configuration
+        const chartOptions = PIE_CHART_OPTIONS;
 
         // Sort data by size (descending) for pie chart display
         const longByTickerSorted = [...longByTickerData].sort((a, b) => b.value - a.value);
@@ -332,24 +263,7 @@
             const openOptionsElement = document.getElementById('openOptions');
             const openOptionsPercentElement = document.getElementById('openOptionsPercent');
             
-            // Format currency with consistent green coloring
-            function formatCurrency(value, element) {
-                const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
-                if (value < 0) {
-                    element.innerHTML = '-' + formattedValue;
-                } else {
-                    element.innerHTML = formattedValue;
-                }
-                // Always use green color
-                element.style.color = '#27ae60';
-            }
-            
-            // Format percentage values
-            function formatPercentage(value, element) {
-                const formattedValue = value.toFixed(1) + '%';
-                element.innerHTML = formattedValue;
-                element.style.color = '#27ae60';
-            }
+            // Currency and percentage formatting functions imported from chart-utils.js
             
             // Extract values from API response or fallback properties
             let totalLong = 0, totalPutExposed = 0, totalTreasuries = 0;
@@ -458,64 +372,8 @@
 
         // Symbol Modal functionality is handled by shared module
 
-        // Apply profit/loss coloring and currency formatting to watchlist table
-        function applyWatchlistTableColoring() {
-            const table = document.querySelector('.financial-table');
-            if (!table) return;
-            
-            // Process all rows in tbody and tfoot
-            const rows = table.querySelectorAll('tbody tr, tfoot tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                cells.forEach((cell, columnIndex) => {
-                    const text = cell.textContent.trim();
-                    
-                    // Check if it's a monetary value (with or without decimal places)
-                    if (text.match(/^-?\$[\d,]*\.?\d*$/)) {
-                        // Extract numeric value
-                        const value = parseFloat(text.replace(/[\$,]/g, ''));
-                        
-                        // Skip if it's not a valid number
-                        if (isNaN(value)) return;
-                        
-                        // Format as whole dollars with comma separators
-                        const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
-                        
-                        // Long (column 1), Put Exposed (column 2), and Optionable (column 3) are absolute values - no profit/loss coloring
-                        if (columnIndex === 1 || columnIndex === 2 || columnIndex === 3) {
-                            cell.innerHTML = formattedValue;
-                        }
-                        // Other monetary columns get profit/loss coloring
-                        else {
-                            if (value < 0) {
-                                cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
-                            } else if (value > 0) {
-                                cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
-                            } else {
-                                cell.innerHTML = formattedValue;
-                            }
-                        }
-                    }
-                    
-                    // Check if it's a percentage value
-                    else if (text.match(/^-?[\d,]+\.\d{2}%$/)) {
-                        // Extract numeric value
-                        const value = parseFloat(text.replace(/[%,]/g, ''));
-                        
-                        // Apply coloring: negative percentages are red, positive are green
-                        if (value < 0) {
-                            cell.innerHTML = '<span class="negative">' + text + '</span>';
-                        } else if (value > 0) {
-                            cell.innerHTML = '<span class="positive">' + text + '</span>';
-                        }
-                    }
-                });
-            });
-        }
-        
-        // Apply coloring when page loads
+        // Apply table formatting when page loads (using imported utility)
         document.addEventListener('DOMContentLoaded', applyWatchlistTableColoring);
-        // Also apply coloring immediately in case DOMContentLoaded already fired
         applyWatchlistTableColoring();
 
         console.log('Static dashboard loaded with matching spreadsheet data');

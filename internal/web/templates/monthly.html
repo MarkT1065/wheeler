@@ -208,7 +208,20 @@
     <!-- Include Shared Symbol Modal -->
     {{template "_symbol_modal.html"}}
 
-    <script>
+    <script type="module">
+        // Import shared utilities
+        import { 
+            CHART_COLORS, 
+            getSymbolColor,
+            sortTickerData,
+            formatCurrency,
+            MONTH_NAMES,
+            createDatalabelsConfig,
+            FINANCIAL_TOOLTIP
+        } from '/static/js/chart-utils.js';
+        
+        import { applyMonthlyTableFormatting } from '/static/js/table-utils.js';
+        
         // Register the datalabels plugin
         Chart.register(ChartDataLabels);
         
@@ -224,43 +237,7 @@
             monthlyPremiums: null
         };
         
-        // Chart colors - original theme palette
-        const chartColors = [
-            '#3498db',  // Blue
-            '#e67e22',  // Orange
-            '#27ae60',  // Green
-            '#e74c3c',  // Red
-            '#f39c12',  // Yellow/Gold
-            '#9b59b6',  // Purple
-            '#1abc9c',  // Turquoise
-            '#34495e',  // Dark Blue-Grey
-            '#16a085',  // Dark Turquoise
-            '#c0392b',  // Dark Red
-            '#d35400',  // Dark Orange
-            '#8e44ad'   // Dark Purple
-        ];
-        
-        // Function to get consistent color for a symbol
-        function getSymbolColor(symbol, sortedSymbols) {
-            const index = sortedSymbols.indexOf(symbol);
-            return chartColors[index % chartColors.length];
-        }
-        
-        // Function to sort ticker data by value (largest to smallest)
-        function sortTickerData(labels, data) {
-            const combined = labels.map((label, index) => ({
-                ticker: label,
-                amount: data[index]
-            }));
-            
-            // Sort by amount descending (largest to smallest)
-            combined.sort((a, b) => b.amount - a.amount);
-            
-            return {
-                labels: combined.map(item => item.ticker),
-                data: combined.map(item => item.amount)
-            };
-        }
+        // Chart colors, getSymbolColor, and sortTickerData imported from chart-utils.js
         
         // Get actual year-month data from table columns (which have YYYY-MM format)
         const tableYearMonths = [
@@ -270,11 +247,10 @@
         // Use tableYearMonths as the master month list (YYYY-MM format)
         const serverMonthLabels = tableYearMonths;
         
-        // Format month labels with year (e.g., "2025-01" -> "Jan 2025")
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        // Format month labels with year (e.g., "2025-01" -> "Jan 2025") using imported MONTH_NAMES
         const currentMonthLabels = serverMonthLabels.map(ym => {
             const [year, month] = ym.split('-');
-            return `${monthNames[parseInt(month) - 1]} ${year}`;
+            return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`;
         });
 
         // Puts - By Month Chart (with cumulative line)
@@ -955,7 +931,7 @@
         // Store chart instance globally so we can update it
         let gainsOverTimeChartInstance = null;
 
-        // Update the totals panel with year-to-date values
+        // Update the totals panel with year-to-date values (using imported formatCurrency)
         function updateTotalsPanelValues(putsTotal, callsTotal, capGainsTotal, dividendsTotal) {
             const grandTotalElement = document.getElementById('grandTotal');
             const totalPutsElement = document.getElementById('totalPuts');
@@ -963,21 +939,10 @@
             const totalCapGainsElement = document.getElementById('totalCapGains');
             const totalDividendsElement = document.getElementById('totalDividends');
             
-            // Format currency with consistent green coloring
-            function formatCurrency(value, element) {
-                const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
-                if (value < 0) {
-                    element.innerHTML = '-' + formattedValue;
-                } else {
-                    element.innerHTML = formattedValue;
-                }
-                element.style.color = '#27ae60';
-            }
-            
             // Calculate grand total
             const grandTotalValue = putsTotal + callsTotal + capGainsTotal + dividendsTotal;
             
-            // Update each total
+            // Update each total using imported formatCurrency
             formatCurrency(grandTotalValue, grandTotalElement);
             formatCurrency(putsTotal, totalPutsElement);
             formatCurrency(callsTotal, totalCallsElement);
@@ -1234,38 +1199,9 @@
         
         // Symbol Modal functionality is handled by shared module
         
-        // Apply profit/loss coloring to monthly table
-        function applyMonthlyTableColoring() {
-            const table = document.querySelector('.financial-table');
-            if (!table) return;
-            
-            // Color all cells with monetary values
-            const cells = table.querySelectorAll('td');
-            cells.forEach(cell => {
-                const text = cell.textContent.trim();
-                // Check if it's a monetary value starting with $ and containing a number
-                if (text.match(/^\$-?[\d,]+\.\d{2}$/)) {
-                    // Extract numeric value
-                    const value = parseFloat(text.replace(/[\$,]/g, ''));
-                    
-                    // Apply coloring: only losses are red, everything else is neutral
-                    if (value < 0) {
-                        cell.innerHTML = '<span class="negative">' + text + '</span>';
-                    } else {
-                        // Remove any existing positive class and make neutral
-                        cell.classList.remove('positive');
-                        if (!cell.innerHTML.includes('<span>') && text !== '$0.00') {
-                            cell.innerHTML = '<span>' + text + '</span>';
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Apply coloring when page loads
-        document.addEventListener('DOMContentLoaded', applyMonthlyTableColoring);
-        // Also apply coloring immediately in case DOMContentLoaded already fired
-        applyMonthlyTableColoring();
+        // Apply table formatting when page loads (using imported utility)
+        document.addEventListener('DOMContentLoaded', applyMonthlyTableFormatting);
+        applyMonthlyTableFormatting();
 
         // Monthly Premiums Grouped Bar Chart using Options Index
         function createMonthlyPremiumsGroupedChart() {
@@ -1301,11 +1237,10 @@
             // Sort year-months ascending
             const sortedYearMonths = Array.from(yearMonthSet).sort();
             
-            // Create display labels (e.g., "2025-01" -> "Jan 2025")
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            // Create display labels (e.g., "2025-01" -> "Jan 2025") using imported MONTH_NAMES
             const monthLabels = sortedYearMonths.map(ym => {
                 const [year, month] = ym.split('-');
-                return `${monthNames[parseInt(month) - 1]} ${year}`;
+                return `${MONTH_NAMES[parseInt(month) - 1]} ${year}`;
             });
             
             // Process options by year-month and group by symbol and open/closed status
@@ -1870,51 +1805,6 @@
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
-    <script>
-        // Apply profit/loss coloring and currency formatting to monthly table
-        function applyMonthlyTableFormatting() {
-            const table = document.querySelector('.financial-table');
-            if (!table) return;
-            
-            // Process all rows in tbody and tfoot
-            const rows = table.querySelectorAll('tbody tr, tfoot tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                cells.forEach((cell, columnIndex) => {
-                    const text = cell.textContent.trim();
-                    
-                    // Skip the first column (Ticker/Symbol)
-                    if (columnIndex === 0) return;
-                    
-                    // Check if it's a monetary value (with or without decimal places)
-                    if (text.match(/^\$-?[\d,]*\.?\d*$/)) {
-                        // Extract numeric value
-                        const value = parseFloat(text.replace(/[\$,]/g, ''));
-                        
-                        // Skip if it's not a valid number
-                        if (isNaN(value)) return;
-                        
-                        // Format as whole dollars with comma separators
-                        const formattedValue = '$' + Math.round(Math.abs(value)).toLocaleString();
-                        
-                        // Apply profit/loss coloring to all monetary values
-                        if (value < 0) {
-                            cell.innerHTML = '<span class="negative">-' + formattedValue + '</span>';
-                        } else if (value > 0) {
-                            cell.innerHTML = '<span class="positive">' + formattedValue + '</span>';
-                        } else {
-                            cell.innerHTML = formattedValue;
-                        }
-                    }
-                });
-            });
-        }
-
-        // Apply table formatting when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            applyMonthlyTableFormatting();
-        });
-    </script>
     <script src="/static/js/table-sort.js"></script>
 
 </body>
