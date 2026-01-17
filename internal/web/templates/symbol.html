@@ -41,11 +41,11 @@
                     <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Price</div>
-                            <div id="current-price" style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Price}}</div>
+                            <div id="current-price" style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimalsFor .Price .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Div</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Dividend}}</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimalsFor .Dividend .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Yield</div>
@@ -65,19 +65,19 @@
                         {{end}}
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 110px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Options Gains</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .OptionsGains}}</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimalsFor .OptionsGains .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Cap Gains</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .CapGains}}</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimalsFor .CapGains .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Dividends</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .Dividends}}</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimalsFor .Dividends .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Total Profits</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .TotalProfits}}</div>
+                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimalsFor .TotalProfits .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Cash on Cash</div>
@@ -85,11 +85,11 @@
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Long Value</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrency $longValue}}</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyFor $longValue .Currency}}</div>
                         </div>
                         <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
                             <div style="font-size: 16px; color: #a0a0a0;">Put Exposed</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrency $putExposed}}</div>
+                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyFor $putExposed .Currency}}</div>
                         </div>
                     </div>
                     
@@ -164,12 +164,12 @@
                                     <td>{{.CalculateDTE}}</td>
                                     <td>{{.CalculateDTC}}</td>
                                     <td>{{.Contracts}}</td>
-                                    <td>{{printf "%.2f" .Premium}}</td>
-                                    <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.2f" .Commission}}</td>
+                                    <td>{{formatCurrencyWithDecimalsFor .Premium $.Currency}}</td>
+                                    <td>{{if .ExitPrice}}{{formatCurrencyWithDecimalsFor (.GetExitPriceValue) $.Currency}}{{else}}-{{end}}</td>
+                                    <td>{{formatCurrencyWithDecimalsFor .Commission $.Currency}}</td>
                                     <td>
                                         {{$totalProfit := .CalculateTotalProfit}}
-                                        <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
+                                        <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor $totalProfit $.Currency}}</span>
                                     </td>
                                     <td>
                                         {{if .Closed}}
@@ -276,18 +276,18 @@
                                         <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
                                         <td>{{printf "%.2f" (.CalculateYield $.Dividend)}}%</td>
                                         <td>{{.Shares}}</td>
-                                        <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
-                                        <td>{{if .ExitPrice}}{{formatCurrencyWithDecimals (.GetExitPriceValue)}}{{else}}-{{end}}</td>
+                                        <td>{{formatCurrencyWithDecimalsFor .BuyPrice $.Currency}}</td>
+                                        <td>{{if .ExitPrice}}{{formatCurrencyWithDecimalsFor (.GetExitPriceValue) $.Currency}}{{else}}-{{end}}</td>
                                         <td>
                                             {{$profitLoss := .CalculateProfitLoss $.Price}}
-                                            <span class="{{if lt $profitLoss 0.0}}negative{{else if gt $profitLoss 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals $profitLoss}}</span>
+                                            <span class="{{if lt $profitLoss 0.0}}negative{{else if gt $profitLoss 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor $profitLoss $.Currency}}</span>
                                         </td>
                                         <td>
                                             {{$roi := .CalculateROI $.Price}}
                                             <span class="{{if lt $roi 0.0}}negative{{else if gt $roi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $roi}}%</span>
                                         </td>
-                                        <td>{{formatCurrencyWithDecimals (.CalculateAmount)}}</td>
-                                        <td>{{formatCurrencyWithDecimals (.CalculateTotalInvested)}}</td>
+                                        <td>{{formatCurrencyWithDecimalsFor (.CalculateAmount) $.Currency}}</td>
+                                        <td>{{formatCurrencyWithDecimalsFor (.CalculateTotalInvested) $.Currency}}</td>
                                         <td>
                                             <button class="btn btn-sm btn-secondary edit-long-position-btn" data-id="{{.ID}}">
                                                 <i class="fas fa-edit"></i>
@@ -333,7 +333,7 @@
                                     {{range .DividendsList}}
                                     <tr>
                                         <td>{{.Received.Format "01/02/2006"}}</td>
-                                        <td class="positive">{{formatCurrencyWithDecimals .Amount}}</td>
+                                        <td class="positive">{{formatCurrencyWithDecimalsFor .Amount $.Currency}}</td>
                                         <td>
                                             <button class="btn btn-secondary edit-dividend-btn" 
                                                     data-id="{{.ID}}"
@@ -398,13 +398,13 @@
                                     <td>{{.PutsCount}}</td>
                                     <td>{{.CallsCount}}</td>
                                     <td>
-                                        <span class="{{if lt .PutsTotal 0.0}}negative{{else if gt .PutsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .PutsTotal}}</span>
+                                        <span class="{{if lt .PutsTotal 0.0}}negative{{else if gt .PutsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor .PutsTotal $.Currency}}</span>
                                     </td>
                                     <td>
-                                        <span class="{{if lt .CallsTotal 0.0}}negative{{else if gt .CallsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .CallsTotal}}</span>
+                                        <span class="{{if lt .CallsTotal 0.0}}negative{{else if gt .CallsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor .CallsTotal $.Currency}}</span>
                                     </td>
                                     <td>
-                                        <span class="{{if lt .Total 0.0}}negative{{else if gt .Total 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .Total}}</span>
+                                        <span class="{{if lt .Total 0.0}}negative{{else if gt .Total 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor .Total $.Currency}}</span>
                                     </td>
                                 </tr>
                                 {{end}}
@@ -625,8 +625,10 @@
             
             // Get symbol safely from page title or data attribute
             const currentSymbol = document.title.split(' - ')[0];
+            const currentCurrency = '{{.Currency}}';
             console.log('Current symbol:', currentSymbol);
-            
+            console.log('Current currency:', currentCurrency);
+
             // Symbol Modal functionality (custom implementation for this page)
             // Mark that custom modal implementation is present
             window.symbolModalInitialized = true;
@@ -647,7 +649,8 @@
                 price: '{{printf "%.2f" .Price}}',
                 dividend: '{{printf "%.2f" .Dividend}}',
                 exDividendDate: {{if .ExDividendDate}}'{{.ExDividendDate.Format "2006-01-02"}}'{{else}}null{{end}},
-                pe_ratio: {{if .PERatio}}'{{printf "%.2f" .PERatioValue}}'{{else}}null{{end}}
+                pe_ratio: {{if .PERatio}}'{{printf "%.2f" .PERatioValue}}'{{else}}null{{end}},
+                currency: '{{.Currency}}'
             });
         });
         console.log('EditSymbolBtn setup completed');
@@ -690,9 +693,11 @@
                 document.getElementById('dividendInput').value = symbolData.dividend || '';
                 document.getElementById('exDividendDateInput').value = symbolData.exDividendDate || '';
                 document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
+                document.getElementById('currencyInput').value = symbolData.currency || 'USD';
                 document.getElementById('symbolInput').disabled = true;
             } else {
                 symbolForm.reset();
+                document.getElementById('currencyInput').value = 'USD';
                 document.getElementById('symbolInput').disabled = false;
             }
             
@@ -714,11 +719,12 @@
                 price: parseFloat(document.getElementById('priceInput').value) || 0,
                 dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
                 ex_dividend_date: exDivDateValue || null,
-                pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
+                pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null,
+                currency: document.getElementById('currencyInput').value
             };
-            
+
             const url = `/api/symbols/${symbolData.symbol}`;
-            
+
             fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -726,7 +732,8 @@
                     price: symbolData.price,
                     dividend: symbolData.dividend,
                     ex_dividend_date: symbolData.ex_dividend_date,
-                    pe_ratio: symbolData.pe_ratio
+                    pe_ratio: symbolData.pe_ratio,
+                    currency: symbolData.currency
                 })
             })
             .then(response => {
@@ -744,7 +751,7 @@
                     // Editing current symbol - update display
                     const currentPriceElement = document.getElementById('current-price');
                     if (currentPriceElement) {
-                        currentPriceElement.textContent = `$${data.price.toFixed(2)}`;
+                        currentPriceElement.textContent = formatCurrencyWithSymbol(data.price, currentCurrency);
                     }
                 } else {
                     // Creating new symbol - redirect to its page
@@ -1674,6 +1681,7 @@
         }); // End of DOMContentLoaded
     </script>
     <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/currency.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
 </body>

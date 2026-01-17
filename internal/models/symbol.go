@@ -14,6 +14,7 @@ type Symbol struct {
 	Dividend       float64    `json:"dividend"`
 	ExDividendDate *time.Time `json:"ex_dividend_date"`
 	PERatio        *float64   `json:"pe_ratio"`
+	Currency       string     `json:"currency"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
@@ -93,6 +94,7 @@ type Option struct {
 	ExitPrice    *float64   `json:"exit_price"`
 	Commission   float64    `json:"commission"`
 	CurrentPrice *float64   `json:"current_price"`
+	Currency     string     `json:"currency"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
@@ -312,9 +314,9 @@ func (s *SymbolService) Create(symbol string) (*Symbol, error) {
 		return nil, fmt.Errorf("symbol cannot be empty")
 	}
 
-	query := `INSERT INTO symbols (symbol) VALUES (?) RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at`
+	query := `INSERT INTO symbols (symbol, currency) VALUES (?, ?) RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, currency, created_at, updated_at`
 	var sym Symbol
-	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	err := s.db.QueryRow(query, symbol, DefaultCurrency).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.Currency, &sym.CreatedAt, &sym.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbol: %w", err)
 	}
@@ -323,9 +325,9 @@ func (s *SymbolService) Create(symbol string) (*Symbol, error) {
 }
 
 func (s *SymbolService) GetBySymbol(symbol string) (*Symbol, error) {
-	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at FROM symbols WHERE symbol = ?`
+	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, currency, created_at, updated_at FROM symbols WHERE symbol = ?`
 	var sym Symbol
-	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.Currency, &sym.CreatedAt, &sym.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("symbol not found")
@@ -337,7 +339,7 @@ func (s *SymbolService) GetBySymbol(symbol string) (*Symbol, error) {
 }
 
 func (s *SymbolService) GetAll() ([]*Symbol, error) {
-	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at FROM symbols ORDER BY symbol`
+	query := `SELECT symbol, price, dividend, ex_dividend_date, pe_ratio, currency, created_at, updated_at FROM symbols ORDER BY symbol`
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get symbols: %w", err)
@@ -347,7 +349,7 @@ func (s *SymbolService) GetAll() ([]*Symbol, error) {
 	var symbols []*Symbol
 	for rows.Next() {
 		var symbol Symbol
-		if err := rows.Scan(&symbol.Symbol, &symbol.Price, &symbol.Dividend, &symbol.ExDividendDate, &symbol.PERatio, &symbol.CreatedAt, &symbol.UpdatedAt); err != nil {
+		if err := rows.Scan(&symbol.Symbol, &symbol.Price, &symbol.Dividend, &symbol.ExDividendDate, &symbol.PERatio, &symbol.Currency, &symbol.CreatedAt, &symbol.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan symbol: %w", err)
 		}
 		symbols = append(symbols, &symbol)
@@ -395,15 +397,20 @@ func (s *SymbolService) GetActivePositionSymbols() ([]string, error) {
 	return symbols, nil
 }
 
-func (s *SymbolService) Update(symbol string, price float64, dividend float64, exDividendDate *time.Time, peRatio *float64) (*Symbol, error) {
+func (s *SymbolService) Update(symbol string, price float64, dividend float64, exDividendDate *time.Time, peRatio *float64, currency string) (*Symbol, error) {
 	symbol = strings.TrimSpace(strings.ToUpper(symbol))
 	if symbol == "" {
 		return nil, fmt.Errorf("symbol cannot be empty")
 	}
 
-	query := `UPDATE symbols SET price = ?, dividend = ?, ex_dividend_date = ?, pe_ratio = ?, updated_at = CURRENT_TIMESTAMP WHERE symbol = ? RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at`
+	// Use default currency if empty
+	if currency == "" {
+		currency = DefaultCurrency
+	}
+
+	query := `UPDATE symbols SET price = ?, dividend = ?, ex_dividend_date = ?, pe_ratio = ?, currency = ?, updated_at = CURRENT_TIMESTAMP WHERE symbol = ? RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, currency, created_at, updated_at`
 	var sym Symbol
-	err := s.db.QueryRow(query, price, dividend, exDividendDate, peRatio, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	err := s.db.QueryRow(query, price, dividend, exDividendDate, peRatio, currency, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.Currency, &sym.CreatedAt, &sym.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("symbol not found")

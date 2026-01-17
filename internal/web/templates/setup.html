@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - Wheeler</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/currency.js"></script>
+</head>
+<body class="setup-page">
+    <div class="app-container">
+        {{template "_navigation.html" .}}
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-section">
+                <div class="section-title">Setup</div>
+                <div class="section-subtitle">Configure your portfolio settings</div>
+
+                <!-- Currency Configuration Form -->
+                <div class="settings-form-container">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-coins"></i>
+                            <h3>Base Currency</h3>
+                        </div>
+                        <div class="settings-card-body">
+                            <form id="currencyForm">
+                                <div class="form-group">
+                                    <label for="currencySelect" class="form-label">Portfolio Base Currency</label>
+                                    <select id="currencySelect" class="form-input" name="currency">
+                                        <option value="">Select a currency...</option>
+                                    </select>
+                                    <div class="form-help">
+                                        <i class="fas fa-info-circle"></i>
+                                        Select the base currency for your portfolio. All monetary values will be displayed in this currency.
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="form-actions">
+                                        <button type="submit" class="btn btn-primary" id="saveCurrencyBtn">
+                                            <i class="fas fa-save"></i>
+                                            Save Currency
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <!-- Currency Status -->
+                            <div class="currency-status" id="currencyStatus">
+                                <div class="status-indicator">
+                                    <i class="fas fa-circle" id="statusIcon"></i>
+                                    <span id="statusText">Not configured</span>
+                                </div>
+                                <div class="status-description" id="statusDescription">
+                                    Select your portfolio base currency to get started
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Currency Information -->
+                <div class="info-section">
+                    <div class="info-card">
+                        <div class="info-header">
+                            <i class="fas fa-lightbulb"></i>
+                            <h4>About Base Currency</h4>
+                        </div>
+                        <div class="info-content">
+                            <p>The base currency is the primary currency used to display all monetary values in your portfolio.</p>
+                            <ul>
+                                <li><strong>Default:</strong> USD (US Dollar)</li>
+                                <li><strong>Available Currencies:</strong> 22+ major world currencies</li>
+                                <li><strong>Symbol Support:</strong> Currency symbols are automatically formatted based on your selection</li>
+                            </ul>
+                            <p>You can change the base currency at any time. Individual symbols can have their own currency set independently.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Shared Symbol Modal -->
+    {{template "_symbol_modal.html"}}
+
+    <style>
+        .settings-form-container {
+            max-width: 600px;
+            margin: 20px 0;
+        }
+
+        .settings-card {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .settings-card-header {
+            padding: 20px;
+            border-bottom: 1px solid #404040;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .settings-card-header i {
+            color: #27ae60;
+            font-size: 18px;
+        }
+
+        .settings-card-header h3 {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .settings-card-body {
+            padding: 20px;
+        }
+
+        .form-help {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .form-help a {
+            color: #27ae60;
+            text-decoration: none;
+        }
+
+        .form-help a:hover {
+            text-decoration: underline;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .currency-status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 6px;
+            border-left: 4px solid #666;
+        }
+
+        .currency-status.configured {
+            border-left-color: #27ae60;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        .status-indicator i {
+            font-size: 8px;
+        }
+
+        .status-indicator.configured i {
+            color: #27ae60;
+        }
+
+        .status-indicator.not-configured i {
+            color: #666;
+        }
+
+        .status-description {
+            font-size: 12px;
+            color: #888;
+            margin-left: 16px;
+        }
+
+        .info-section {
+            max-width: 600px;
+        }
+
+        .info-card {
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-header i {
+            color: #f39c12;
+            font-size: 16px;
+        }
+
+        .info-header h4 {
+            margin: 0;
+            color: #e0e0e0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .info-content {
+            color: #b0b0b0;
+            line-height: 1.5;
+        }
+
+        .info-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .info-content li {
+            margin: 5px 0;
+        }
+
+        .info-content strong {
+            color: #e0e0e0;
+        }
+    </style>
+
+    <script>
+        // Get current currency from backend
+        let currentCurrency = '{{.BaseCurrency}}';
+
+        // Populate currency dropdown
+        function populateCurrencyDropdown() {
+            const select = document.getElementById('currencySelect');
+
+            // Sort currencies alphabetically
+            const sortedCurrencies = Object.keys(currencySymbols).sort();
+
+            // Add default option
+            select.innerHTML = '<option value="">Select a currency...</option>';
+
+            // Add currency options
+            sortedCurrencies.forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                const currency = currencySymbols[code];
+                option.textContent = `${code} - ${currency.symbol}`;
+                if (code === currentCurrency) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        // Update currency status display
+        function updateCurrencyStatus(currencyCode) {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusText = document.getElementById('statusText');
+            const statusDescription = document.getElementById('statusDescription');
+            const currencyStatus = document.getElementById('currencyStatus');
+
+            // Remove all status classes
+            currencyStatus.classList.remove('configured', 'not-configured');
+            statusIndicator.classList.remove('configured', 'not-configured');
+
+            if (!currencyCode || currencyCode === '') {
+                currencyStatus.classList.add('not-configured');
+                statusIndicator.classList.add('not-configured');
+                statusText.textContent = 'Not configured';
+                statusDescription.textContent = 'Select your portfolio base currency to get started';
+            } else {
+                currencyStatus.classList.add('configured');
+                statusIndicator.classList.add('configured');
+                const currency = currencySymbols[currencyCode] || currencySymbols['USD'];
+                statusText.textContent = `Configured: ${currencyCode}`;
+                statusDescription.textContent = `Your portfolio values are displayed in ${currencyCode} (${currency.symbol})`;
+            }
+        }
+
+        // Form submission
+        document.getElementById('currencyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const currency = document.getElementById('currencySelect').value.trim();
+            const saveBtn = document.getElementById('saveCurrencyBtn');
+
+            if (!currency) {
+                showNotification('Please select a currency', 'error');
+                return;
+            }
+
+            // Disable button and show loading state
+            saveBtn.disabled = true;
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            // Update currency via API
+            fetch('/api/settings/BASE_CURRENCY', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    value: currency,
+                    description: 'Portfolio base currency for displaying monetary values'
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to save currency');
+                }
+                return response.json();
+            })
+            .then(data => {
+                currentCurrency = currency;
+                updateCurrencyStatus(currency);
+                showNotification(`Base currency set to ${currency}!`, 'success');
+            })
+            .catch(error => {
+                console.error('Error saving currency:', error);
+                showNotification('Error saving currency: ' + error.message, 'error');
+            })
+            .finally(() => {
+                // Restore button state
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            });
+        });
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            populateCurrencyDropdown();
+            updateCurrencyStatus(currentCurrency);
+        });
+
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                <span>${message}</span>
+                <button class="notification-close">&times;</button>
+            `;
+
+            document.body.appendChild(notification);
+
+            // Show notification
+            setTimeout(() => notification.classList.add('show'), 100);
+
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+
+            // Manual close
+            notification.querySelector('.notification-close').addEventListener('click', () => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            });
+        }
+
+        console.log('Setup page loaded');
+    </script>
+    <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/symbol-modal.js"></script>
+</body>
+</html>

@@ -235,6 +235,42 @@ func NewServer() (*Server, error) {
 			}
 			return str
 		},
+		"formatCurrencyFor": func(value interface{}, currencyCode string) string {
+			var floatVal float64
+			switch v := value.(type) {
+			case float64:
+				floatVal = v
+			case int:
+				floatVal = float64(v)
+			case string:
+				f, err := strconv.ParseFloat(v, 64)
+				if err != nil {
+					return models.FormatCurrency(0, currencyCode)
+				}
+				floatVal = f
+			default:
+				return models.FormatCurrency(0, currencyCode)
+			}
+			return models.FormatCurrency(floatVal, currencyCode)
+		},
+		"formatCurrencyWithDecimalsFor": func(value interface{}, currencyCode string) string {
+			var floatVal float64
+			switch v := value.(type) {
+			case float64:
+				floatVal = v
+			case int:
+				floatVal = float64(v)
+			case string:
+				f, err := strconv.ParseFloat(v, 64)
+				if err != nil {
+					return models.FormatCurrencyWithDecimals(0, currencyCode)
+				}
+				floatVal = f
+			default:
+				return models.FormatCurrencyWithDecimals(0, currencyCode)
+			}
+			return models.FormatCurrencyWithDecimals(floatVal, currencyCode)
+		},
 	}
 	
 	templates, err := template.New("").Funcs(funcMap).ParseGlob(templatePath)
@@ -419,6 +455,9 @@ func (s *Server) setupRoutes() {
 
 	http.HandleFunc("/settings", s.settingsHandler)
 	log.Printf("[SERVER] Route registered: /settings -> settingsHandler")
+
+	http.HandleFunc("/setup", s.setupHandler)
+	log.Printf("[SERVER] Route registered: /setup -> setupHandler")
 
 	http.HandleFunc("/api/settings", s.settingsAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/settings -> settingsAPIHandler")

@@ -233,7 +233,7 @@
                                     </div>
                                     <div class="accordion-stat-item">
                                         <span class="accordion-stat-label">Annual Income</span>
-                                        <span class="accordion-stat-value positive">{{formatCurrency .TotalAnnualIncome}}</span>
+                                        <span class="accordion-stat-value positive">{{formatCurrencyWithDecimalsFor .TotalAnnualIncome .Currency}}</span>
                                     </div>
                                     <div class="accordion-stat-item">
                                         <span class="accordion-stat-label">Yield</span>
@@ -268,9 +268,9 @@
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td>{{formatCurrencyWithDecimals .Price}}</td>
-                                            <td>{{formatCurrencyWithDecimals .Dividend}}</td>
-                                            <td>{{formatCurrencyWithDecimals .AnnualDividend}}</td>
+                                            <td>{{formatCurrencyWithDecimalsFor .Price .Currency}}</td>
+                                            <td>{{formatCurrencyWithDecimalsFor .Dividend .Currency}}</td>
+                                            <td>{{formatCurrencyWithDecimalsFor .AnnualDividend .Currency}}</td>
                                             <td>{{printf "%.2f" .YieldPercent}}%</td>
                                             <td>
                                                 {{if .ExDividendDate}}
@@ -296,12 +296,13 @@
                                     </thead>
                                     <tbody>
                                         {{$dividend := .Dividend}}
+                                        {{$currency := .Currency}}
                                         {{range .Positions}}
                                         <tr>
                                             <td>{{.Opened.Format "01/02/2006"}}</td>
                                             <td>{{.Shares}}</td>
-                                            <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
-                                            <td class="positive">{{formatCurrency (mul (mul $dividend 4.0) .Shares)}}</td>
+                                            <td>{{formatCurrencyWithDecimalsFor .BuyPrice $currency}}</td>
+                                            <td class="positive">{{formatCurrencyFor (mul (mul $dividend 4.0) .Shares) $currency}}</td>
                                             <td>{{printf "%.2f" (.CalculateYield $dividend)}}%</td>
                                         </tr>
                                         {{end}}
@@ -311,7 +312,7 @@
                                             <td>Total</td>
                                             <td>{{formatInt .Shares}}</td>
                                             <td>-</td>
-                                            <td class="positive">{{formatCurrency .TotalAnnualIncome}}</td>
+                                            <td class="positive">{{formatCurrencyWithDecimalsFor .TotalAnnualIncome .Currency}}</td>
                                             <td>{{printf "%.2f" .YieldPercent}}%</td>
                                         </tr>
                                     </tfoot>
@@ -326,10 +327,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        {{$currency := .Currency}}
                                         {{range .DividendPayments}}
                                         <tr>
                                             <td>{{.Received.Format "01/02/2006"}}</td>
-                                            <td class="positive">{{formatCurrencyWithDecimals .Amount}}</td>
+                                            <td class="positive">{{formatCurrencyWithDecimalsFor .Amount $currency}}</td>
                                         </tr>
                                         {{else}}
                                         <tr>
@@ -357,8 +359,15 @@
 
     <!-- Navigation -->
     <script src="/static/js/navigation.js"></script>
-    
+    <script src="/static/js/currency.js"></script>
+
     <script>
+        // Build symbol to currency mapping
+        const symbolCurrencyMap = {};
+        {{range .DividendSymbols}}
+        symbolCurrencyMap['{{.Symbol}}'] = '{{.Currency}}';
+        {{end}}
+
         function toggleAccordion(header) {
             const content = header.nextElementSibling;
             const chevron = header.querySelector('.accordion-chevron');
@@ -510,7 +519,7 @@
                             let total = 0;
                             let stackTop = null;
                             let stackX = null;
-                            
+
                             chart.data.datasets.forEach((dataset, datasetIndex) => {
                                 const meta = chart.getDatasetMeta(datasetIndex);
                                 if (meta.data[monthIndex] && dataset.data[monthIndex] > 0) {
@@ -520,9 +529,10 @@
                                     stackX = bar.x;
                                 }
                             });
-                            
+
                             if (total > 0 && stackX !== null && stackTop !== null) {
-                                ctx.fillText('$' + Math.round(total).toLocaleString(), stackX, stackTop - 5);
+                                // Show total without currency symbol (mix of multiple currencies)
+                                ctx.fillText(Math.round(total).toLocaleString(), stackX, stackTop - 5);
                             }
                         });
                         
@@ -544,7 +554,8 @@
                             ticks: {
                                 color: '#a0a0a0',
                                 callback: function(value) {
-                                    return '$' + value.toFixed(0);
+                                    // Show values without currency symbol (mix of multiple currencies)
+                                    return value.toFixed(0);
                                 }
                             },
                             grid: { color: '#2a2a2a' }
@@ -636,7 +647,7 @@
                                             ">
                                                 <tr>
                                                     <td style="padding: 8px 12px; font-weight: bold; width: 40%;">TOTAL MONTH:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: #27ae60;">$${Math.round(total).toLocaleString()}</td>
+                                                    <td style="padding: 8px 12px; font-weight: bold; color: #27ae60;">${Math.round(total).toLocaleString()}</td>
                                                 </tr>
                                                 <tr>
                                                     <td style="padding: 8px 12px; font-weight: bold;">SYMBOLS:</td>
@@ -670,11 +681,13 @@
                                         const amount = symbolSummary[symbol];
                                         const percentage = total > 0 ? ((amount / total) * 100) : 0;
                                         const bgColor = index % 2 === 0 ? 'rgba(255, 255, 255, 0.03)' : 'transparent';
-                                        
+                                        const currency = symbolCurrencyMap[symbol] || 'USD';
+                                        const formattedAmount = formatCurrencyWithSymbol(amount, currency);
+
                                         html += `
                                             <tr style="background: ${bgColor};">
                                                 <td style="padding: 4px 8px; font-weight: bold; color: #ffffff;">${symbol}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: #27ae60;">$${Math.round(amount).toLocaleString()}</td>
+                                                <td style="padding: 4px 8px; text-align: right; color: #27ae60;">${formattedAmount}</td>
                                                 <td style="padding: 4px 8px; text-align: right; color: #f39c12;">${percentage.toFixed(1)}%</td>
                                             </tr>`;
                                     });
@@ -734,16 +747,21 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return context.label + ': $' + context.parsed.toLocaleString();
+                                    const symbol = context.label;
+                                    const currency = symbolCurrencyMap[symbol] || 'USD';
+                                    const value = context.parsed;
+                                    return symbol + ': ' + formatCurrencyWithSymbol(value, currency);
                                 }
                             }
                         },
                         datalabels: {
                             display: true,
                             color: '#e0e0e0',
-                            formatter: function(value) {
+                            formatter: function(value, context) {
                                 if (value < 500) return '';
-                                return '$' + Math.round(value).toLocaleString();
+                                const symbol = context.chart.data.labels[context.dataIndex];
+                                const currency = symbolCurrencyMap[symbol] || 'USD';
+                                return formatCurrencyWithSymbol(value, currency);
                             },
                             font: {
                                 size: 12,

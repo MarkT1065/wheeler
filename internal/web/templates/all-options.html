@@ -542,7 +542,7 @@
         let optionsIndex = null;
         let currentOptions = [];
         let allSymbols = [];
-        
+
         // Load options index from template data
         try {
             optionsIndex = {{.OptionsIndexJSON}};
@@ -874,16 +874,19 @@
         
         function createOptionRow(option) {
             const row = document.createElement('tr');
-            
+
             // Calculate profits
             const maxProfit = calculateMaxProfit(option);
             const totalProfit = calculateTotalProfit(option);
-            
+
             // Format dates (MM/DD/YYYY with leading zeros)
             const expirationDate = formatDate(new Date(option.expiration));
             const openedDate = formatDate(new Date(option.opened));
             const closedDate = option.closed ? formatDate(new Date(option.closed)) : null;
-            
+
+            // Get currency from option (default to USD if not present)
+            const currency = option.currency || 'USD';
+
             row.innerHTML = `
                 <td class="ticker-col"><a href="/symbol/${option.symbol}?edit_option=${option.id}" class="symbol-link">${option.symbol}</a></td>
                 <td>
@@ -891,16 +894,16 @@
                         ${option.type === 'Put' ? 'P' : 'C'}
                     </span>
                 </td>
-                <td class="neutral-currency">$${Math.round(option.strike)}</td>
+                <td class="neutral-currency">${formatCurrencyWithSymbol(option.strike, currency)}</td>
                 <td>${expirationDate}</td>
                 <td>${openedDate}</td>
                 <td>${closedDate ? closedDate : '<span class="text-muted">Open</span>'}</td>
                 <td>${option.contracts}</td>
-                <td class="neutral-currency">$${option.premium.toFixed(2)}</td>
-                <td class="neutral-currency">$${Math.round(maxProfit)}</td>
-                <td class="premium-column ${totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency'}">$${Math.round(totalProfit)}</td>
+                <td class="neutral-currency">${formatCurrencyWithSymbol(option.premium, currency)}</td>
+                <td class="neutral-currency">${formatCurrencyWithSymbol(maxProfit, currency)}</td>
+                <td class="premium-column ${totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency'}">${formatCurrencyWithSymbol(totalProfit, currency)}</td>
             `;
-            
+
             return row;
         }
         
@@ -940,18 +943,16 @@
         function updateSummaryFooter(options) {
             const summaryFooter = document.getElementById('optionsSummaryFooter');
             const headerSummary = document.getElementById('headerSummary');
-            
+
             if (options.length === 0) {
-                if (summaryFooter) {
-                    summaryFooter.style.display = 'none';
-                }
+                summaryFooter.style.display = 'none';
                 if (headerSummary) {
                     headerSummary.style.display = 'none';
                 }
                 return;
             }
-            
-            // Calculate summaries
+
+            // Count puts and calls
             let putCount = 0;
             let callCount = 0;
             let totalStrike = 0;
@@ -959,24 +960,38 @@
             let totalContracts = 0;
             let totalMaxProfit = 0;
             let totalProfit = 0;
-            
+
+            // Group by currency
+            const profitsByCurrency = {};
+            const premiumsByCurrency = {};
+
             options.forEach(option => {
+                const currency = option.currency || 'USD';
+
                 if (option.type === 'Put') {
                     putCount++;
                 } else if (option.type === 'Call') {
                     callCount++;
                 }
-                
+
                 totalStrike += option.strike;
                 totalPremium += option.premium;
                 totalContracts += option.contracts;
                 totalMaxProfit += calculateMaxProfit(option);
                 totalProfit += calculateTotalProfit(option);
+
+                // Group totals by currency
+                if (!profitsByCurrency[currency]) {
+                    profitsByCurrency[currency] = 0;
+                    premiumsByCurrency[currency] = 0;
+                }
+                profitsByCurrency[currency] += calculateTotalProfit(option);
+                premiumsByCurrency[currency] += option.premium;
             });
-            
+
             const averageStrike = options.length > 0 ? totalStrike / options.length : 0;
             const averagePremium = options.length > 0 ? totalPremium / options.length : 0;
-            
+
             // Update summary cells
             const summaryType = document.getElementById('summaryType');
             const summaryStrike = document.getElementById('summaryStrike');
@@ -984,56 +999,60 @@
             const summaryPremium = document.getElementById('summaryPremium');
             const summaryMaxProfit = document.getElementById('summaryMaxProfit');
             const summaryTotalProfit = document.getElementById('summaryTotalProfit');
-            
+
             if (summaryType) {
                 summaryType.textContent = `${putCount}P / ${callCount}C`;
             }
-            
+
             if (summaryStrike) {
-                summaryStrike.textContent = `$${Math.round(averageStrike)} avg`;
+                // Show average strike without currency (mix of currencies)
+                summaryStrike.textContent = `${Math.round(averageStrike)} avg`;
             }
-            
+
             if (summaryContracts) {
                 summaryContracts.textContent = totalContracts;
             }
-            
+
             if (summaryPremium) {
-                summaryPremium.textContent = `$${averagePremium.toFixed(2)} avg`;
+                // Build premium summary by currency
+                const premiumParts = Object.entries(premiumsByCurrency).map(([curr, prem]) => {
+                    const avgPrem = prem / options.filter(o => (o.currency || 'USD') === curr).length;
+                    return `${formatCurrencyWithSymbol(avgPrem, curr)}`;
+                });
+                summaryPremium.textContent = premiumParts.join(' | ') || `$${averagePremium.toFixed(2)} avg`;
             }
-            
+
             if (summaryMaxProfit) {
+                // Build max profit by currency
+                const maxProfitParts = Object.entries(profitsByCurrency).map(([curr, profit]) => {
+                    return formatCurrencyWithSymbol(profit, curr);
+                });
                 summaryMaxProfit.className = 'neutral-currency';
-                summaryMaxProfit.textContent = `$${Math.round(totalMaxProfit)}`;
+                summaryMaxProfit.textContent = maxProfitParts.join(' | ') || `$${Math.round(totalMaxProfit)}`;
             }
-            
+
             if (summaryTotalProfit) {
+                // Build total profit by currency
+                const profitParts = Object.entries(profitsByCurrency).map(([curr, profit]) => {
+                    return formatCurrencyWithSymbol(profit, curr);
+                });
                 const className = totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency';
                 summaryTotalProfit.className = `premium-column ${className}`;
-                summaryTotalProfit.textContent = `$${Math.round(totalProfit)}`;
+                summaryTotalProfit.textContent = profitParts.join(' | ') || `$${Math.round(totalProfit)}`;
             }
-            
-            // Show footer
-            if (summaryFooter) {
-                summaryFooter.style.display = '';
-            }
-            
+
+            summaryFooter.style.display = 'table-footer-group';
+
             // Update header summary
             if (headerSummary) {
-                const profitClass = totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : '';
-                const profitText = `$${Math.round(totalProfit).toLocaleString()}`;
-                
                 headerSummary.innerHTML = `
-                    <span class="summary-item"><b>Total Profit:</b> <span class="summary-profit ${profitClass}">${profitText}</span></span>
-                    <span class="summary-item"><b>Contracts:</b> ${totalContracts}</span>
-                    <span class="summary-item"><b>Puts:</b> ${putCount}</span>
-                    <span class="summary-item"><b>Calls:</b> ${callCount}</span>
-                    <span class="summary-item"><b>Avg Strike:</b> $${Math.round(averageStrike)}</span>
-                    <span class="summary-item"><b>Avg Premium:</b> $${averagePremium.toFixed(2)}</span>
+                    <span class="summary-item"><b>Avg Strike:</b> ${Math.round(averageStrike)}</span>
+                    <span class="summary-item"><b>Avg Premium:</b> ${formatCurrencyWithSymbol(averagePremium, 'USD')}</span>
                 `;
                 headerSummary.style.display = '';
             }
         }
-        
+
         function clearFilters() {
             // Clear all filter inputs
             document.getElementById('symbolFilter').value = '';
@@ -1045,11 +1064,11 @@
             document.getElementById('openedEndFilter').value = '';
             document.getElementById('closedStartFilter').value = '';
             document.getElementById('closedEndFilter').value = '';
-            
+
             // Reapply filters (will show all options)
             applyFilters();
         }
-        
+
         // Apply profit/loss coloring and formatting to options tables
         function applyOptionsTableColoring() {
             const tables = document.querySelectorAll('.financial-table');
@@ -1408,6 +1427,7 @@
         console.log('All Options page loaded with index-based filtering');
     </script>
     <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/currency.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
 </body>

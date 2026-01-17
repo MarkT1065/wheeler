@@ -259,10 +259,10 @@
                                                         {{if eq .Type "Put"}}P{{else}}C{{end}}
                                                     </span>
                                                 </td>
-                                                <td class="neutral-currency">${{printf "%.2f" .Strike}}</td>
+                                                <td class="neutral-currency">{{formatCurrencyWithDecimalsFor .Strike .Currency}}</td>
                                                 <td>{{.Contracts}}</td>
-                                                <td class="neutral-currency">{{formatCurrency (mul (mul .Strike .Contracts) 100)}}</td>
-                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" .CalculateTotalProfit}}</td>
+                                                <td class="neutral-currency">{{formatCurrencyFor (mul (mul .Strike .Contracts) 100) .Currency}}</td>
+                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimalsFor .CalculateTotalProfit .Currency}}</td>
                                                 <td>{{.EntryDate.Format "01/02/2006"}}</td>
                                             </tr>
                                             {{end}}
@@ -288,6 +288,12 @@
     {{template "_symbol_modal.html"}}
 
     <script>
+        // Build symbol to currency mapping
+        const symbolCurrencyMap = {};
+        {{range .OpenPositions}}
+        symbolCurrencyMap['{{.Symbol}}'] = '{{.Currency}}';
+        {{end}}
+
         // Apply profit/loss coloring and formatting to options tables
         function applyOptionsTableColoring() {
             const tables = document.querySelectorAll('.financial-table');
@@ -370,32 +376,37 @@
             });
         }
         
-        // Create Put Exposure pie chart by expiration date
+        // Create Put Exposure chart by expiration date (grouped by currency)
         function createPutExposurePieChart() {
-            console.log('Creating Put Exposure pie chart...');
+            console.log('Creating Put Exposure chart...');
             const ctx = document.getElementById('putExposurePieChart');
             if (!ctx) {
                 console.error('Cannot find putExposurePieChart canvas element');
                 return;
             }
-            
+
             const context = ctx.getContext('2d');
-            
-            // Collect put exposure data by expiration date
-            const putExposureByExpiration = {};
+
+            // Collect put exposure data by expiration date and currency
+            // Structure: { '01/15/2024': { 'USD': 5000, 'EUR': 4000 } }
+            const putExposureData = {};
             const accordionGroups = document.querySelectorAll('.accordion-group');
-            
+
             accordionGroups.forEach(group => {
                 const header = group.querySelector('.accordion-header');
                 const expirationText = header.querySelector('.expiration-section').textContent;
                 const table = group.querySelector('.financial-table tbody');
-                
+
                 // Extract expiration date
                 const expirationMatch = expirationText.match(/Expiration: (\d{2}\/\d{2}\/\d{4})/);
                 if (expirationMatch && table) {
                     const expirationDateStr = expirationMatch[1];
-                    let putExposure = 0;
-                    
+
+                    // Initialize expiration date if not exists
+                    if (!putExposureData[expirationDateStr]) {
+                        putExposureData[expirationDateStr] = {};
+                    }
+
                     // Process each position row in this expiration group
                     const rows = table.querySelectorAll('tr');
                     rows.forEach(row => {
@@ -403,67 +414,92 @@
                         if (cells.length >= 4) {
                             const typeText = cells[1].textContent.trim();
                             const type = typeText === 'P' ? 'Put' : typeText === 'C' ? 'Call' : typeText;
-                            
+
                             if (type === 'Put') {
-                                const strike = parseFloat(cells[2].textContent.replace('$', ''));
+                                const symbol = cells[0].textContent.trim();
+                                const strike = parseFloat(cells[2].textContent.replace(/[^\d.]/g, ''));
                                 const quantity = parseInt(cells[3].textContent.trim());
-                                
+
                                 if (!isNaN(strike) && !isNaN(quantity)) {
-                                    putExposure += strike * quantity * 100;
+                                    const exposure = strike * quantity * 100;
+                                    const currency = symbolCurrencyMap[symbol] || 'USD';
+
+                                    // Accumulate exposure by currency for this expiration
+                                    if (!putExposureData[expirationDateStr][currency]) {
+                                        putExposureData[expirationDateStr][currency] = 0;
+                                    }
+                                    putExposureData[expirationDateStr][currency] += exposure;
                                 }
                             }
                         }
                     });
-                    
-                    if (putExposure > 0) {
-                        putExposureByExpiration[expirationDateStr] = putExposure;
-                    }
                 }
             });
-            
-            // Prepare data for pie chart
-            const labels = Object.keys(putExposureByExpiration).sort((a, b) => new Date(a) - new Date(b));
-            const data = labels.map(label => putExposureByExpiration[label]);
-            
-            // Generate colors for each slice
-            const colors = [
-                '#3498db', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6',
-                '#1abc9c', '#e67e22', '#34495e', '#95a5a6', '#2ecc71'
-            ];
-            
+
+            // Get sorted expiration dates
+            const sortedDates = Object.keys(putExposureData).sort((a, b) => new Date(a) - new Date(b));
+
+            // Get all unique currencies across all dates
+            const allCurrencies = new Set();
+            sortedDates.forEach(date => {
+                Object.keys(putExposureData[date]).forEach(curr => allCurrencies.add(curr));
+            });
+            const currenciesArray = Array.from(allCurrencies);
+
+            // Create datasets (one per currency)
+            const datasets = currenciesArray.map((currency, index) => {
+                const color = currencyColors[currency] || currencyColors['default'];
+                return {
+                    label: currency,
+                    data: sortedDates.map(date => putExposureData[date][currency] || 0),
+                    backgroundColor: color,
+                    borderColor: color,
+                    borderWidth: 1
+                };
+            });
+
             window.putExposureChart = new Chart(context, {
                 plugins: [ChartDataLabels],
                 type: 'bar',
                 data: {
-                    labels: labels.map(label => {
+                    labels: sortedDates.map(label => {
                         // Format date to show month/day only
                         const date = new Date(label);
                         return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`;
                     }),
-                    datasets: [{
-                        data: data,
-                        backgroundColor: '#3498db',
-                        borderColor: '#3498db',
-                        borderWidth: 1
-                    }]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 11
+                                },
+                                padding: 8
+                            }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
                                     const value = context.parsed.y;
-                                    return `Put Exposure: $${value.toLocaleString()}`;
+                                    if (value === 0) return null;
+
+                                    const currency = context.dataset.label;
+                                    return `${currency}: ${formatCurrencyInt(value, currency)}`;
                                 }
                             }
                         },
                         datalabels: {
-                            display: true,
+                            display: function(context) {
+                                // Only show labels for values > 0
+                                return context.dataset.data[context.dataIndex] > 0;
+                            },
                             anchor: 'end',
                             align: 'top',
                             color: '#ffffff',
@@ -471,13 +507,23 @@
                                 size: 9,
                                 weight: 'bold'
                             },
-                            formatter: function(value) {
-                                return '$' + (value / 1000).toFixed(0) + 'K';
+                            formatter: function(value, context) {
+                                const currency = context.dataset.label;
+                                const currencyInfo = currencySymbols[currency];
+                                if (currencyInfo) {
+                                    const formatted = (value / 1000).toFixed(0);
+                                    if (currencyInfo.position === 'after') {
+                                        return formatted + 'K' + currencyInfo.symbol;
+                                    }
+                                    return currencyInfo.symbol + formatted + 'K';
+                                }
+                                return (value / 1000).toFixed(0) + 'K';
                             }
                         }
                     },
                     scales: {
                         x: {
+                            stacked: false,
                             ticks: {
                                 color: '#a0a0a0',
                                 font: {
@@ -489,35 +535,42 @@
                             }
                         },
                         y: {
+                            stacked: false,
                             beginAtZero: true,
                             ticks: {
                                 color: '#a0a0a0',
                                 font: {
                                     size: 10
-                                },
-                                callback: function(value) {
-                                    return '$' + (value / 1000).toFixed(0) + 'K';
                                 }
                             },
                             grid: {
                                 color: '#3a3a3a'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Put Exposure',
+                                color: '#e0e0e0',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
                             }
                         }
                     },
                     onClick: function(event, elements) {
                         if (elements.length > 0) {
                             const dataIndex = elements[0].index;
-                            const clickedDateStr = Object.keys(putExposureByExpiration)[dataIndex];
-                            
+                            const clickedDateStr = sortedDates[dataIndex];
+
                             // Format the date to match the accordion target format
                             const targetId = `exp-${clickedDateStr.replace(/\//g, '-')}`;
-                            
+
                             console.log('Clicked bar for date:', clickedDateStr, 'Target ID:', targetId);
-                            
+
                             // Find and open the corresponding accordion
                             const targetAccordion = document.getElementById(targetId);
                             const targetHeader = document.querySelector(`[data-target="${targetId}"]`);
-                            
+
                             if (targetAccordion && targetHeader) {
                                 // Close all other accordions first
                                 const allHeaders = document.querySelectorAll('.accordion-header');
@@ -529,17 +582,17 @@
                                         content.classList.remove('expanded');
                                     }
                                 });
-                                
+
                                 // Open the target accordion
                                 targetHeader.classList.add('active');
                                 targetAccordion.classList.add('expanded');
-                                
+
                                 // Scroll to the accordion
                                 targetHeader.scrollIntoView({
                                     behavior: 'smooth',
                                     block: 'center'
                                 });
-                                
+
                                 console.log('Opened accordion for expiration:', clickedDateStr);
                             } else {
                                 console.log('Could not find accordion elements for:', targetId);
@@ -711,16 +764,19 @@
                                 title: function(context) {
                                     // Individual option point
                                     const point = scatterData[context[0].dataIndex];
-                                    return point.symbol + ' ' + point.type + ' $' + point.strike;
+                                    const currency = symbolCurrencyMap[point.symbol] || 'USD';
+                                    const formattedStrike = formatCurrencyWithSymbol(point.strike, currency, 0);
+                                    return point.symbol + ' ' + point.type + ' ' + formattedStrike;
                                 },
                                 label: function(context) {
                                     // Individual option point
                                     const point = scatterData[context.dataIndex];
+                                    const currency = symbolCurrencyMap[point.symbol] || 'USD';
                                     return [
                                         'Contracts: ' + point.quantity,
-                                        'Nominal Value: $' + point.nominalValue.toLocaleString(),
-                                        'Risk Value: $' + point.riskScaledValue.toLocaleString() + ' (bubble size)',
-                                        'Total Profit: $' + point.y.toLocaleString()
+                                        'Nominal Value: ' + formatCurrencyInt(point.nominalValue, currency),
+                                        'Risk Value: ' + formatCurrencyInt(point.riskScaledValue, currency) + ' (bubble size)',
+                                        'Total Profit: ' + formatCurrencyInt(point.y, currency)
                                     ];
                                 }
                             }
@@ -902,6 +958,7 @@
         console.log('Options page loaded');
     </script>
     <script src="/static/js/navigation.js"></script>
+    <script src="/static/js/currency.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
 </body>

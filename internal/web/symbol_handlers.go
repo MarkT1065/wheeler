@@ -43,19 +43,21 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 	var dividend float64
 	var exDividendDate *time.Time
 	var peRatio *float64
+	var currency string
 
 	var yield float64
 	var peRatioValue float64
 	var hasPERatio bool
 
 	if err == nil && symbolData != nil {
-		log.Printf("[SYMBOL] Found symbol data for %s: Price=%.2f, Dividend=%.2f, PERatio=%v", symbol, symbolData.Price, symbolData.Dividend, symbolData.PERatio)
+		log.Printf("[SYMBOL] Found symbol data for %s: Price=%.2f, Dividend=%.2f, PERatio=%v, Currency=%s", symbol, symbolData.Price, symbolData.Dividend, symbolData.PERatio, symbolData.Currency)
 		currentPrice = strconv.FormatFloat(symbolData.Price, 'f', 2, 64)
 		lastUpdate = symbolData.UpdatedAt.Format("01/02/2006")
 		price = symbolData.Price
 		dividend = symbolData.Dividend
 		exDividendDate = symbolData.ExDividendDate
 		peRatio = symbolData.PERatio
+		currency = symbolData.Currency
 
 		// Handle P/E ratio safely
 		if symbolData.PERatio != nil {
@@ -207,6 +209,7 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 		PERatioValue:      peRatioValue,
 		HasPERatio:        hasPERatio,
 		Yield:             yield,
+		Currency:          currency,
 		OptionsGains:      strconv.FormatFloat(optionsGains, 'f', 2, 64),
 		CapGains:          strconv.FormatFloat(capGains, 'f', 2, 64),
 		Dividends:         strconv.FormatFloat(dividendsTotal, 'f', 2, 64),
@@ -347,6 +350,7 @@ func (s *Server) updateSymbolHandler(w http.ResponseWriter, r *http.Request) {
 	dividend := existingSymbol.Dividend
 	exDividendDate := existingSymbol.ExDividendDate
 	var peRatio *float64 = existingSymbol.PERatio
+	currency := existingSymbol.Currency
 
 	if updateReq.Price != nil {
 		price = *updateReq.Price
@@ -369,9 +373,12 @@ func (s *Server) updateSymbolHandler(w http.ResponseWriter, r *http.Request) {
 	if updateReq.PERatio != nil {
 		peRatio = updateReq.PERatio
 	}
+	if updateReq.Currency != nil {
+		currency = *updateReq.Currency
+	}
 
 	// Update the symbol
-	updatedSymbol, err := s.symbolService.Update(symbol, price, dividend, exDividendDate, peRatio)
+	updatedSymbol, err := s.symbolService.Update(symbol, price, dividend, exDividendDate, peRatio, currency)
 	if err != nil {
 		http.Error(w, "Failed to update symbol", http.StatusInternalServerError)
 		return

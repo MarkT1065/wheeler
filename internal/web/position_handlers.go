@@ -169,6 +169,7 @@ func (s *Server) dividendsHandler(w http.ResponseWriter, r *http.Request) {
 					DividendCount:     len(dividends),
 					Shares:            position.Shares,
 					TotalAnnualIncome: positionAnnualIncome,
+					Currency:          symbol.Currency,
 					Positions:         []*models.LongPosition{position},
 					DividendPayments:  dividends,
 				}

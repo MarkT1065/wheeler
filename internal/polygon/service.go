@@ -71,6 +71,7 @@ func (s *Service) UpdateSymbolPrice(ctx context.Context, symbol string) error {
 		currentSymbol.Dividend,
 		currentSymbol.ExDividendDate,
 		currentSymbol.PERatio,
+		currentSymbol.Currency,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update symbol price: %w", err)
