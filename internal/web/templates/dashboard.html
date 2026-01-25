@@ -214,6 +214,21 @@
         const longByTickerSorted = [...longByTickerData].sort((a, b) => b.value - a.value);
         const putsByTickerSorted = [...putsByTickerData].sort((a, b) => b.value - a.value);
 
+        // Calculate totals for header display
+        const longTotal = longByTickerSorted.reduce((sum, item) => sum + item.value, 0);
+        const putsTotal = putsByTickerSorted.reduce((sum, item) => sum + item.value, 0);
+
+        // Update chart headers with totals
+        const longHeader = document.querySelector('.chart-panel:has(#longByTickerChart) .section-title');
+        const putsHeader = document.querySelector('.chart-panel:has(#putsByTickerChart) .section-title');
+        
+        if (longHeader) {
+            longHeader.textContent = 'Long Value - $' + Math.round(longTotal).toLocaleString();
+        }
+        if (putsHeader) {
+            putsHeader.textContent = 'Put Exposure - $' + Math.round(putsTotal).toLocaleString();
+        }
+
         // Long by Ticker Chart
         new Chart(document.getElementById('longByTickerChart'), {
             type: 'pie',

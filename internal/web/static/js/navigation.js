@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Check localStorage for options section state and restore it
     restoreOptionsState();
+    
+    // Scroll active symbol into view
+    scrollActiveSymbolIntoView();
 });
 
 function initializeSymbolsToggle() {
@@ -194,6 +197,31 @@ function restoreOptionsState() {
     }
 }
 
+function scrollActiveSymbolIntoView() {
+    const activeSymbol = document.querySelector('.symbol-nav-item.active');
+    
+    if (!activeSymbol) {
+        return;
+    }
+    
+    const symbolsList = document.getElementById('symbolsList');
+    const sidebar = document.querySelector('.sidebar nav');
+    
+    if (!symbolsList || !sidebar) {
+        return;
+    }
+    
+    // Use a small delay to ensure layout is complete
+    setTimeout(function() {
+        // Scroll the active symbol into view within the sidebar
+        activeSymbol.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+        });
+    }, 100);
+}
+
 // Export functions for testing or external use
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -205,6 +233,7 @@ if (typeof module !== 'undefined' && module.exports) {
         restoreAdminState,
         initializeOptionsToggle,
         toggleOptionsSection,
-        restoreOptionsState
+        restoreOptionsState,
+        scrollActiveSymbolIntoView
     };
 }
