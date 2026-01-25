@@ -196,6 +196,7 @@ type TreasuriesData struct {
 	Symbols    []string           `json:"symbols"`
 	AllSymbols []string           `json:"allSymbols"` // For navigation compatibility
 	Treasuries []*models.Treasury `json:"treasuries"`
+	Options    []*models.Option   `json:"options"`    // For put exposure chart
 	Summary    TreasuriesSummary  `json:"summary"`
 	CurrentDB  string             `json:"currentDB"`
 	ActivePage string             `json:"activePage"`
@@ -208,6 +209,7 @@ type TreasuriesSummary struct {
 	TotalInterest   float64 `json:"totalInterest"`
 	AverageReturn   float64 `json:"averageReturn"`
 	ActivePositions int     `json:"activePositions"`
+	AverageDuration int     `json:"averageDuration"`
 }
 
 type OptionsData struct {

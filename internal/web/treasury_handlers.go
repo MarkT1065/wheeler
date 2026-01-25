@@ -36,6 +36,17 @@ func (s *Server) treasuriesHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[TREASURIES PAGE] Retrieved %d treasuries from service", len(treasuries))
 	}
 
+	// Get all options for put exposure chart
+	log.Printf("[TREASURIES PAGE] Fetching all options from service")
+	options, err := s.optionService.GetAll()
+	if err != nil {
+		log.Printf("[TREASURIES PAGE] ERROR: Failed to get options: %v", err)
+		// Log error but continue with empty options list
+		options = []*models.Option{}
+	} else {
+		log.Printf("[TREASURIES PAGE] Retrieved %d options from service", len(options))
+	}
+
 	// Sort treasuries by days remaining: active positions by days ascending, then sold positions
 	sort.Slice(treasuries, func(i, j int) bool {
 		iHasExit := treasuries[i].ExitPrice != nil
@@ -65,6 +76,7 @@ func (s *Server) treasuriesHandler(w http.ResponseWriter, r *http.Request) {
 		Symbols:    symbols,
 		AllSymbols: symbols, // For navigation compatibility
 		Treasuries: treasuries,
+		Options:    options,
 		Summary:    summary,
 		CurrentDB:  s.getCurrentDatabaseName(),
 		ActivePage: "treasuries",
@@ -80,6 +92,7 @@ func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary
 	var totalAmount, totalBuyPrice, totalProfitLoss, totalInterest float64
 	var currentlyHeld float64 // Only sum open positions for "Currently Held"
 	activePositions := 0
+	var totalDuration int // Sum of durations for averaging
 
 	for _, treasury := range treasuries {
 		// Always include in totals for full portfolio view
@@ -93,12 +106,21 @@ func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary
 			activePositions++
 			currentlyHeld += treasury.BuyPrice // Only include open positions in "Currently Held"
 		}
+		
+		// Calculate duration from purchase to maturity
+		duration := int(treasury.Maturity.Sub(treasury.Purchased).Hours() / 24)
+		totalDuration += duration
 	}
 
 	averageReturn := 0.0
 	if totalBuyPrice > 0 {
 		// Average Return = (Total Interest Earned / Total Buy Prices) * 100
 		averageReturn = (totalInterest / totalBuyPrice) * 100
+	}
+	
+	averageDuration := 0
+	if len(treasuries) > 0 {
+		averageDuration = totalDuration / len(treasuries)
 	}
 
 	return TreasuriesSummary{
@@ -108,6 +130,7 @@ func calculateTreasuriesSummary(treasuries []*models.Treasury) TreasuriesSummary
 		TotalInterest:   totalInterest,
 		AverageReturn:   averageReturn,
 		ActivePositions: activePositions,
+		AverageDuration: averageDuration,
 	}
 }
 

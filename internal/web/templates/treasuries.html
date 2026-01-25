@@ -16,41 +16,71 @@
         
         <!-- Main Content -->
         <div class="main-content">
-            
-            <!-- Performance Summary -->
+            <!-- Treasury Analytics Panel -->
+            <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 1px solid #404040;">
+                <!-- Summary Metrics -->
+                <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+                    <div style="display: flex; width: 50%; justify-content: space-around; align-items: center;">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Total Interest Earned</div>
+                            <div style="font-size: 16px; color: #4ade80; font-weight: 700;">${{printf "%.2f" .Summary.TotalInterest}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Return</div>
+                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .Summary.AverageReturn}}%</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Currently Held</div>
+                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">${{printf "%.2f" .Summary.TotalBuyPrice}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Active Positions</div>
+                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.ActivePositions}}</div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Duration</div>
+                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.AverageDuration}} days</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts: Bonds/Puts (40%), Leverage Over Time (40%), Current Leverage Gauge (20%) -->
+                <div style="display: flex; gap: 15px;">
+                    <!-- Bonds Held Chart Panel (40% width) -->
+                    <div style="background: #2a2a2a; border-radius: 8px; padding: 15px; flex: 0 0 40%; width: 40%; border: 1px solid #404040;">
+                        <div style="height: 200px;">
+                            <canvas id="bondsHeldChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Leverage Over Time Chart Panel (40% width) -->
+                    <div style="background: #2a2a2a; border-radius: 8px; padding: 15px; flex: 0 0 40%; width: 40%; border: 1px solid #404040;">
+                        <div style="height: 200px;">
+                            <canvas id="leverageTimeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Leverage Gauge Panel (20% width) -->
+                    <div style="background: #2a2a2a; border-radius: 8px; padding: 15px; flex: 0 0 calc(20% - 30px); width: calc(20% - 30px); border: 1px solid #404040;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                            <div style="font-size: 14px; color: #808080; text-transform: uppercase; margin-bottom: 10px;">Current Leverage</div>
+                            <div style="height: 180px; width: 100%; display: flex; align-items: center; justify-content: center;">
+                                <canvas id="leverageGauge"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Treasuries Table -->
             <div class="content-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <div class="section-title">Performance Summary</div>
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
                     <button class="btn btn-primary" onclick="openAddModal()">
                         <i class="fas fa-plus"></i>
                         New Treasury
                     </button>
                 </div>
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Interest Earned</div>
-                        <div class="summary-value positive">${{printf "%.2f" .Summary.TotalInterest}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Average Return</div>
-                        <div class="summary-value">{{printf "%.2f" .Summary.AverageReturn}}%</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Currently Held</div>
-                        <div class="summary-value">${{printf "%.2f" .Summary.TotalBuyPrice}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Active Positions</div>
-                        <div class="summary-value">{{.Summary.ActivePositions}}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Treasuries Table -->
-            <div class="content-section">
+                
                 <div class="table-container">
-
-                    <div class="section-title">Bonds Held</div>
 
                     <table class="financial-table">
                         <thead>
@@ -88,12 +118,19 @@
                                 <td class="text-right">{{if .HasExitPrice}}${{printf "%.2f" .GetExitPrice}}{{else}}-{{end}}</td>
                                 <td class="text-right">${{printf "%.2f" (.CalculateProfitLoss)}}</td>
                                 <td class="text-center">
-                                    <button class="edit-btn" onclick="editTreasury('{{.CUSPID}}')">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-danger" onclick="deleteTreasury('{{.CUSPID}}')" style="margin-left: 5px; padding: 6px 8px; font-size: 12px;">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <div class="row-actions">
+                                        <button class="actions-toggle">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="actions-menu">
+                                            <button onclick="editTreasury('{{.CUSPID}}')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="delete-action" onclick="deleteTreasury('{{.CUSPID}}')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             {{else}}
@@ -516,10 +553,374 @@
                 closeErrorModal();
             }
         });
+        
+        // Bonds Held Over Time Chart
+        $(document).ready(function() {
+            // Build daily bonds held data for the past year
+            const bondsHeldByDate = {};
+            const putExposureByDate = {};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Start date: 365 days ago
+            const startDate = new Date(today);
+            startDate.setDate(startDate.getDate() - 365);
+            
+            // Collect all treasury positions
+            const treasuryPositions = [];
+            {{range .Treasuries}}
+                {
+                    const purchased = new Date('{{.Purchased.Format "2006-01-02"}}');
+                    const maturity = new Date('{{.Maturity.Format "2006-01-02"}}');
+                    const exitDate = {{if .HasExitPrice}}new Date('{{.Maturity.Format "2006-01-02"}}'){{else}}null{{end}};
+                    const buyPrice = {{.BuyPrice}};
+                    
+                    treasuryPositions.push({
+                        purchased: purchased,
+                        maturity: maturity,
+                        exitDate: exitDate,
+                        buyPrice: buyPrice
+                    });
+                }
+            {{end}}
+            
+            // Collect all put options
+            const putOptions = [];
+            {{range .Options}}
+                {{if eq .Type "Put"}}
+                    {
+                        const opened = new Date('{{.Opened.Format "2006-01-02"}}');
+                        const expiration = new Date('{{.Expiration.Format "2006-01-02"}}');
+                        const closed = {{if .Closed}}new Date('{{.Closed.Format "2006-01-02"}}'){{else}}null{{end}};
+                        const exposure = {{.Strike}} * {{.Contracts}} * 100;
+                        
+                        putOptions.push({
+                            opened: opened,
+                            expiration: expiration,
+                            closed: closed,
+                            exposure: exposure
+                        });
+                    }
+                {{end}}
+            {{end}}
+            
+            // Calculate total bonds held and put exposure for each day
+            let currentDate = new Date(startDate);
+            while (currentDate <= today) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                let totalHeld = 0;
+                let totalPutExposure = 0;
+                
+                treasuryPositions.forEach(position => {
+                    const isActive = currentDate >= position.purchased && 
+                                   currentDate <= position.maturity &&
+                                   (!position.exitDate || currentDate < position.exitDate);
+                    if (isActive) {
+                        totalHeld += position.buyPrice;
+                    }
+                });
+                
+                putOptions.forEach(put => {
+                    const isActive = currentDate >= put.opened && 
+                                   currentDate <= put.expiration &&
+                                   (!put.closed || currentDate < put.closed);
+                    if (isActive) {
+                        totalPutExposure += put.exposure;
+                    }
+                });
+                
+                bondsHeldByDate[dateStr] = totalHeld;
+                putExposureByDate[dateStr] = totalPutExposure;
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            // Prepare chart data
+            const labels = Object.keys(bondsHeldByDate);
+            const bondsData = labels.map(date => bondsHeldByDate[date]);
+            const putExposureData = labels.map(date => putExposureByDate[date]);
+            
+            // Calculate leverage: Put Exposure / Bonds Held
+            const leverageData = labels.map(date => {
+                const bonds = bondsHeldByDate[date];
+                const puts = putExposureByDate[date];
+                return bonds > 0 ? puts / bonds : 0;
+            });
+            
+            // Create chart with dual Y-axis
+            const ctx = document.getElementById('bondsHeldChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.map(dateStr => {
+                        const date = new Date(dateStr);
+                        return (date.getMonth() + 1).toString().padStart(2, '0') + '/' + 
+                               date.getDate().toString().padStart(2, '0');
+                    }),
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Put Exposure',
+                            data: putExposureData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.6)',
+                            borderColor: '#3498db',
+                            borderWidth: 1,
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Bonds Held',
+                            data: bondsData,
+                            backgroundColor: 'rgba(255, 193, 7, 0.9)',
+                            borderColor: '#FFC107',
+                            borderWidth: 1,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 9 },
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 52
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 11 },
+                                padding: 10,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += '$' + context.parsed.y.toLocaleString();
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Create leverage over time chart
+            const leverageTimeCtx = document.getElementById('leverageTimeChart').getContext('2d');
+            new Chart(leverageTimeCtx, {
+                type: 'line',
+                data: {
+                    labels: labels.map(dateStr => {
+                        const date = new Date(dateStr);
+                        return (date.getMonth() + 1).toString().padStart(2, '0') + '/' + 
+                               date.getDate().toString().padStart(2, '0');
+                    }),
+                    datasets: [{
+                        label: 'Leverage',
+                        data: leverageData,
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 9 },
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 52
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            min: 0,
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return value.toFixed(1) + 'x';
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 11 },
+                                padding: 10,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Leverage: ' + context.parsed.y.toFixed(2) + 'x';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Create leverage gauge styled like the reference
+            const currentLeverage = leverageData[leverageData.length - 1] || 0;
+            const gaugeCtx = document.getElementById('leverageGauge').getContext('2d');
+            
+            // Define color ranges
+            const ranges = [
+                { limit: 0.5, color: '#27ae60' },   // Green
+                { limit: 1.0, color: '#ffeb3b' },   // Yellow
+                { limit: 1.5, color: '#ff9800' },   // Orange
+                { limit: 2.0, color: '#e74c3c' }    // Red
+            ];
+            
+            const gaugeChart = new Chart(gaugeCtx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0.5, 0.5, 0.5, 0.5],
+                        backgroundColor: ranges.map(r => r.color),
+                        borderWidth: 2,
+                        borderColor: '#1a1a1a',
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        onComplete: function() {
+                            drawNeedle(this);
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'gaugeNeedle',
+                    afterDatasetDraw: function(chart) {
+                        drawNeedle(chart);
+                    }
+                }]
+            });
+            
+            function drawNeedle(chart) {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const centerX = (chartArea.left + chartArea.right) / 2;
+                const centerY = chartArea.bottom;
+                
+                // Calculate needle angle (0 to 180 degrees for 0 to 2x leverage)
+                const needleValue = Math.min(Math.max(currentLeverage, 0), 2);
+                const angle = (needleValue / 2) * Math.PI - Math.PI / 2;
+                
+                // Needle dimensions based on chart area
+                const radius = (chartArea.bottom - chartArea.top);
+                const needleLength = radius * 0.70;
+                const needleWidth = 6;
+                const hubRadius = 12;
+                
+                ctx.save();
+                
+                // Draw needle
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle);
+                
+                ctx.beginPath();
+                ctx.moveTo(-needleWidth / 2, 0);
+                ctx.lineTo(0, -needleLength);
+                ctx.lineTo(needleWidth / 2, 0);
+                ctx.closePath();
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fill();
+                ctx.strokeStyle = '#808080';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                ctx.restore();
+                
+                // Draw hub circle
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, hubRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fill();
+                ctx.strokeStyle = '#808080';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw value label
+                ctx.font = 'bold 28px Arial';
+                ctx.fillStyle = '#e0e0e0';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(currentLeverage.toFixed(2) + 'x', centerX, centerY - radius * 0.3);
+            }
+        });
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/row-actions.js"></script>
 
 </body>
 </html>
