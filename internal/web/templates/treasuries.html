@@ -19,28 +19,26 @@
             <!-- Treasury Analytics Panel -->
             <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); border: 1px solid #404040;">
                 <!-- Summary Metrics -->
-                <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
-                    <div style="display: flex; width: 50%; justify-content: space-around; align-items: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Total Interest Earned</div>
-                            <div style="font-size: 16px; color: #4ade80; font-weight: 700;">${{printf "%.2f" .Summary.TotalInterest}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Return</div>
-                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .Summary.AverageReturn}}%</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Currently Held</div>
-                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">${{printf "%.2f" .Summary.TotalBuyPrice}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Active Positions</div>
-                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.ActivePositions}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Duration</div>
-                            <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.AverageDuration}} days</div>
-                        </div>
+                <div style="display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px; gap: 20px; padding: 0 20px;">
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Total Interest Earned</div>
+                        <div style="font-size: 16px; color: #4ade80; font-weight: 700;">${{printf "%.2f" .Summary.TotalInterest}}</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Return</div>
+                        <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .Summary.AverageReturn}}%</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Currently Held</div>
+                        <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">${{printf "%.2f" .Summary.TotalBuyPrice}}</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Active Positions</div>
+                        <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.ActivePositions}}</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: center;">
+                        <div style="font-size: 11px; color: #808080; text-transform: uppercase;">Average Duration</div>
+                        <div style="font-size: 16px; color: #e0e0e0; font-weight: 700;">{{.Summary.AverageDuration}} days</div>
                     </div>
                 </div>
 
@@ -648,7 +646,7 @@
             
             // Create chart with dual Y-axis
             const ctx = document.getElementById('bondsHeldChart').getContext('2d');
-            new Chart(ctx, {
+            window.bondsHeldChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: labels.map(dateStr => {
@@ -683,6 +681,13 @@
                     interaction: {
                         mode: 'index',
                         intersect: false
+                    },
+                    onHover: function(event, activeElements) {
+                        if (activeElements.length > 0 && window.leverageTimeChart) {
+                            const index = activeElements[0].index;
+                            window.leverageTimeChart.tooltip.setActiveElements([{datasetIndex: 0, index: index}], {x: 0, y: 0});
+                            window.leverageTimeChart.update();
+                        }
                     },
                     scales: {
                         x: {
@@ -739,7 +744,7 @@
             
             // Create leverage over time chart
             const leverageTimeCtx = document.getElementById('leverageTimeChart').getContext('2d');
-            new Chart(leverageTimeCtx, {
+            window.leverageTimeChart = new Chart(leverageTimeCtx, {
                 type: 'line',
                 data: {
                     labels: labels.map(dateStr => {
@@ -765,6 +770,16 @@
                     interaction: {
                         mode: 'index',
                         intersect: false
+                    },
+                    onHover: function(event, activeElements) {
+                        if (activeElements.length > 0 && window.bondsHeldChart) {
+                            const index = activeElements[0].index;
+                            window.bondsHeldChart.tooltip.setActiveElements([
+                                {datasetIndex: 0, index: index},
+                                {datasetIndex: 1, index: index}
+                            ], {x: 0, y: 0});
+                            window.bondsHeldChart.update();
+                        }
                     },
                     scales: {
                         x: {

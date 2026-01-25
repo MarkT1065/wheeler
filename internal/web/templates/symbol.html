@@ -2104,45 +2104,45 @@
             const symbolExpirationScatterData = [];
             
             {{range .OptionsList}}
-                {{if not .Closed}}
-                    {
-                        const expirationDate = new Date('{{.Expiration.Format "2006-01-02"}}');
-                        const totalProfit = {{.CalculateTotalProfit}};
-                        const strike = {{.Strike}};
-                        const contracts = {{.Contracts}};
-                        const type = '{{.Type}}';
-                        const nominalValue = strike * contracts * 100;
-                        const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
-                        
-                        // Scale radius from nominal value
-                        const minNominal = 1000;
-                        const maxNominal = 50000;
-                        const minRadius = 4;
-                        const maxRadius = 20;
-                        const scaledRadius = Math.max(minRadius, Math.min(maxRadius, 
-                            minRadius + (riskScaledValue - minNominal) * (maxRadius - minRadius) / (maxNominal - minNominal)
-                        ));
-                        
-                        symbolExpirationScatterData.push({
-                            x: expirationDate,
-                            y: totalProfit,
-                            r: scaledRadius,
-                            symbol: '{{.Symbol}}',
-                            type: type,
-                            strike: strike,
-                            contracts: contracts,
-                            nominalValue: nominalValue,
-                            riskScaledValue: riskScaledValue
-                        });
-                    }
-                {{end}}
+                {
+                    const expirationDate = new Date('{{.Expiration.Format "2006-01-02"}}');
+                    const totalProfit = {{.CalculateTotalProfit}};
+                    const strike = {{.Strike}};
+                    const contracts = {{.Contracts}};
+                    const type = '{{.Type}}';
+                    const isClosed = {{if .Closed}}true{{else}}false{{end}};
+                    const nominalValue = strike * contracts * 100;
+                    const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
+                    
+                    // Scale radius from nominal value
+                    const minNominal = 1000;
+                    const maxNominal = 50000;
+                    const minRadius = 4;
+                    const maxRadius = 20;
+                    const scaledRadius = Math.max(minRadius, Math.min(maxRadius, 
+                        minRadius + (riskScaledValue - minNominal) * (maxRadius - minRadius) / (maxNominal - minNominal)
+                    ));
+                    
+                    symbolExpirationScatterData.push({
+                        x: expirationDate,
+                        y: totalProfit,
+                        r: scaledRadius,
+                        symbol: '{{.Symbol}}',
+                        type: type,
+                        strike: strike,
+                        contracts: contracts,
+                        nominalValue: nominalValue,
+                        riskScaledValue: riskScaledValue,
+                        isClosed: isClosed
+                    });
+                }
             {{end}}
             
             // Only create chart if we have data
             if (symbolExpirationScatterData.length === 0) {
                 const canvas = document.getElementById('symbolExpirationChart');
                 const parent = canvas.parentElement;
-                parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No open options</div>';
+                parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No options</div>';
             } else {
             
             // Create scatter chart
@@ -2155,11 +2155,34 @@
                         data: symbolExpirationScatterData,
                         backgroundColor: function(ctx) {
                             const point = symbolExpirationScatterData[ctx.dataIndex];
-                            return point && point.type === 'Put' ? '#3498db' : '#27ae60';
+                            if (!point) return '#3498db';
+                            
+                            let color;
+                            if (point.y < 0) {
+                                // Negative profit - blend with red
+                                color = point.type === 'Put' ? '#8b4789' : '#8b6347';
+                            } else {
+                                // Positive profit - normal colors
+                                color = point.type === 'Put' ? '#3498db' : '#27ae60';
+                            }
+                            
+                            return point.isClosed ? color + '80' : color;
                         },
                         borderColor: function(ctx) {
                             const point = symbolExpirationScatterData[ctx.dataIndex];
-                            return point && point.type === 'Put' ? '#3498db' : '#27ae60';
+                            if (!point) return '#3498db';
+                            
+                            if (point.y < 0) {
+                                // Negative profit - blend with red
+                                return point.type === 'Put' ? '#8b4789' : '#8b6347';
+                            } else {
+                                // Positive profit - normal colors
+                                return point.type === 'Put' ? '#3498db' : '#27ae60';
+                            }
+                        },
+                        borderWidth: function(ctx) {
+                            const point = symbolExpirationScatterData[ctx.dataIndex];
+                            return point && point.isClosed ? 1 : 2;
                         },
                         pointRadius: function(ctx) {
                             const point = symbolExpirationScatterData[ctx.dataIndex];
@@ -2187,6 +2210,7 @@
                                 label: function(context) {
                                     const point = symbolExpirationScatterData[context.dataIndex];
                                     return [
+                                        'Status: ' + (point.isClosed ? 'Closed' : 'Open'),
                                         'Contracts: ' + point.contracts,
                                         'Nominal: $' + point.nominalValue.toLocaleString(),
                                         'Profit: $' + point.y.toLocaleString()
@@ -2233,6 +2257,7 @@
             // Collect all put option data with opened and expiration dates
             const putOptions = [];
             let latestExpiration = null;
+            let earliestOpened = null;
             
             {{range .OptionsList}}
                 {{if eq .Type "Put"}}
@@ -2265,24 +2290,28 @@
                             profit: profit
                         });
                         
-                        // Track latest expiration from open puts
-                        if (!closed && (!latestExpiration || expiration > latestExpiration)) {
+                        // Track latest expiration from all puts (open or closed)
+                        if (!latestExpiration || expiration > latestExpiration) {
                             latestExpiration = expiration;
+                        }
+                        
+                        // Track earliest opened date from all puts
+                        if (!earliestOpened || opened < earliestOpened) {
+                            earliestOpened = opened;
                         }
                     }
                 {{end}}
             {{end}}
             
-            // Determine date range: 365 days before latest exposure to latest exposure
+            // Determine date range: from earliest opened to latest expiration (or 365 days if no puts)
             let startDate, endDate;
             
-            if (latestExpiration) {
-                // Go back 365 days from the furthest current (open) exposure
+            if (latestExpiration && earliestOpened) {
+                // Show from earliest opened to latest expiration
+                startDate = new Date(earliestOpened);
                 endDate = new Date(latestExpiration);
-                startDate = new Date(latestExpiration);
-                startDate.setDate(startDate.getDate() - 365);
             } else {
-                // No open puts - show last 365 days
+                // No puts - show last 365 days
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 endDate = new Date(today);
@@ -2460,7 +2489,7 @@
                     },
                     scales: {
                         x: {
-                            stacked: true,
+                            stacked: false,
                             ticks: {
                                 color: '#a0a0a0',
                                 font: { size: 10 },
@@ -2472,7 +2501,7 @@
                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         },
                         y: {
-                            stacked: true,
+                            stacked: false,
                             type: 'linear',
                             position: 'left',
                             beginAtZero: true,
