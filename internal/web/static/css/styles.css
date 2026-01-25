@@ -278,6 +278,91 @@ body {
     color: #e0e0e0;
 }
 
+/* Monospaced font for numeric data */
+.numeric-cell {
+    font-family: 'JetBrains Mono', 'Roboto Mono', 'SF Mono', Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Row actions dropdown menu */
+.row-actions {
+    position: relative;
+    display: inline-block;
+}
+
+.actions-toggle {
+    background: transparent;
+    border: 1px solid #575757;
+    color: #a0a0a0;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.actions-toggle:hover {
+    background: #404040;
+    color: #e0e0e0;
+    border-color: #666666;
+}
+
+.actions-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #2d2d2d;
+    border: 1px solid #575757;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    min-width: 120px;
+}
+
+.actions-menu.show {
+    display: block;
+}
+
+.actions-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: #e0e0e0;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.actions-menu button:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.actions-menu button:last-child {
+    border-radius: 0 0 6px 6px;
+}
+
+.actions-menu button:hover {
+    background: #404040;
+}
+
+.actions-menu button i {
+    margin-right: 8px;
+    width: 14px;
+}
+
+.actions-menu .delete-action {
+    color: #e74c3c;
+}
+
+.actions-menu .delete-action:hover {
+    background: rgba(231, 76, 60, 0.1);
+}
+
 .app-container {
     display: flex;
     height: 100vh;
@@ -694,7 +779,7 @@ body {
 }
 
 .content-section {
-    background: #2d2d2d;
+    background: #222222;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
@@ -1823,7 +1908,7 @@ th[colspan] {
     position: relative;
     height: 300px;
     width: 100%;
-    background: #2a2a2a;
+    background: #282828;
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
@@ -3432,4 +3517,133 @@ th[colspan] {
     top: 0;
     z-index: 10;
     background-color: #1a1a1a;
+}
+
+/* ===========================
+   PAGE HEADER STYLES
+   =========================== */
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+    border-bottom: 2px solid #27ae60;
+    padding: 12px 20px;
+    gap: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.header-left,
+.header-center,
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.header-left {
+    flex: 0 0 auto;
+}
+
+.header-center {
+    flex: 1 1 auto;
+    justify-content: center;
+}
+
+.header-right {
+    flex: 0 0 auto;
+}
+
+/* Date Range Selector */
+.date-range-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.month-range-input {
+    padding: 8px 12px;
+    background: #1a1a1a;
+    border: 1px solid #575757;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 14px;
+    cursor: pointer;
+    width: 200px;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.month-range-input:hover {
+    background: #252525;
+    border-color: #27ae60;
+}
+
+.month-range-input:focus {
+    outline: none;
+    border-color: #27ae60;
+}
+
+/* Financial Summary */
+.financial-summary {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.summary-label {
+    font-size: 11px;
+    color: #808080;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 16px;
+    color: #e0e0e0;
+    font-weight: 700;
+}
+
+.summary-value.positive {
+    color: #4ade80;
+}
+
+.summary-value.negative {
+    color: #f87171;
+}
+
+/* Quick Stats */
+.quick-stats {
+    display: flex;
+    gap: 16px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #a0a0a0;
+}
+
+.stat-item i {
+    color: #27ae60;
+    font-size: 14px;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #e0e0e0;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: #808080;
 }

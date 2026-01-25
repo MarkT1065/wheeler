@@ -5,9 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Symbol}} - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css?v=2">
+    <style>
+        /* Option 1: Underline/Border Accent Tabs */
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #a0a0a0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            color: #e0e0e0;
+            border-bottom-color: #575757;
+        }
+        .tab-btn.active {
+            color: #27ae60;
+            border-bottom-color: #27ae60;
+        }
+        .tab-content {
+            display: none;
+            height: calc(100vh - 350px);
+            overflow-y: auto;
+        }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+        .resizable-options-section {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 550px);
+            /*flex: 1;*/
+            min-height: 0;
+        }
+        .table-container-scrollable,
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+    </style>
 </head>
 <body class="symbol-page">
     <div class="app-container">
@@ -94,28 +141,90 @@
                     </div>
                     
                     <!-- Action Buttons -->
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button id="editSymbolBtn" class="edit-btn">
-                            <i class="fas fa-edit"></i>
-                            Edit
+                    <div class="row-actions">
+                        <button class="actions-toggle">
+                            <i class="fas fa-ellipsis-v"></i>
                         </button>
-                        <button id="deleteSymbolBtn" class="btn btn-danger">
-                            <i class="fas fa-trash"></i>
-                            Delete
-                        </button>
+                        <div class="actions-menu">
+                            <button id="editSymbolBtn">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button id="deleteSymbolBtn" class="delete-action">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Options Trading - Full Width -->
+            <!-- Symbol Summary Panel -->
+            <div class="content-section" style="margin-bottom: 20px;">
+                <!-- Income Charts Grid -->
+                <div style="display: flex; gap: 15px;">
+                    <!-- Stacked Bar Chart -->
+                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
+                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Income Over Time</h3>
+                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="symbolStackedChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Pie Chart (15% bigger) -->
+                    <div style="flex: 0.95; background: #282828; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
+                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Income by Type</h3>
+                        <div style="height: 270px; display: flex; align-items: center; justify-content: center; padding: 15px;">
+                            <div style="width: 100%; height: 100%; position: relative;">
+                                <canvas id="symbolPieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Options by Expiration Scatter Chart -->
+                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
+                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Options by Expiration</h3>
+                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="symbolExpirationChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Put Exposure Bar Chart -->
+                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
+                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Put Exposure</h3>
+                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="symbolPutExposureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabbed Trading Panel -->
             <div class="content-section resizable-options-section">
+                <!-- Tab Navigation -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <div class="section-title">Options{{if .OptionsList}} ({{len .OptionsList}} trades){{end}}</div>
-                    <button id="addOptionBtn" class="btn btn-primary">
+                    <div class="tab-navigation" style="display: flex; gap: 10px;">
+                        <button class="tab-btn active" data-tab="options">
+                            Options{{if .OptionsList}} ({{len .OptionsList}}){{end}}
+                        </button>
+                        <button class="tab-btn" data-tab="positions">
+                            Stock Positions{{if .LongPositionsList}} ({{len .LongPositionsList}}){{end}}
+                        </button>
+                        <button class="tab-btn" data-tab="dividends">
+                            Dividends{{if .DividendsList}} ({{len .DividendsList}}){{end}}
+                        </button>
+                    </div>
+                    <button id="addBtn" class="btn btn-primary">
                         <i class="fas fa-plus"></i>
                         Add
                     </button>
                 </div>
+                
+                <!-- Hidden Add Buttons -->
+                <button id="addOptionBtn" style="display: none;"></button>
+                <button id="addLongPositionBtn" style="display: none;"></button>
+                <button id="addDividendBtn" style="display: none;"></button>
+                
+                <!-- Options Tab Content -->
+                <div class="tab-content active" id="options-tab">
                 <div class="table-container-scrollable">
                     <table>
                         <thead>
@@ -151,8 +260,8 @@
                                     </td>
                                     <td>{{.Opened.Format "01/02/2006"}}</td>
                                     <td>{{if .Closed}}{{.Closed.Format "01/02/2006"}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.2f" .Strike}}</td>
-                                    <td>{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
+                                    <td class="numeric-cell">{{printf "%.2f" .Strike}}</td>
+                                    <td class="numeric-cell">{{printf "%.2f" (.CalculatePercentOTM $.Price)}}%</td>
                                     <td>{{.Expiration.Format "01/02/2006"}}</td>
                                     <td>
                                         {{if not .Closed}}
@@ -161,17 +270,17 @@
                                             - 
                                         {{end}}
                                     </td>
-                                    <td>{{.CalculateDTE}}</td>
-                                    <td>{{.CalculateDTC}}</td>
-                                    <td>{{.Contracts}}</td>
-                                    <td>{{printf "%.2f" .Premium}}</td>
-                                    <td>{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
-                                    <td>{{printf "%.2f" .Commission}}</td>
-                                    <td>
+                                    <td class="numeric-cell">{{.CalculateDTE}}</td>
+                                    <td class="numeric-cell">{{.CalculateDTC}}</td>
+                                    <td class="numeric-cell">{{.Contracts}}</td>
+                                    <td class="numeric-cell">{{printf "%.2f" .Premium}}</td>
+                                    <td class="numeric-cell">{{if .ExitPrice}}${{printf "%.2f" (.GetExitPriceValue)}}{{else}}-{{end}}</td>
+                                    <td class="numeric-cell">{{printf "%.2f" .Commission}}</td>
+                                    <td class="numeric-cell">
                                         {{$totalProfit := .CalculateTotalProfit}}
                                         <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
                                     </td>
-                                    <td>
+                                    <td class="numeric-cell">
                                         {{if .Closed}}
                                             {{$percentProfit := .CalculatePercentOfProfit}}
                                             <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentProfit}}%</span>
@@ -179,7 +288,7 @@
                                             -
                                         {{end}}
                                     </td>
-                                    <td>
+                                    <td class="numeric-cell">
                                         {{if .Closed}}
                                             {{$percentProfit := .CalculatePercentOfProfit}}
                                             {{$percentTime := .CalculatePercentOfTime}}
@@ -190,7 +299,7 @@
                                             <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentTime}}%</span>
                                         {{end}}
                                     </td>
-                                    <td>
+                                    <td class="numeric-cell">
                                         {{if .Closed}}
                                             {{$multiplier := .CalculateMultiplier}}
                                             <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $multiplier}}</span>
@@ -199,32 +308,38 @@
                                         {{end}}
                                     </td>
                                     <td>
-                                        <button class="btn btn-secondary edit-option-btn" 
-                                                data-id="{{.ID}}"
-                                                data-symbol="{{.Symbol | html}}" 
-                                                data-type="{{.Type}}"
-                                                data-opened="{{.Opened.Format "2006-01-02"}}"
-                                                data-strike="{{.Strike}}"
-                                                data-expiration="{{.Expiration.Format "2006-01-02"}}"
-                                                data-premium="{{.Premium}}"
-                                                data-contracts="{{.Contracts}}"
-                                                data-closed="{{if .Closed}}{{.Closed.Format "2006-01-02"}}{{end}}"
-                                                data-exit-price="{{if .ExitPrice}}{{.GetExitPriceValue}}{{end}}"
-                                                data-commission="{{.Commission}}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-danger delete-option-btn"
-                                                data-id="{{.ID}}"
-                                                data-symbol="{{.Symbol | html}}" 
-                                                data-type="{{.Type}}"
-                                                data-opened="{{.Opened.Format "2006-01-02"}}"
-                                                data-strike="{{.Strike}}"
-                                                data-expiration="{{.Expiration.Format "2006-01-02"}}"
-                                                data-premium="{{.Premium}}"
-                                                data-contracts="{{.Contracts}}"
-                                                style="margin-left: 5px;">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div class="row-actions">
+                                            <button class="actions-toggle">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <div class="actions-menu">
+                                                <button class="edit-option-btn"
+                                                        data-id="{{.ID}}"
+                                                        data-symbol="{{.Symbol | html}}" 
+                                                        data-type="{{.Type}}"
+                                                        data-opened="{{.Opened.Format "2006-01-02"}}"
+                                                        data-strike="{{.Strike}}"
+                                                        data-expiration="{{.Expiration.Format "2006-01-02"}}"
+                                                        data-premium="{{.Premium}}"
+                                                        data-contracts="{{.Contracts}}"
+                                                        data-closed="{{if .Closed}}{{.Closed.Format "2006-01-02"}}{{end}}"
+                                                        data-exit-price="{{if .ExitPrice}}{{.GetExitPriceValue}}{{end}}"
+                                                        data-commission="{{.Commission}}">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="delete-action delete-option-btn"
+                                                        data-id="{{.ID}}"
+                                                        data-symbol="{{.Symbol | html}}" 
+                                                        data-type="{{.Type}}"
+                                                        data-opened="{{.Opened.Format "2006-01-02"}}"
+                                                        data-strike="{{.Strike}}"
+                                                        data-expiration="{{.Expiration.Format "2006-01-02"}}"
+                                                        data-premium="{{.Premium}}"
+                                                        data-contracts="{{.Contracts}}">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 {{end}}
@@ -238,19 +353,10 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-            
-            <!-- Stock Positions & Dividends - Side by Side -->
-            <div class="section-row">
-                <!-- Stock Positions -->
-                <div class="content-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div class="section-title">Stock Positions</div>
-                        <button id="addLongPositionBtn" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
-                            Add
-                        </button>
-                    </div>
+                </div>
+                
+                <!-- Stock Positions Tab Content -->
+                <div class="tab-content" id="positions-tab">
                     <div class="table-container">
                         <table class="table-medium">
                             <thead>
@@ -274,27 +380,34 @@
                                     <tr>
                                         <td>{{.Opened.Format "1/2/2006"}}</td>
                                         <td>{{if .Closed}}{{.Closed.Format "1/2/2006"}}{{else}}-{{end}}</td>
-                                        <td>{{printf "%.2f" (.CalculateYield $.Dividend)}}%</td>
-                                        <td>{{.Shares}}</td>
-                                        <td>{{formatCurrencyWithDecimals .BuyPrice}}</td>
-                                        <td>{{if .ExitPrice}}{{formatCurrencyWithDecimals (.GetExitPriceValue)}}{{else}}-{{end}}</td>
-                                        <td>
+                                        <td class="numeric-cell">{{printf "%.2f" (.CalculateYield $.Dividend)}}%</td>
+                                        <td class="numeric-cell">{{.Shares}}</td>
+                                        <td class="numeric-cell">{{formatCurrencyWithDecimals .BuyPrice}}</td>
+                                        <td class="numeric-cell">{{if .ExitPrice}}{{formatCurrencyWithDecimals (.GetExitPriceValue)}}{{else}}-{{end}}</td>
+                                        <td class="numeric-cell">
                                             {{$profitLoss := .CalculateProfitLoss $.Price}}
                                             <span class="{{if lt $profitLoss 0.0}}negative{{else if gt $profitLoss 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals $profitLoss}}</span>
                                         </td>
-                                        <td>
+                                        <td class="numeric-cell">
                                             {{$roi := .CalculateROI $.Price}}
                                             <span class="{{if lt $roi 0.0}}negative{{else if gt $roi 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $roi}}%</span>
                                         </td>
-                                        <td>{{formatCurrencyWithDecimals (.CalculateAmount)}}</td>
-                                        <td>{{formatCurrencyWithDecimals (.CalculateTotalInvested)}}</td>
+                                        <td class="numeric-cell">{{formatCurrencyWithDecimals (.CalculateAmount)}}</td>
+                                        <td class="numeric-cell">{{formatCurrencyWithDecimals (.CalculateTotalInvested)}}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-secondary edit-long-position-btn" data-id="{{.ID}}">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-danger delete-long-position-btn" data-id="{{.ID}}" style="margin-left: 5px;">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                            <div class="row-actions">
+                                                <button class="actions-toggle">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="actions-menu">
+                                                    <button class="edit-long-position-btn" data-id="{{.ID}}">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button class="delete-action delete-long-position-btn" data-id="{{.ID}}">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}
@@ -310,15 +423,8 @@
                     </div>
                 </div>
                 
-                <!-- Dividends -->
-                <div class="content-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <div class="section-title">Dividends</div>
-                        <button id="addDividendBtn" class="btn btn-primary">
-                            <i class="fas fa-plus"></i>
-                            Add
-                        </button>
-                    </div>
+                <!-- Dividends Tab Content -->
+                <div class="tab-content" id="dividends-tab">
                     <div class="table-container">
                         <table>
                             <thead>
@@ -333,22 +439,29 @@
                                     {{range .DividendsList}}
                                     <tr>
                                         <td>{{.Received.Format "01/02/2006"}}</td>
-                                        <td class="positive">{{formatCurrencyWithDecimals .Amount}}</td>
+                                        <td class="positive numeric-cell">{{formatCurrencyWithDecimals .Amount}}</td>
                                         <td>
-                                            <button class="btn btn-secondary edit-dividend-btn" 
-                                                    data-id="{{.ID}}"
-                                                    data-symbol="{{.Symbol | html}}" 
-                                                    data-received="{{.Received.Format "2006-01-02"}}"
-                                                    data-amount="{{.Amount}}">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-danger delete-dividend-btn"
-                                                    data-id="{{.ID}}"
-                                                    data-symbol="{{.Symbol | html}}" 
-                                                    data-received="{{.Received.Format "2006-01-02"}}"
-                                                    data-amount="{{.Amount}}">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
+                                            <div class="row-actions">
+                                                <button class="actions-toggle">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <div class="actions-menu">
+                                                    <button class="edit-dividend-btn" 
+                                                            data-id="{{.ID}}"
+                                                            data-symbol="{{.Symbol | html}}" 
+                                                            data-received="{{.Received.Format "2006-01-02"}}"
+                                                            data-amount="{{.Amount}}">
+                                                        <i class="fas fa-edit"></i> Edit
+                                                    </button>
+                                                    <button class="delete-action delete-dividend-btn"
+                                                            data-id="{{.ID}}"
+                                                            data-symbol="{{.Symbol | html}}" 
+                                                            data-received="{{.Received.Format "2006-01-02"}}"
+                                                            data-amount="{{.Amount}}">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                                     {{end}}
@@ -371,53 +484,6 @@
                             {{end}}
                         </table>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Monthly Results - Full Width at Bottom -->
-            <div class="content-section">
-                <div class="section-title">Monthly Results</div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Month</th>
-                                <th>Puts</th>
-                                <th>Calls</th>
-                                <th>Puts Total</th>
-                                <th>Calls Total</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{if .MonthlyResults}}
-                                {{range .MonthlyResults}}
-                                {{if or (gt .PutsCount 0) (gt .CallsCount 0) (ne .Total 0.0)}}
-                                <tr>
-                                    <td>{{.Month}}</td>
-                                    <td>{{.PutsCount}}</td>
-                                    <td>{{.CallsCount}}</td>
-                                    <td>
-                                        <span class="{{if lt .PutsTotal 0.0}}negative{{else if gt .PutsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .PutsTotal}}</span>
-                                    </td>
-                                    <td>
-                                        <span class="{{if lt .CallsTotal 0.0}}negative{{else if gt .CallsTotal 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .CallsTotal}}</span>
-                                    </td>
-                                    <td>
-                                        <span class="{{if lt .Total 0.0}}negative{{else if gt .Total 0.0}}positive{{else}}neutral-currency{{end}}">{{formatCurrencyWithDecimals .Total}}</span>
-                                    </td>
-                                </tr>
-                                {{end}}
-                                {{end}}
-                            {{else}}
-                                <tr>
-                                    <td colspan="6" style="text-align: center; color: #a0a0a0; padding: 20px;">
-                                        No options activity recorded for {{.Symbol}}
-                                    </td>
-                                </tr>
-                            {{end}}
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
@@ -613,6 +679,39 @@
             });
         });
         
+        // Tab switching functionality
+        let currentTab = 'options';
+        
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Update Add button functionality
+            const addBtn = document.getElementById('addBtn');
+            addBtn.onclick = function() {
+                if (tabName === 'options') {
+                    document.getElementById('addOptionBtn').click();
+                } else if (tabName === 'positions') {
+                    document.getElementById('addLongPositionBtn').click();
+                } else if (tabName === 'dividends') {
+                    document.getElementById('addDividendBtn').click();
+                }
+            };
+        }
+        
         // Check if template rendering breaks here
         console.log('About to enter DOMContentLoaded...');
         
@@ -620,6 +719,15 @@
         
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tab switching
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+            
+            // Set initial tab
+            switchTab('options');
             console.log('INSIDE DOMContentLoaded - this should appear!');
             console.log('DOM is ready, initializing JavaScript...');
             
@@ -1673,8 +1781,585 @@
         
         }); // End of DOMContentLoaded
     </script>
+    <script>
+        // Symbol summary panel charts
+        $(document).ready(function() {
+            // Calculate income by month for this symbol
+            const monthlyPuts = {};
+            const monthlyCalls = {};
+            const monthlyCapGains = {};
+            const monthlyDividends = {};
+            const monthlyTotal = {};
+            
+            // Process options data
+            {{range .OptionsList}}
+                {
+                    const optionMonth = '{{.Opened.Format "2006-01"}}';
+                    const optionProfit = {{.CalculateTotalProfit}};
+                    {{if eq .Type "Put"}}
+                        monthlyPuts[optionMonth] = (monthlyPuts[optionMonth] || 0) + optionProfit;
+                    {{else}}
+                        monthlyCalls[optionMonth] = (monthlyCalls[optionMonth] || 0) + optionProfit;
+                    {{end}}
+                    monthlyTotal[optionMonth] = (monthlyTotal[optionMonth] || 0) + optionProfit;
+                }
+            {{end}}
+            
+            // Process long positions for cap gains
+            {{range .LongPositionsList}}
+                {{if .Closed}}
+                    {{if .ExitPrice}}
+                        {
+                            const positionMonth = '{{.Closed.Format "2006-01"}}';
+                            const positionProfit = {{.CalculateProfitLoss .ExitPrice}};
+                            monthlyCapGains[positionMonth] = (monthlyCapGains[positionMonth] || 0) + positionProfit;
+                            monthlyTotal[positionMonth] = (monthlyTotal[positionMonth] || 0) + positionProfit;
+                        }
+                    {{end}}
+                {{end}}
+            {{end}}
+            
+            // Process dividends
+            {{range .DividendsList}}
+                {
+                    const dividendMonth = '{{.Received.Format "2006-01"}}';
+                    monthlyDividends[dividendMonth] = (monthlyDividends[dividendMonth] || 0) + {{.Amount}};
+                    monthlyTotal[dividendMonth] = (monthlyTotal[dividendMonth] || 0) + {{.Amount}};
+                }
+            {{end}}
+            
+            // Generate last 12 months
+            const months = [];
+            for (let i = 11; i >= 0; i--) {
+                months.push(moment().subtract(i, 'months').format('YYYY-MM'));
+            }
+            const labels = months.map(m => moment(m + '-01').format('MMM YYYY'));
+            
+            // Prepare data for stacked bar chart
+            const putsData = months.map(m => monthlyPuts[m] || 0);
+            const callsData = months.map(m => monthlyCalls[m] || 0);
+            const capGainsData = months.map(m => monthlyCapGains[m] || 0);
+            const dividendsData = months.map(m => monthlyDividends[m] || 0);
+            
+            // Calculate cumulative data for line chart
+            const cumulativeData = [];
+            let runningTotal = 0;
+            for (let i = 0; i < months.length; i++) {
+                runningTotal += (putsData[i] + callsData[i] + capGainsData[i] + dividendsData[i]);
+                cumulativeData.push(runningTotal);
+            }
+            
+            // Calculate totals for pie chart
+            const totalPuts = putsData.reduce((sum, val) => sum + val, 0);
+            const totalCalls = callsData.reduce((sum, val) => sum + val, 0);
+            const totalCapGains = capGainsData.reduce((sum, val) => sum + val, 0);
+            const totalDividends = dividendsData.reduce((sum, val) => sum + val, 0);
+            
+            // Create stacked bar chart
+            const stackedCtx = document.getElementById('symbolStackedChart').getContext('2d');
+            new Chart(stackedCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Cumulative',
+                            data: cumulativeData,
+                            borderColor: '#FFD700',
+                            backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.2,
+                            yAxisID: 'y1',
+                            order: 1
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Puts',
+                            data: putsData,
+                            backgroundColor: '#3498db',
+                            borderColor: '#3498db',
+                            borderWidth: 1,
+                            stack: 'stack0',
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Calls',
+                            data: callsData,
+                            backgroundColor: '#e67e22',
+                            borderColor: '#e67e22',
+                            borderWidth: 1,
+                            stack: 'stack0',
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Capital Gains',
+                            data: capGainsData,
+                            backgroundColor: '#2ecc71',
+                            borderColor: '#2ecc71',
+                            borderWidth: 1,
+                            stack: 'stack0',
+                            yAxisID: 'y',
+                            order: 2
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Dividends',
+                            data: dividendsData,
+                            backgroundColor: '#f1c40f',
+                            borderColor: '#f1c40f',
+                            borderWidth: 1,
+                            stack: 'stack0',
+                            yAxisID: 'y',
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 12 },
+                                padding: 10,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    return label + ': $' + context.parsed.y.toLocaleString();
+                                },
+                                footer: function(tooltipItems) {
+                                    let total = 0;
+                                    tooltipItems.forEach(item => {
+                                        total += item.parsed.y;
+                                    });
+                                    return 'Total: $' + total.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { color: '#a0a0a0' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            stacked: true,
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: {
+                                color: '#a0a0a0',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            ticks: {
+                                color: '#FFD700',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+            
+            // Create donut chart for total income by type
+            const pieCtx = document.getElementById('symbolPieChart').getContext('2d');
+            
+            // Plugin to draw text in center of donut
+            const centerTextPlugin = {
+                id: 'centerText',
+                afterDatasetsDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const centerX = (chartArea.left + chartArea.right) / 2;
+                    const centerY = (chartArea.top + chartArea.bottom) / 2;
+                    
+                    const total = chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
+                    
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Draw "Total" label
+                    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#a0a0a0';
+                    ctx.fillText('Total', centerX, centerY - 12);
+                    
+                    // Draw total value
+                    ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#e0e0e0';
+                    ctx.fillText('$' + total.toLocaleString(), centerX, centerY + 12);
+                    
+                    ctx.restore();
+                }
+            };
+            
+            new Chart(pieCtx, {
+                plugins: [ChartDataLabels, centerTextPlugin],
+                type: 'doughnut',
+                data: {
+                    labels: ['Puts', 'Calls', 'Capital Gains', 'Dividends'],
+                    datasets: [{
+                        data: [totalPuts, totalCalls, totalCapGains, totalDividends],
+                        backgroundColor: [
+                            '#3498db',
+                            '#e67e22',
+                            '#2ecc71',
+                            '#f1c40f'
+                        ],
+                        borderColor: [
+                            '#3498db',
+                            '#e67e22',
+                            '#2ecc71',
+                            '#f1c40f'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            align: 'center',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 12 },
+                                padding: 12,
+                                usePointStyle: true,
+                                boxWidth: 12,
+                                boxHeight: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': $' + value.toLocaleString() + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#ffffff',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                if (total === 0 || value === 0) return '';
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return '$' + (value / 1000).toFixed(1) + 'K\n' + percentage + '%';
+                            },
+                            anchor: 'center',
+                            align: 'center',
+                            offset: 0
+                        }
+                    }
+                }
+            });
+            
+            // Create Options by Expiration scatter chart for this symbol
+            const symbolExpirationScatterData = [];
+            
+            {{range .OptionsList}}
+                {{if not .Closed}}
+                    {
+                        const expirationDate = new Date('{{.Expiration.Format "2006-01-02"}}');
+                        const totalProfit = {{.CalculateTotalProfit}};
+                        const strike = {{.Strike}};
+                        const contracts = {{.Contracts}};
+                        const type = '{{.Type}}';
+                        const nominalValue = strike * contracts * 100;
+                        const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
+                        
+                        // Scale radius from nominal value
+                        const minNominal = 1000;
+                        const maxNominal = 50000;
+                        const minRadius = 4;
+                        const maxRadius = 20;
+                        const scaledRadius = Math.max(minRadius, Math.min(maxRadius, 
+                            minRadius + (riskScaledValue - minNominal) * (maxRadius - minRadius) / (maxNominal - minNominal)
+                        ));
+                        
+                        symbolExpirationScatterData.push({
+                            x: expirationDate,
+                            y: totalProfit,
+                            r: scaledRadius,
+                            symbol: '{{.Symbol}}',
+                            type: type,
+                            strike: strike,
+                            contracts: contracts,
+                            nominalValue: nominalValue,
+                            riskScaledValue: riskScaledValue
+                        });
+                    }
+                {{end}}
+            {{end}}
+            
+            // Only create chart if we have data
+            if (symbolExpirationScatterData.length === 0) {
+                const canvas = document.getElementById('symbolExpirationChart');
+                const parent = canvas.parentElement;
+                parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No open options</div>';
+            } else {
+            
+            // Create scatter chart
+            const scatterCtx = document.getElementById('symbolExpirationChart').getContext('2d');
+            new Chart(scatterCtx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Options',
+                        data: symbolExpirationScatterData,
+                        backgroundColor: function(ctx) {
+                            const point = symbolExpirationScatterData[ctx.dataIndex];
+                            return point && point.type === 'Put' ? '#3498db' : '#27ae60';
+                        },
+                        borderColor: function(ctx) {
+                            const point = symbolExpirationScatterData[ctx.dataIndex];
+                            return point && point.type === 'Put' ? '#3498db' : '#27ae60';
+                        },
+                        pointRadius: function(ctx) {
+                            const point = symbolExpirationScatterData[ctx.dataIndex];
+                            return point ? point.r : 8;
+                        },
+                        pointHoverRadius: function(ctx) {
+                            const point = symbolExpirationScatterData[ctx.dataIndex];
+                            return point ? point.r + 4 : 12;
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    const point = symbolExpirationScatterData[context[0].dataIndex];
+                                    return point.symbol + ' ' + point.type + ' $' + point.strike;
+                                },
+                                label: function(context) {
+                                    const point = symbolExpirationScatterData[context.dataIndex];
+                                    return [
+                                        'Contracts: ' + point.contracts,
+                                        'Nominal: $' + point.nominalValue.toLocaleString(),
+                                        'Profit: $' + point.y.toLocaleString()
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MM/dd'
+                                }
+                            },
+                            ticks: { 
+                                color: '#a0a0a0',
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 45
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#a0a0a0',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+            } // End of scatter chart conditional
+            
+            // Create Put Exposure bar chart for this symbol
+            const putExposureByExpiration = {};
+            
+            {{range .OptionsList}}
+                {{if and (eq .Type "Put") (not .Closed)}}
+                    {
+                        const expirationStr = '{{.Expiration.Format "01/02/2006"}}';
+                        const exposure = {{.Strike}} * {{.Contracts}} * 100;
+                        putExposureByExpiration[expirationStr] = (putExposureByExpiration[expirationStr] || 0) + exposure;
+                    }
+                {{end}}
+            {{end}}
+            
+            // Get all expiration dates and sort them
+            let putExposureLabels = Object.keys(putExposureByExpiration).sort((a, b) => new Date(a) - new Date(b));
+            
+            // If we have data, fill in weekly gaps from today to the last expiration
+            if (putExposureLabels.length > 0) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const lastExpiration = new Date(putExposureLabels[putExposureLabels.length - 1]);
+                
+                // Create a complete set of weekly dates
+                const allWeeklyDates = [];
+                let currentDate = new Date(today);
+                
+                // Start from today
+                while (currentDate <= lastExpiration) {
+                    const dateStr = (currentDate.getMonth() + 1).toString().padStart(2, '0') + '/' + 
+                                   currentDate.getDate().toString().padStart(2, '0') + '/' + 
+                                   currentDate.getFullYear();
+                    allWeeklyDates.push(dateStr);
+                    currentDate.setDate(currentDate.getDate() + 7); // Add 7 days (1 week)
+                }
+                
+                // Merge the actual expiration dates with weekly dates
+                const allDates = new Set([...allWeeklyDates, ...putExposureLabels]);
+                putExposureLabels = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+            }
+            
+            let putExposureData = putExposureLabels.map(label => putExposureByExpiration[label] || 0);
+            
+            // Only create chart if we have data
+            if (putExposureLabels.length === 0) {
+                const canvas = document.getElementById('symbolPutExposureChart');
+                if (canvas) {
+                    const parent = canvas.parentElement;
+                    parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No open puts</div>';
+                }
+            } else {
+            
+            // Create bar chart
+            const putExposureCtx = document.getElementById('symbolPutExposureChart').getContext('2d');
+            new Chart(putExposureCtx, {
+                plugins: [ChartDataLabels],
+                type: 'bar',
+                data: {
+                    labels: putExposureLabels.map(label => {
+                        const date = new Date(label);
+                        return (date.getMonth() + 1).toString().padStart(2, '0') + '/' + date.getDate().toString().padStart(2, '0');
+                    }),
+                    datasets: [{
+                        data: putExposureData,
+                        backgroundColor: '#3498db',
+                        borderColor: '#3498db',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Put Exposure: $' + context.parsed.y.toLocaleString();
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: function(context) {
+                                const value = context.dataset.data[context.dataIndex];
+                                return value && value > 0;
+                            },
+                            anchor: 'end',
+                            align: 'top',
+                            color: '#ffffff',
+                            font: {
+                                size: 9,
+                                weight: 'bold'
+                            },
+                            formatter: function(value, context) {
+                                if (!value || value === 0) return '';
+                                return '$' + (value / 1000).toFixed(0) + 'K';
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 10 }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: function(context) {
+                                const maxValue = Math.max(...putExposureData);
+                                return maxValue * 1.25;
+                            },
+                            ticks: {
+                                color: '#a0a0a0',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+            } // End of put exposure chart conditional
+        
+        });
+    </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>
     <script src="/static/js/table-sort.js"></script>
+    <script src="/static/js/row-actions.js"></script>
 </body>
 </html>

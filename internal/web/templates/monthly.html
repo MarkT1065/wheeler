@@ -108,16 +108,10 @@
                 </div>
             </div>
             
-            <!-- Added by antamy                              -->
-            <!-- Gains Chart with Cumulative / Monthly Toggle -->
-
+            <!-- Gains Chart with Monthly Bars and Cumulative Line -->
             <div class="content-section" style="margin-bottom: 30px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div class="section-title">Gains Over Time</div>
-                    <div class="toggle-button-group" style="display: flex; gap: 5px;">
-                        <button id="cumulativeToggle" class="toggle-btn active" data-view="cumulative" style="padding: 8px 16px; background-color: #27ae60; color: white; border: 1px solid #1e8449; border-radius: 4px 0 0 4px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease;">Cumulative</button>
-                        <button id="monthlyToggle" class="toggle-btn" data-view="monthly" style="padding: 8px 16px; background-color: #34495e; color: #bdc3c7; border: 1px solid #2c3e50; border-radius: 0 4px 4px 0; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s ease;">Monthly</button>
-                    </div>
                 </div>
                 <div class="chart-container-large">
                     <canvas id="cumulativeGainsChart"></canvas>
@@ -1006,12 +1000,7 @@
             }
         });
 
-        // Added by antamy
-        // Gains Over Time chart with Cumulative / Monthly toggle.  A replacement for the original chart
-        // Refactored the Totals Panel to pull it out of the code that created that chart
-
-        // Store chart instance globally so we can update it
-        let gainsOverTimeChartInstance = null;
+        // Gains Over Time chart with Monthly bars and Cumulative line overlay
 
         // Update the totals panel with year-to-date values (using imported formatCurrency)
         function updateTotalsPanelValues(putsTotal, callsTotal, capGainsTotal, dividendsTotal) {
@@ -1032,8 +1021,8 @@
             formatCurrency(dividendsTotal, totalDividendsElement);
         }
 
-        // Function to create/update the gains chart
-        function createGainsOverTimeChart(viewMode = 'cumulative') {
+        // Function to create the gains chart with monthly bars and cumulative line
+        function createGainsOverTimeChart() {
             const gainsOverTimeCtx = document.getElementById('cumulativeGainsChart').getContext('2d');
             
             // Use the same formatted month labels as the other charts
@@ -1071,95 +1060,77 @@
             // Update totals panel with year-to-date values
             updateTotalsPanelValues(putsRunningTotal, callsRunningTotal, capGainsRunningTotal, dividendsRunningTotal);
             
-            // Choose data based on view mode
-            let datasets = [];
-            let yAxisLabel = '';
-            
-            if (viewMode === 'cumulative') {
-                yAxisLabel = 'Cumulative Gains ($)';
-                datasets = [
-                    {
-                        label: 'Puts',
-                        data: putsCumulativeData,
-                        backgroundColor: 'rgba(31, 119, 180, 0.8)',
-                        borderColor: '#1f77b4',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Calls',
-                        data: callsCumulativeData,
-                        backgroundColor: 'rgba(255, 127, 14, 0.8)',
-                        borderColor: '#ff7f0e',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Capital Gains',
-                        data: capGainsCumulativeData,
-                        backgroundColor: function(context) {
-                            const value = context.parsed.y;
-                            return value < 0 ? 'rgba(214, 39, 40, 0.8)' : 'rgba(39, 174, 96, 0.8)';
-                        },
-                        borderColor: function(context) {
-                            const value = context.parsed.y;
-                            return value < 0 ? '#d62728' : '#27ae60';
-                        },
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Dividends',
-                        data: dividendsCumulativeData,
-                        backgroundColor: 'rgba(255, 215, 0, 0.8)',
-                        borderColor: '#FFD700',
-                        borderWidth: 1
-                    }
-                ];
-            } else {
-                yAxisLabel = 'Monthly Gains ($)';
-                datasets = [
-                    {
-                        label: 'Puts',
-                        data: putsMonthlyData,
-                        backgroundColor: 'rgba(31, 119, 180, 0.8)',
-                        borderColor: '#1f77b4',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Calls',
-                        data: callsMonthlyData,
-                        backgroundColor: 'rgba(255, 127, 14, 0.8)',
-                        borderColor: '#ff7f0e',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Capital Gains',
-                        data: capGainsMonthlyData,
-                        backgroundColor: function(context) {
-                            const value = context.parsed.y;
-                            return value < 0 ? 'rgba(214, 39, 40, 0.8)' : 'rgba(39, 174, 96, 0.8)';
-                        },
-                        borderColor: function(context) {
-                            const value = context.parsed.y;
-                            return value < 0 ? '#d62728' : '#27ae60';
-                        },
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Dividends',
-                        data: dividendsMonthlyData,
-                        backgroundColor: 'rgba(255, 215, 0, 0.8)',
-                        borderColor: '#FFD700',
-                        borderWidth: 1
-                    }
-                ];
+            // Calculate total cumulative for the line
+            let totalCumulativeData = [];
+            for (let i = 0; i < monthLabels.length; i++) {
+                totalCumulativeData.push(
+                    putsCumulativeData[i] + 
+                    callsCumulativeData[i] + 
+                    capGainsCumulativeData[i] + 
+                    dividendsCumulativeData[i]
+                );
             }
             
-            // Destroy existing chart if it exists
-            if (gainsOverTimeChartInstance) {
-                gainsOverTimeChartInstance.destroy();
-            }
+            // Create datasets with monthly bars (stacked) and cumulative line
+            const datasets = [
+                // Monthly stacked bars
+                {
+                    type: 'bar',
+                    label: 'Puts',
+                    data: putsMonthlyData,
+                    backgroundColor: 'rgba(31, 119, 180, 0.8)',
+                    borderColor: '#1f77b4',
+                    borderWidth: 1,
+                    stack: 'stack0',
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: 'Calls',
+                    data: callsMonthlyData,
+                    backgroundColor: 'rgba(255, 127, 14, 0.8)',
+                    borderColor: '#ff7f0e',
+                    borderWidth: 1,
+                    stack: 'stack0',
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: 'Capital Gains',
+                    data: capGainsMonthlyData,
+                    backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                    borderColor: '#27ae60',
+                    borderWidth: 1,
+                    stack: 'stack0',
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: 'Dividends',
+                    data: dividendsMonthlyData,
+                    backgroundColor: 'rgba(255, 215, 0, 0.8)',
+                    borderColor: '#FFD700',
+                    borderWidth: 1,
+                    stack: 'stack0',
+                    yAxisID: 'y'
+                },
+                // Cumulative line
+                {
+                    type: 'line',
+                    label: 'Cumulative',
+                    data: totalCumulativeData,
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.2,
+                    yAxisID: 'y1',
+                    order: 0
+                }
+            ];
             
-            // Create new chart
-            gainsOverTimeChartInstance = new Chart(gainsOverTimeCtx, {
+            // Create chart
+            new Chart(gainsOverTimeCtx, {
                 type: 'bar',
                 data: {
                     labels: monthLabels,
@@ -1177,14 +1148,20 @@
                             },
                             ticks: {
                                 color: '#e0e0e0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
                             }
                         },
                         y: {
                             stacked: true,
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: yAxisLabel,
+                                text: 'Monthly Gains ($)',
                                 color: '#e0e0e0'
                             },
                             ticks: {
@@ -1192,6 +1169,29 @@
                                 callback: function(value) {
                                     return '$' + value.toLocaleString();
                                 }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Cumulative ($)',
+                                color: '#FFD700'
+                            },
+                            ticks: {
+                                color: '#FFD700',
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            },
+                            grid: {
+                                drawOnChartArea: false
                             }
                         }
                     },
@@ -1233,50 +1233,8 @@
             });
         }
 
-        // Initialize chart with cumulative view
-        createGainsOverTimeChart('cumulative');
-
-        // Toggle button click handlers
-        document.addEventListener('DOMContentLoaded', function() {
-            const cumulativeBtn = document.getElementById('cumulativeToggle');
-            const monthlyBtn = document.getElementById('monthlyToggle');
-            
-            if (cumulativeBtn && monthlyBtn) {
-                cumulativeBtn.addEventListener('click', function() {
-                    // Update button states
-                    cumulativeBtn.style.backgroundColor = '#27ae60';
-                    cumulativeBtn.style.color = 'white';
-                    cumulativeBtn.style.borderColor = '#1e8449';
-                    
-                    monthlyBtn.style.backgroundColor = '#34495e';
-                    monthlyBtn.style.color = '#bdc3c7';
-                    monthlyBtn.style.borderColor = '#2c3e50';
-                    
-                    cumulativeBtn.classList.add('active');
-                    monthlyBtn.classList.remove('active');
-                    
-                    // Update chart
-                    createGainsOverTimeChart('cumulative');
-                });
-                
-                monthlyBtn.addEventListener('click', function() {
-                    // Update button states
-                    monthlyBtn.style.backgroundColor = '#27ae60';
-                    monthlyBtn.style.color = 'white';
-                    monthlyBtn.style.borderColor = '#1e8449';
-                    
-                    cumulativeBtn.style.backgroundColor = '#34495e';
-                    cumulativeBtn.style.color = '#bdc3c7';
-                    cumulativeBtn.style.borderColor = '#2c3e50';
-                    
-                    monthlyBtn.classList.add('active');
-                    cumulativeBtn.classList.remove('active');
-                    
-                    // Update chart
-                    createGainsOverTimeChart('monthly');
-                });
-            }
-        });
+        // Initialize chart
+        createGainsOverTimeChart();
 
         
         // Symbol Modal functionality is handled by shared module
