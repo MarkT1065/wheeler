@@ -2227,119 +2227,260 @@
             });
             } // End of scatter chart conditional
             
-            // Create Put Exposure bar chart for this symbol
-            const putExposureByExpiration = {};
+            // Create Put Exposure Over Time chart - historical + 365 day forward view
+            // Build a timeline of put exposure: each day shows total exposure from all active puts on that day
+            
+            // Collect all put option data with opened and expiration dates
+            const putOptions = [];
+            let latestExpiration = null;
             
             {{range .OptionsList}}
-                {{if and (eq .Type "Put") (not .Closed)}}
+                {{if eq .Type "Put"}}
                     {
-                        const expirationStr = '{{.Expiration.Format "01/02/2006"}}';
+                        const opened = new Date('{{.Opened.Format "2006-01-02"}}');
+                        const expiration = new Date('{{.Expiration.Format "2006-01-02"}}');
+                        const closed = {{if .Closed}}new Date('{{.Closed.Format "2006-01-02"}}'){{else}}null{{end}};
                         const exposure = {{.Strike}} * {{.Contracts}} * 100;
-                        putExposureByExpiration[expirationStr] = (putExposureByExpiration[expirationStr] || 0) + exposure;
+                        const premium = {{.Premium}} * {{.Contracts}} * 100;
+                        const commission = parseFloat('{{.Commission}}') || 0;
+                        const exitPrice = {{if .ExitPrice}}{{.GetExitPriceValue}} * {{.Contracts}} * 100{{else}}0{{end}};
+                        const profit = premium - commission - exitPrice;
+                        
+                        console.log('Put option:', {
+                            opened: '{{.Opened.Format "2006-01-02"}}',
+                            expiration: '{{.Expiration.Format "2006-01-02"}}',
+                            premium: premium,
+                            commission: commission,
+                            exitPrice: exitPrice,
+                            profit: profit
+                        });
+                        
+                        putOptions.push({
+                            opened: opened,
+                            expiration: expiration,
+                            closed: closed,
+                            exposure: exposure,
+                            premium: premium,
+                            commission: commission,
+                            profit: profit
+                        });
+                        
+                        // Track latest expiration from open puts
+                        if (!closed && (!latestExpiration || expiration > latestExpiration)) {
+                            latestExpiration = expiration;
+                        }
                     }
                 {{end}}
             {{end}}
             
-            // Get all expiration dates and sort them
-            let putExposureLabels = Object.keys(putExposureByExpiration).sort((a, b) => new Date(a) - new Date(b));
+            // Determine date range: 365 days before latest exposure to latest exposure
+            let startDate, endDate;
             
-            // If we have data, fill in weekly gaps from today to the last expiration
-            if (putExposureLabels.length > 0) {
+            if (latestExpiration) {
+                // Go back 365 days from the furthest current (open) exposure
+                endDate = new Date(latestExpiration);
+                startDate = new Date(latestExpiration);
+                startDate.setDate(startDate.getDate() - 365);
+            } else {
+                // No open puts - show last 365 days
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                const lastExpiration = new Date(putExposureLabels[putExposureLabels.length - 1]);
-                
-                // Create a complete set of weekly dates
-                const allWeeklyDates = [];
-                let currentDate = new Date(today);
-                
-                // Start from today
-                while (currentDate <= lastExpiration) {
-                    const dateStr = (currentDate.getMonth() + 1).toString().padStart(2, '0') + '/' + 
-                                   currentDate.getDate().toString().padStart(2, '0') + '/' + 
-                                   currentDate.getFullYear();
-                    allWeeklyDates.push(dateStr);
-                    currentDate.setDate(currentDate.getDate() + 7); // Add 7 days (1 week)
-                }
-                
-                // Merge the actual expiration dates with weekly dates
-                const allDates = new Set([...allWeeklyDates, ...putExposureLabels]);
-                putExposureLabels = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+                endDate = new Date(today);
+                startDate = new Date(today);
+                startDate.setDate(startDate.getDate() - 365);
             }
             
-            let putExposureData = putExposureLabels.map(label => putExposureByExpiration[label] || 0);
+            // Collect long position data for the same date range
+            const longPositions = [];
             
-            // Only create chart if we have data
-            if (putExposureLabels.length === 0) {
+            {{range .LongPositionsList}}
+                {
+                    const opened = new Date('{{.Opened.Format "2006-01-02"}}');
+                    const closed = {{if .Closed}}new Date('{{.Closed.Format "2006-01-02"}}'){{else}}null{{end}};
+                    const value = {{.BuyPrice}} * {{.Shares}};
+                    
+                    longPositions.push({
+                        opened: opened,
+                        closed: closed,
+                        value: value
+                    });
+                }
+            {{end}}
+            
+            // Calculate exposure and long value for each day
+            const exposureByDate = {};
+            const longValueByDate = {};
+            let currentDate = new Date(startDate);
+            
+            console.log('Total put options:', putOptions.length);
+            console.log('Total long positions:', longPositions.length);
+            console.log('Date range:', startDate, 'to', endDate);
+            
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                let dailyExposure = 0;
+                let dailyLongValue = 0;
+                
+                // Sum up exposure from all puts that are active on this date
+                putOptions.forEach(put => {
+                    const isActive = currentDate >= put.opened && currentDate <= put.expiration &&
+                                   (!put.closed || currentDate < put.closed);
+                    if (isActive) {
+                        dailyExposure += put.exposure;
+                    }
+                });
+                
+                // Sum up long value from all positions that are active on this date
+                longPositions.forEach(position => {
+                    const isActive = currentDate >= position.opened &&
+                                   (!position.closed || currentDate < position.closed);
+                    if (isActive) {
+                        dailyLongValue += position.value;
+                    }
+                });
+                
+                exposureByDate[dateStr] = dailyExposure;
+                longValueByDate[dateStr] = dailyLongValue;
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            console.log('Sample data points:');
+            console.log('Exposure:', Object.entries(exposureByDate).slice(0, 5));
+            console.log('Long Value:', Object.entries(longValueByDate).slice(0, 5));
+            
+            // Sample weekly data points for cleaner chart (every 7 days)
+            const weeklyLabels = [];
+            const weeklyExposureData = [];
+            const weeklyLongValueData = [];
+            currentDate = new Date(startDate);
+            
+            while (currentDate <= endDate) {
+                const dateStr = currentDate.toISOString().split('T')[0];
+                weeklyLabels.push(dateStr);
+                weeklyExposureData.push(exposureByDate[dateStr] || 0);
+                weeklyLongValueData.push(longValueByDate[dateStr] || 0);
+                currentDate.setDate(currentDate.getDate() + 7);
+            }
+            
+            // Only create chart if we have puts or long positions
+            if (putOptions.length === 0 && longPositions.length === 0) {
                 const canvas = document.getElementById('symbolPutExposureChart');
                 if (canvas) {
                     const parent = canvas.parentElement;
-                    parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No open puts</div>';
+                    parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No data</div>';
                 }
             } else {
             
-            // Create bar chart
+            // Create combination chart: bars for put exposure vs long value
             const putExposureCtx = document.getElementById('symbolPutExposureChart').getContext('2d');
+            
+            // Plugin to draw vertical line at today
+            const todayLinePlugin = {
+                id: 'todayLine',
+                afterDatasetsDraw: function(chart) {
+                    if (todayIndex >= 0 && todayIndex < chart.data.labels.length) {
+                        const ctx = chart.ctx;
+                        const xAxis = chart.scales.x;
+                        const yAxis = chart.scales.y;
+                        
+                        const x = xAxis.getPixelForValue(todayIndex);
+                        const topY = yAxis.top;
+                        const bottomY = yAxis.bottom;
+                        
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(x, topY);
+                        ctx.lineTo(x, bottomY);
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#e74c3c';
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            };
+            
             new Chart(putExposureCtx, {
-                plugins: [ChartDataLabels],
                 type: 'bar',
+                plugins: [ChartDataLabels],
                 data: {
-                    labels: putExposureLabels.map(label => {
+                    labels: weeklyLabels.map(label => {
                         const date = new Date(label);
                         return (date.getMonth() + 1).toString().padStart(2, '0') + '/' + date.getDate().toString().padStart(2, '0');
                     }),
-                    datasets: [{
-                        data: putExposureData,
-                        backgroundColor: '#3498db',
-                        borderColor: '#3498db',
-                        borderWidth: 1
-                    }]
+                    datasets: [
+                        {
+                            label: 'Put Exposure',
+                            data: weeklyExposureData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
+                            borderColor: '#3498db',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Long Value',
+                            data: weeklyLongValueData,
+                            backgroundColor: 'rgba(39, 174, 96, 0.8)',
+                            borderColor: '#27ae60',
+                            borderWidth: 1
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 11 },
+                                padding: 8,
+                                usePointStyle: true
+                            }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    return 'Put Exposure: $' + context.parsed.y.toLocaleString();
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += '$' + context.parsed.y.toLocaleString();
+                                    return label;
                                 }
                             }
                         },
                         datalabels: {
-                            display: function(context) {
-                                const value = context.dataset.data[context.dataIndex];
-                                return value && value > 0;
-                            },
-                            anchor: 'end',
-                            align: 'top',
-                            color: '#ffffff',
-                            font: {
-                                size: 9,
-                                weight: 'bold'
-                            },
-                            formatter: function(value, context) {
-                                if (!value || value === 0) return '';
-                                return '$' + (value / 1000).toFixed(0) + 'K';
-                            }
+                            display: false
                         }
                     },
                     scales: {
                         x: {
+                            stacked: true,
                             ticks: {
                                 color: '#a0a0a0',
-                                font: { size: 10 }
+                                font: { size: 10 },
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 12
                             },
                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         },
                         y: {
+                            stacked: true,
+                            type: 'linear',
+                            position: 'left',
                             beginAtZero: true,
-                            suggestedMax: function(context) {
-                                const maxValue = Math.max(...putExposureData);
-                                return maxValue * 1.25;
+                            title: {
+                                display: true,
+                                text: 'Value',
+                                color: '#a0a0a0',
+                                font: { size: 11 }
                             },
                             ticks: {
                                 color: '#a0a0a0',
