@@ -1282,8 +1282,9 @@ tbody tr:hover {
     border-radius: 8px;
     padding: 15px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    min-height: 308px;
-    max-height: 385px;
+    height: 300px;
+    min-height: 300px;
+    max-height: 300px;
     position: relative;
     overflow: hidden;
     border: 1px solid #575757;
@@ -1299,9 +1300,9 @@ tbody tr:hover {
 
 .chart-canvas {
     max-width: 100%;
-    max-height: 242px;
+    max-height: 100%;
     width: 100% !important;
-    height: auto !important;
+    height: 100% !important;
 }
 
 @media (max-width: 1400px) {
@@ -1396,12 +1397,14 @@ tbody tr:hover {
 }
 
 .chart-container-small {
-    height: 250px;
+    height: 300px;
+    min-height: 300px;
+    max-height: 300px;
     position: relative;
     background: #2d2d2d;
     border: 1px solid #575757;
     border-radius: 8px;
-    padding: 10px;
+    padding: 15px;
 }
 
 .chart-container-large {

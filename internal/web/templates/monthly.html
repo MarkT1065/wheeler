@@ -113,8 +113,21 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <div class="section-title">Gains Over Time</div>
                 </div>
-                <div class="chart-container-large">
-                    <canvas id="cumulativeGainsChart"></canvas>
+                <div style="display: flex; gap: 20px; align-items: stretch;">
+                    <!-- Cumulative Income Pie Chart (25% width) -->
+                    <div style="flex: 0 0 25%; background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040;">
+                        <h3 style="color: #e0e0e0; margin: 0 0 10px 0; font-size: 16px; text-align: center;">Cumulative Income</h3>
+                        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                            <canvas id="cumulativeIncomePieChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Gains Over Time Bar Chart (75% width) -->
+                    <div style="flex: 0 0 75%; background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040;">
+                        <div style="height: 300px;">
+                            <canvas id="cumulativeGainsChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -380,6 +393,7 @@
                         display: true,
                         position: 'top',
                         labels: {
+                            color: '#e0e0e0',
                             usePointStyle: true
                         }
                     },
@@ -396,6 +410,11 @@
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
                     y: {
                         type: 'linear',
                         beginAtZero: true,
@@ -403,9 +422,10 @@
                         title: {
                             display: true,
                             text: 'Monthly ($)',
-                            color: '#1f77b4'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -418,9 +438,10 @@
                         title: {
                             display: true,
                             text: 'Cumulative ($)',
-                            color: '#FFD700'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -574,6 +595,7 @@
                         display: true,
                         position: 'top',
                         labels: {
+                            color: '#e0e0e0',
                             usePointStyle: true
                         }
                     },
@@ -590,6 +612,11 @@
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
                     y: {
                         type: 'linear',
                         beginAtZero: true,
@@ -597,9 +624,10 @@
                         title: {
                             display: true,
                             text: 'Monthly ($)',
-                            color: '#1f77b4'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -612,9 +640,10 @@
                         title: {
                             display: true,
                             text: 'Cumulative ($)',
-                            color: '#FFD700'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -738,6 +767,7 @@
                         display: true,
                         position: 'top',
                         labels: {
+                            color: '#e0e0e0',
                             usePointStyle: true
                         }
                     },
@@ -754,6 +784,11 @@
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
                     y: {
                         type: 'linear',
                         beginAtZero: true,
@@ -761,9 +796,10 @@
                         title: {
                             display: true,
                             text: 'Monthly ($)',
-                            color: '#27ae60'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -776,9 +812,10 @@
                         title: {
                             display: true,
                             text: 'Cumulative ($)',
-                            color: '#FFD700'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -898,6 +935,7 @@
                         display: true,
                         position: 'top',
                         labels: {
+                            color: '#e0e0e0',
                             usePointStyle: true
                         }
                     },
@@ -914,6 +952,11 @@
                     }
                 },
                 scales: {
+                    x: {
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
                     y: {
                         type: 'linear',
                         beginAtZero: true,
@@ -921,9 +964,10 @@
                         title: {
                             display: true,
                             text: 'Monthly ($)',
-                            color: '#4CAF50'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -936,9 +980,10 @@
                         title: {
                             display: true,
                             text: 'Cumulative ($)',
-                            color: '#FFD700'
+                            color: '#e0e0e0'
                         },
                         ticks: {
+                            color: '#e0e0e0',
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
@@ -1197,13 +1242,7 @@
                     },
                     plugins: {
                         legend: { 
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#e0e0e0',
-                                usePointStyle: true,
-                                padding: 20
-                            }
+                            display: false
                         },
                         tooltip: {
                             mode: 'index',
@@ -1222,7 +1261,36 @@
                             }
                         },
                         datalabels: {
-                            display: false
+                            display: function(context) {
+                                // Only show on the last bar dataset (top of stack)
+                                const datasets = context.chart.data.datasets;
+                                let lastBarIndex = -1;
+                                for (let i = datasets.length - 1; i >= 0; i--) {
+                                    if (datasets[i].type === 'bar') {
+                                        lastBarIndex = i;
+                                        break;
+                                    }
+                                }
+                                return context.datasetIndex === lastBarIndex;
+                            },
+                            formatter: function(value, context) {
+                                // Calculate total for this month across all stacked bar datasets
+                                let total = 0;
+                                for (let i = 0; i < context.chart.data.datasets.length; i++) {
+                                    if (context.chart.data.datasets[i].type === 'bar') {
+                                        total += context.chart.data.datasets[i].data[context.dataIndex] || 0;
+                                    }
+                                }
+                                return total > 0 ? '$' + (total / 1000).toFixed(1) + 'K' : '';
+                            },
+                            color: '#ffffff',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            },
+                            anchor: 'end',
+                            align: 'top',
+                            offset: 4
                         }
                     },
                     interaction: {
@@ -1235,6 +1303,152 @@
 
         // Initialize chart
         createGainsOverTimeChart();
+
+        // Function to create cumulative income pie chart
+        function createCumulativeIncomePieChart() {
+            const ctx = document.getElementById('cumulativeIncomePieChart');
+            if (!ctx) return;
+            
+            // Get cumulative totals from the page (already calculated)
+            const totalPuts = parseFloat(document.getElementById('totalPuts').textContent.replace(/[$,]/g, '')) || 0;
+            const totalCalls = parseFloat(document.getElementById('totalCalls').textContent.replace(/[$,]/g, '')) || 0;
+            const totalCapGains = parseFloat(document.getElementById('totalCapGains').textContent.replace(/[$,]/g, '')) || 0;
+            const totalDividends = parseFloat(document.getElementById('totalDividends').textContent.replace(/[$,]/g, '')) || 0;
+            
+            // Plugin to draw total in center of donut
+            const centerTextPlugin = {
+                id: 'centerText',
+                afterDatasetsDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const centerX = (chartArea.left + chartArea.right) / 2;
+                    const centerY = (chartArea.top + chartArea.bottom) / 2;
+                    
+                    const total = chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
+                    
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    // Draw "Total" label
+                    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#a0a0a0';
+                    ctx.fillText('Total', centerX, centerY - 15);
+                    
+                    // Draw total value
+                    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText('$' + Math.round(total).toLocaleString(), centerX, centerY + 15);
+                    
+                    ctx.restore();
+                }
+            };
+            
+            // Create donut chart
+            new Chart(ctx, {
+                type: 'doughnut',
+                plugins: [centerTextPlugin],
+                data: {
+                    labels: ['Puts', 'Calls', 'Capital Gains', 'Dividends'],
+                    datasets: [{
+                        data: [totalPuts, totalCalls, totalCapGains, totalDividends],
+                        backgroundColor: [
+                            'rgba(31, 119, 180, 0.8)',
+                            'rgba(255, 127, 14, 0.8)',
+                            'rgba(39, 174, 96, 0.8)',
+                            'rgba(255, 215, 0, 0.8)'
+                        ],
+                        borderColor: [
+                            '#1f77b4',
+                            '#ff7f0e',
+                            '#27ae60',
+                            '#FFD700'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                plugins: [ChartDataLabels, centerTextPlugin],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 10,
+                            top: 10,
+                            bottom: 10
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            align: 'center',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 13 },
+                                padding: 15,
+                                usePointStyle: true,
+                                boxWidth: 16,
+                                boxHeight: 16,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            const formattedValue = '$' + Math.round(value).toLocaleString();
+                                            return {
+                                                text: label + ': ' + formattedValue,
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i,
+                                                strokeStyle: data.datasets[0].borderColor[i],
+                                                lineWidth: 2,
+                                                fontColor: '#e0e0e0'
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': $' + value.toLocaleString() + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#ffffff',
+                            font: {
+                                size: 11,
+                                weight: 'bold'
+                            },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                if (total === 0 || value === 0) return '';
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                if (percentage < 5) return ''; // Hide small slices
+                                return percentage + '%';
+                            },
+                            anchor: 'center',
+                            align: 'center'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize cumulative income pie chart after totals are updated
+        // Need to wait for totals to be calculated first
+        setTimeout(createCumulativeIncomePieChart, 100);
 
         
         // Symbol Modal functionality is handled by shared module
