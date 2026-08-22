@@ -1,8 +1,8 @@
 package web
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sort"
@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 )
-
 
 // symbolHandler serves the symbol-specific analysis view
 func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
@@ -483,9 +482,9 @@ func (s *Server) symbolUpdatePriceHandler(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Update symbol price using Polygon service
-	err := s.polygonService.UpdateSymbolPrice(ctx, symbol)
-	
+	// Update symbol price using configured market data provider
+	err := s.providerService.UpdateSymbolPrice(ctx, symbol)
+
 	response := map[string]interface{}{
 		"success": err == nil,
 		"symbol":  symbol,
@@ -519,8 +518,8 @@ func (s *Server) symbolFetchDividendsHandler(w http.ResponseWriter, r *http.Requ
 	defer cancel()
 
 	// Fetch dividend data using Polygon service
-	dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, 10)
-	
+	dividends, err := s.providerService.FetchDividendHistory(ctx, symbol, 10)
+
 	response := map[string]interface{}{
 		"success": err == nil,
 		"symbol":  symbol,

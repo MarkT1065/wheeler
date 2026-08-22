@@ -8,49 +8,62 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"stonks/internal/providers"
 )
 
-// polygonTestHandler tests the Polygon API connection
-func (s *Server) polygonTestHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) providerLogPrefix() string {
+	name := strings.ToUpper(strings.TrimSpace(s.providerService.Name()))
+	if name == "" {
+		name = "PROVIDER"
+	}
+	return fmt.Sprintf("[%s API]", name)
+}
+
+// providerTestHandler tests the data provider API connection
+func (s *Server) providerTestHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	log.Printf("[POLYGON API] Testing API connection")
+	providerName := s.providerService.Name()
+	logPrefix := s.providerLogPrefix()
+	log.Printf("%s Testing API connection", logPrefix)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Test the connection
-	err := s.polygonService.TestConnection(ctx)
-	
+	err := s.providerService.TestConnection(ctx)
+
 	response := map[string]interface{}{
-		"success": err == nil,
+		"success":  err == nil,
+		"provider": providerName,
 	}
 
 	if err != nil {
 		response["error"] = err.Error()
-		log.Printf("[POLYGON API] Connection test failed: %v", err)
+		log.Printf("%s Connection test failed: %v", logPrefix, err)
 	} else {
 		response["message"] = "API key is valid and connection successful"
-		log.Printf("[POLYGON API] Connection test successful")
+		log.Printf("%s Connection test successful", logPrefix)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding test response: %v", err)
+		log.Printf("%s Error encoding test response: %v", logPrefix, err)
 	}
 }
 
-// polygonUpdatePricesHandler triggers price updates for symbols
-func (s *Server) polygonUpdatePricesHandler(w http.ResponseWriter, r *http.Request) {
+// providerUpdatePricesHandler triggers price updates for symbols
+func (s *Server) providerUpdatePricesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	log.Printf("[POLYGON API] Starting price update request")
+	logPrefix := s.providerLogPrefix()
+	log.Printf("%s Starting price update request", logPrefix)
 
 	// Parse request body to get specific symbols (optional)
 	var request struct {
@@ -66,100 +79,74 @@ func (s *Server) polygonUpdatePricesHandler(w http.ResponseWriter, r *http.Reque
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	var updated, failed int
-	var errors []string
+	var (
+		result *providers.BulkPriceUpdateResult
+		err    error
+	)
 
 	if request.All || len(request.Symbols) == 0 {
-		// Update all symbols (prioritized: active positions first)
-		symbols, err := s.symbolService.GetPrioritizedSymbols()
-		if err != nil {
-			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
-			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("[POLYGON API] Updating prices for %d symbols (prioritized order)", len(symbols))
-
-		for _, symbol := range symbols {
-			if err := s.polygonService.UpdateSymbolPrice(ctx, symbol); err != nil {
-				log.Printf("[POLYGON API] Failed to update %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-				failed++
-			} else {
-				updated++
-			}
-
-			// Rate limiting for free tier (5 requests per minute)
-			time.Sleep(12 * time.Second)
-		}
+		result, err = s.providerService.UpdateAllSymbolPrices(ctx)
 	} else {
-		// Update specific symbols
-		log.Printf("[POLYGON API] Updating prices for specific symbols: %v", request.Symbols)
-
-		for _, symbol := range request.Symbols {
-			if err := s.polygonService.UpdateSymbolPrice(ctx, symbol); err != nil {
-				log.Printf("[POLYGON API] Failed to update %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-				failed++
-			} else {
-				updated++
-			}
-
-			// Rate limiting
-			if len(request.Symbols) > 1 {
-				time.Sleep(12 * time.Second)
-			}
-		}
+		result, err = s.providerService.UpdateSymbolPrices(ctx, request.Symbols)
 	}
 
+	if result == nil {
+		result = &providers.BulkPriceUpdateResult{}
+	}
+
+	success := err == nil && result.Updated > 0
 	response := map[string]interface{}{
-		"success": updated > 0,
-		"updated": updated,
-		"failed":  failed,
+		"success": success,
+		"updated": result.Updated,
+		"failed":  result.Failed,
 	}
 
-	if len(errors) > 0 {
-		response["errors"] = errors
+	if len(result.Errors) > 0 {
+		response["errors"] = result.Errors
 	}
 
-	if updated > 0 {
+	if err != nil {
+		response["message"] = err.Error()
+		log.Printf("%s Price update failed: %v", logPrefix, err)
+	} else if success {
 		response["message"] = "Price update completed"
+		log.Printf("%s Price update completed: %d updated, %d failed", logPrefix, result.Updated, result.Failed)
 	} else {
 		response["message"] = "No prices were updated"
+		log.Printf("%s Price update completed with no updates", logPrefix)
 	}
-
-	log.Printf("[POLYGON API] Price update completed: %d updated, %d failed", updated, failed)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding update response: %v", err)
+		log.Printf("%s Error encoding update response: %v", logPrefix, err)
 	}
 }
 
-// polygonSymbolInfoHandler gets detailed symbol information from Polygon
-func (s *Server) polygonSymbolInfoHandler(w http.ResponseWriter, r *http.Request) {
+// providerSymbolInfoHandler gets detailed symbol information from the configured provider
+func (s *Server) providerSymbolInfoHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	// Extract symbol from URL path
-	path := strings.TrimPrefix(r.URL.Path, "/api/polygon/symbol-info/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/provider/symbol-info/")
 	if path == "" {
 		http.Error(w, "Symbol required", http.StatusBadRequest)
 		return
 	}
 
 	symbol := strings.ToUpper(path)
-	log.Printf("[POLYGON API] Getting symbol info for: %s", symbol)
+	logPrefix := s.providerLogPrefix()
+	log.Printf("%s Getting symbol info for: %s", logPrefix, symbol)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get symbol info from Polygon
-	info, err := s.polygonService.FetchSymbolDetails(ctx, symbol)
+	// Get symbol info from configured data provider
+	info, err := s.providerService.FetchSymbolDetails(ctx, symbol)
 	if err != nil {
-		log.Printf("[POLYGON API] Error getting symbol info for %s: %v", symbol, err)
+		log.Printf("%s Error getting symbol info for %s: %v", logPrefix, symbol, err)
 		response := map[string]interface{}{
 			"success": false,
 			"error":   err.Error(),
@@ -171,9 +158,9 @@ func (s *Server) polygonSymbolInfoHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get dividend history (optional)
-	dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, 5)
+	dividends, err := s.providerService.FetchDividendHistory(ctx, symbol, 5)
 	if err != nil {
-		log.Printf("[POLYGON API] Warning: failed to get dividend history for %s: %v", symbol, err)
+		log.Printf("%s Warning: failed to get dividend history for %s: %v", logPrefix, symbol, err)
 		// Continue without dividends
 	}
 
@@ -186,29 +173,30 @@ func (s *Server) polygonSymbolInfoHandler(w http.ResponseWriter, r *http.Request
 		response["dividends"] = dividends
 	}
 
-	log.Printf("[POLYGON API] Successfully retrieved info for %s", symbol)
+	log.Printf("%s Successfully retrieved info for %s", logPrefix, symbol)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding symbol info response: %v", err)
+		log.Printf("%s Error encoding symbol info response: %v", logPrefix, err)
 	}
 }
 
-// polygonStatusHandler returns the status of the Polygon integration  
-func (s *Server) polygonStatusHandler(w http.ResponseWriter, r *http.Request) {
+// providerStatusHandler returns the status of the provider integration
+func (s *Server) providerStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	status := s.polygonService.GetAPIKeyStatus()
+	status := s.providerService.GetAPIKeyStatus()
+	logPrefix := s.providerLogPrefix()
 
 	// Test connection if API key is configured
 	if status.Configured {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := s.polygonService.TestConnection(ctx); err != nil {
+		if err := s.providerService.TestConnection(ctx); err != nil {
 			status.Valid = false
 			status.Error = err.Error()
 		} else {
@@ -218,18 +206,19 @@ func (s *Server) polygonStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(status); err != nil {
-		log.Printf("[POLYGON API] Error encoding status response: %v", err)
+		log.Printf("%s Error encoding status response: %v", logPrefix, err)
 	}
 }
 
-// polygonFetchDividendsHandler fetches dividend data for all symbols
-func (s *Server) polygonFetchDividendsHandler(w http.ResponseWriter, r *http.Request) {
+// providerFetchDividendsHandler fetches dividend data for symbols
+func (s *Server) providerFetchDividendsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	log.Printf("[POLYGON API] Starting bulk dividend fetch request")
+	logPrefix := s.providerLogPrefix()
+	log.Printf("%s Starting bulk dividend fetch request", logPrefix)
 
 	// Parse request body to get specific symbols (optional)
 	var request struct {
@@ -250,88 +239,49 @@ func (s *Server) polygonFetchDividendsHandler(w http.ResponseWriter, r *http.Req
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	var processed int
-	var results []map[string]interface{}
-	var errors []string
-
+	var symbols []string
 	if request.All || len(request.Symbols) == 0 {
-		// Fetch dividends for all symbols (prioritized: active positions first)
-		symbols, err := s.symbolService.GetPrioritizedSymbols()
+		var err error
+		symbols, err = s.symbolService.GetPrioritizedSymbols()
 		if err != nil {
-			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
+			log.Printf("%s Error getting prioritized symbols: %v", logPrefix, err)
 			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
 			return
 		}
-
-		log.Printf("[POLYGON API] Fetching dividends for %d symbols (prioritized order)", len(symbols))
-
-		for _, symbol := range symbols {
-			dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, request.Limit)
-			processed++
-			
-			if err != nil {
-				log.Printf("[POLYGON API] Failed to fetch dividends for %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-			} else {
-				results = append(results, map[string]interface{}{
-					"symbol":    symbol,
-					"dividends": dividends,
-					"count":     len(dividends),
-				})
-			}
-
-			// Rate limiting for free tier (5 requests per minute)
-			time.Sleep(12 * time.Second)
-		}
 	} else {
-		// Fetch dividends for specific symbols
-		log.Printf("[POLYGON API] Fetching dividends for specific symbols: %v", request.Symbols)
+		symbols = request.Symbols
+	}
 
-		for _, symbol := range request.Symbols {
-			dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, request.Limit)
-			processed++
-			
-			if err != nil {
-				log.Printf("[POLYGON API] Failed to fetch dividends for %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-			} else {
-				results = append(results, map[string]interface{}{
-					"symbol":    symbol,
-					"dividends": dividends,
-					"count":     len(dividends),
-				})
-			}
-
-			// Rate limiting
-			if len(request.Symbols) > 1 {
-				time.Sleep(12 * time.Second)
-			}
-		}
+	result, err := s.providerService.FetchDividendHistoryForSymbols(ctx, symbols, request.Limit)
+	if result == nil {
+		result = &providers.BulkDividendFetchResult{}
 	}
 
 	response := map[string]interface{}{
-		"success":   true,
-		"processed": processed,
-		"results":   results,
+		"success":   err == nil,
+		"processed": result.Processed,
+		"results":   result.Results,
 	}
 
-	if len(errors) > 0 {
-		response["errors"] = errors
+	if len(result.Errors) > 0 {
+		response["errors"] = result.Errors
 	}
 
 	totalDividends := 0
-	for _, result := range results {
-		if count, ok := result["count"].(int); ok {
-			totalDividends += count
-		}
+	for _, record := range result.Results {
+		totalDividends += len(record.Dividends)
 	}
-	
-	response["message"] = fmt.Sprintf("Dividend fetch completed: %d symbols processed, %d total dividends found", processed, totalDividends)
 
-	log.Printf("[POLYGON API] Dividend fetch completed: %d symbols processed, %d total dividends found", processed, totalDividends)
+	if err != nil {
+		response["message"] = err.Error()
+		log.Printf("%s Dividend fetch failed: %v", logPrefix, err)
+	} else {
+		response["message"] = fmt.Sprintf("Dividend fetch completed: %d symbols processed, %d total dividends found", result.Processed, totalDividends)
+		log.Printf("%s Dividend fetch completed: %d symbols processed, %d total dividends found", logPrefix, result.Processed, totalDividends)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding dividend fetch response: %v", err)
+		log.Printf("%s Error encoding dividend fetch response: %v", logPrefix, err)
 	}
 }

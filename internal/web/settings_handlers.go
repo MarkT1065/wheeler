@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"stonks/internal/models"
+	"strings"
+	"unicode"
 )
 
 // SettingsData holds data for the settings template
 type SettingsData struct {
-	Settings   []*models.Setting `json:"settings"`
-	AllSymbols []string          `json:"allSymbols"`
-	CurrentDB  string            `json:"currentDB"`
-	ApiKey     string            `json:"apiKey"`
-	ActivePage string            `json:"activePage"`
+	Settings     []*models.Setting `json:"settings"`
+	AllSymbols   []string          `json:"allSymbols"`
+	CurrentDB    string            `json:"currentDB"`
+	ApiKey       string            `json:"apiKey"`
+	ProviderName string            `json:"providerName"`
+	ActivePage   string            `json:"activePage"`
 }
 
 // settingsHandler serves the settings management page
@@ -40,14 +42,31 @@ func (s *Server) settingsHandler(w http.ResponseWriter, r *http.Request) {
 	apiKey := s.settingService.GetValue("POLYGON_API_KEY")
 
 	data := SettingsData{
-		Settings:   settings,
-		AllSymbols: symbols,
-		CurrentDB:  s.getCurrentDatabaseName(),
-		ApiKey:     apiKey,
-		ActivePage: "settings",
+		Settings:     settings,
+		AllSymbols:   symbols,
+		CurrentDB:    s.getCurrentDatabaseName(),
+		ApiKey:       apiKey,
+		ProviderName: formatProviderDisplayName(s.providerService.Name()),
+		ActivePage:   "settings",
 	}
 
 	s.renderTemplate(w, "settings.html", data)
+}
+
+func formatProviderDisplayName(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "Market Data Provider"
+	}
+	lower := strings.ToLower(trimmed)
+	switch lower {
+	case "polygon":
+		return "Polygon.io"
+	default:
+		runes := []rune(trimmed)
+		runes[0] = unicode.ToUpper(runes[0])
+		return string(runes)
+	}
 }
 
 // settingsAPIHandler handles CRUD operations for settings collection

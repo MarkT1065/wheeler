@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polygon - Wheeler</title>
+    <title>{{.ProviderName}} Settings - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
@@ -15,26 +15,26 @@
         <!-- Main Content -->
         <div class="main-content">
             <div class="content-section">
-                <div class="section-title">Polygon</div>
-                <div class="section-subtitle">Configure your Polygon.io API key for live market data</div>
+                <div class="section-title">Market Data Provider</div>
+                <div class="section-subtitle">Manage your {{.ProviderName}} API key for live market data</div>
                 
                 <!-- API Key Configuration Form -->
                 <div class="settings-form-container">
                     <div class="settings-card">
                         <div class="settings-card-header">
                             <i class="fas fa-key"></i>
-                            <h3>Polygon.io API Configuration</h3>
+                            <h3>{{.ProviderName}} API Configuration</h3>
                         </div>
                         <div class="settings-card-body">
                             <form id="apiKeyForm">
                                 <div class="form-group">
                                     <label for="apiKeyInput" class="form-label">API Key</label>
-                                    <input type="password" id="apiKeyInput" class="form-input" 
-                                           placeholder="Enter your Polygon.io API key"
+                                     <input type="password" id="apiKeyInput" class="form-input" 
+                                         placeholder="Enter your {{.ProviderName}} API key"
                                            value="{{if .ApiKey}}{{.ApiKey}}{{end}}">
                                     <div class="form-help">
                                         <i class="fas fa-info-circle"></i>
-                                        Get your free API key from <a href="https://polygon.io" target="_blank" rel="noopener">Polygon.io</a>
+                                        Get your API key from your provider dashboard. Polygon users can visit <a href="https://polygon.io" target="_blank" rel="noopener">Polygon.io</a>
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -82,16 +82,16 @@
                     <div class="info-card">
                         <div class="info-header">
                             <i class="fas fa-lightbulb"></i>
-                            <h4>About Polygon.io API</h4>
+                            <h4>About {{.ProviderName}}</h4>
                         </div>
                         <div class="info-content">
-                            <p>The Polygon.io API provides real-time and historical market data for stocks, options, and other financial instruments.</p>
+                            <p>{{.ProviderName}} powers live price checks, symbol lookups, and dividend history inside Wheeler.</p>
                             <ul>
-                                <li><strong>Free Tier:</strong> 5 API calls per minute, delayed data</li>
-                                <li><strong>Starter Plan:</strong> 100 API calls per minute, real-time data</li>
-                                <li><strong>Developer Plan:</strong> 1000 API calls per minute, additional endpoints</li>
+                                <li><strong>Requests:</strong> Price updates, symbol insights, and dividend history jobs share the same API quota.</li>
+                                <li><strong>Rate Limits:</strong> Bulk actions pace themselves to respect your provider's published limits.</li>
+                                <li><strong>Default Provider:</strong> Wheeler ships with native Polygon.io support; additional providers can hook into the same workflow.</li>
                             </ul>
-                            <p>Your API key will be used to automatically update stock prices and fetch dividend information.</p>
+                            <p>Need an API key? Sign in to your provider dashboard{{if eq .ProviderName "Polygon.io"}} or <a href="https://polygon.io" target="_blank" rel="noopener">create one at Polygon.io</a>{{end}}.</p>
                         </div>
                     </div>
                 </div>
@@ -267,6 +267,7 @@
     </style>
 
     <script>
+        const providerName = '{{.ProviderName}}';
         // Get API key value from backend
         let currentApiKey = '{{if .ApiKey}}{{.ApiKey}}{{end}}';
         
@@ -335,7 +336,7 @@
                 },
                 body: JSON.stringify({
                     value: apiKey,
-                    description: 'API key for Polygon.io stock market data integration'
+                    description: 'API key for ' + providerName + ' market data integration'
                 })
             })
             .then(response => {
@@ -367,7 +368,7 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
             
-            fetch('/api/polygon/test', {
+            fetch('/api/provider/test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -395,7 +396,7 @@
         document.getElementById('updatePricesBtn').addEventListener('click', function() {
             const btn = this;
             
-            if (!confirm('This will update prices for all symbols using your Polygon.io API quota. Continue?')) {
+            if (!confirm('This will update prices for all symbols using your data provider API quota. Continue?')) {
                 return;
             }
             
@@ -403,7 +404,7 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
             
-            fetch('/api/polygon/update-prices', {
+            fetch('/api/provider/update-prices', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

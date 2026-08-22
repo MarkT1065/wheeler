@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"stonks/internal/database"
 	"stonks/internal/models"
-	"stonks/internal/polygon"
+	"stonks/internal/providers"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,7 +28,7 @@ type Server struct {
 	dividendService     *models.DividendService
 	settingService      *models.SettingService
 	metricService       *models.MetricService
-	polygonService      *polygon.Service
+	providerService     *providers.Service
 	templates           *template.Template
 }
 
@@ -51,7 +51,7 @@ func NewServer() (*Server, error) {
 	// Load templates with custom functions
 	templatePath := filepath.Join("internal", "web", "templates", "*.html")
 	log.Printf("[SERVER] Loading HTML templates from: %s", templatePath)
-	
+
 	// Create template with custom functions
 	funcMap := template.FuncMap{
 		"groupByExpiration": groupPositionsByExpiration,
@@ -119,19 +119,19 @@ func NewServer() (*Server, error) {
 			default:
 				return "$0"
 			}
-			
+
 			// Round to nearest whole number
 			rounded := int64(floatVal + 0.5)
 			if floatVal < 0 {
 				rounded = int64(floatVal - 0.5)
 			}
-			
+
 			// Format with commas
 			str := fmt.Sprintf("%d", rounded)
 			if rounded < 0 {
 				str = str[1:] // Remove negative sign temporarily
 			}
-			
+
 			// Add commas
 			if len(str) > 3 {
 				var result string
@@ -143,7 +143,7 @@ func NewServer() (*Server, error) {
 				}
 				str = result
 			}
-			
+
 			if floatVal < 0 {
 				return "-$" + str
 			}
@@ -165,22 +165,22 @@ func NewServer() (*Server, error) {
 			default:
 				return "$0.00"
 			}
-			
+
 			// Format to 2 decimal places
 			formatted := fmt.Sprintf("%.2f", floatVal)
-			
+
 			// Split into integer and decimal parts
 			parts := strings.Split(formatted, ".")
 			intPart := parts[0]
 			decPart := parts[1]
-			
+
 			// Handle negative numbers
 			isNegative := false
 			if strings.HasPrefix(intPart, "-") {
 				isNegative = true
 				intPart = intPart[1:]
 			}
-			
+
 			// Add commas to integer part
 			if len(intPart) > 3 {
 				var result string
@@ -192,7 +192,7 @@ func NewServer() (*Server, error) {
 				}
 				intPart = result
 			}
-			
+
 			// Combine with decimals
 			formatted = intPart + "." + decPart
 			if isNegative {
@@ -210,14 +210,14 @@ func NewServer() (*Server, error) {
 			default:
 				return "0"
 			}
-			
+
 			str := fmt.Sprintf("%d", intVal)
 			isNegative := false
 			if intVal < 0 {
 				isNegative = true
 				str = str[1:]
 			}
-			
+
 			// Add commas
 			if len(str) > 3 {
 				var result string
@@ -229,14 +229,14 @@ func NewServer() (*Server, error) {
 				}
 				str = result
 			}
-			
+
 			if isNegative {
 				return "-" + str
 			}
 			return str
 		},
 	}
-	
+
 	templates, err := template.New("").Funcs(funcMap).ParseGlob(templatePath)
 	if err != nil {
 		log.Printf("[SERVER] ERROR: Failed to parse templates: %v", err)
@@ -245,11 +245,11 @@ func NewServer() (*Server, error) {
 	log.Printf("[SERVER] HTML templates loaded successfully")
 
 	log.Printf("[SERVER] Initializing service layers")
-	
+
 	// Initialize core services
 	symbolService := models.NewSymbolService(dbWrapper.DB)
 	settingService := models.NewSettingService(dbWrapper.DB)
-	
+
 	server := &Server{
 		db:                  dbWrapper.DB,
 		optionService:       models.NewOptionService(dbWrapper.DB),
@@ -259,7 +259,7 @@ func NewServer() (*Server, error) {
 		dividendService:     models.NewDividendService(dbWrapper.DB),
 		settingService:      settingService,
 		metricService:       models.NewMetricService(dbWrapper.DB),
-		polygonService:      polygon.NewService(symbolService, settingService),
+		providerService:     providers.NewService(symbolService, settingService),
 		templates:           templates,
 	}
 
@@ -426,20 +426,20 @@ func (s *Server) setupRoutes() {
 	http.HandleFunc("/api/settings/", s.individualSettingAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/settings/ -> individualSettingAPIHandler")
 
-	http.HandleFunc("/api/polygon/test", s.polygonTestHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/test -> polygonTestHandler")
+	http.HandleFunc("/api/provider/test", s.providerTestHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/test -> providerTestHandler")
 
-	http.HandleFunc("/api/polygon/update-prices", s.polygonUpdatePricesHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/update-prices -> polygonUpdatePricesHandler")
+	http.HandleFunc("/api/provider/update-prices", s.providerUpdatePricesHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/update-prices -> providerUpdatePricesHandler")
 
-	http.HandleFunc("/api/polygon/symbol-info/", s.polygonSymbolInfoHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/symbol-info/ -> polygonSymbolInfoHandler")
+	http.HandleFunc("/api/provider/symbol-info/", s.providerSymbolInfoHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/symbol-info/ -> providerSymbolInfoHandler")
 
-	http.HandleFunc("/api/polygon/status", s.polygonStatusHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/status -> polygonStatusHandler")
+	http.HandleFunc("/api/provider/status", s.providerStatusHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/status -> providerStatusHandler")
 
-	http.HandleFunc("/api/polygon/fetch-dividends", s.polygonFetchDividendsHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/fetch-dividends -> polygonFetchDividendsHandler")
+	http.HandleFunc("/api/provider/fetch-dividends", s.providerFetchDividendsHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/fetch-dividends -> providerFetchDividendsHandler")
 
 	log.Printf("[SERVER] All routes registered successfully")
 }
@@ -472,13 +472,13 @@ type ExpirationGroup struct {
 // groupPositionsByExpiration groups open positions by expiration date and returns them sorted
 func groupPositionsByExpiration(positions []*models.OpenPositionData) []ExpirationGroup {
 	grouped := make(map[time.Time][]*models.OpenPositionData)
-	
+
 	// Group positions by expiration date
 	for _, position := range positions {
 		expDate := position.Expiration
 		grouped[expDate] = append(grouped[expDate], position)
 	}
-	
+
 	// Convert to slice and sort by expiration date
 	var groups []ExpirationGroup
 	for expDate, posGroup := range grouped {
@@ -490,25 +490,25 @@ func groupPositionsByExpiration(positions []*models.OpenPositionData) []Expirati
 			}
 			return posI.Strike < posJ.Strike
 		})
-		
+
 		groups = append(groups, ExpirationGroup{
 			Expiration: expDate,
 			DateStr:    expDate.Format("01/02/2006"),
 			Positions:  posGroup,
 		})
 	}
-	
+
 	// Sort groups by expiration date (earliest first)
 	sort.Slice(groups, func(i, j int) bool {
 		return groups[i].Expiration.Before(groups[j].Expiration)
 	})
-	
+
 	return groups
 }
 
 func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
 	log.Printf("[TEMPLATE] Starting template execution for: %s", templateName)
-	
+
 	// Use a buffer to execute template first, then write to response if successful
 	var buf bytes.Buffer
 	err := s.templates.ExecuteTemplate(&buf, templateName, data)
@@ -517,7 +517,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Template executed successfully, write to response
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err = w.Write(buf.Bytes())
