@@ -394,7 +394,7 @@ func createDeterministicTreasuryData(t *testing.T, db *database.DB) {
 	symbolService := models.NewSymbolService(db.DB)
 
 	// Create some symbols for the treasuries data
-	symbols := []string{"AAPL", "TSLA", "NVDA"}
+	symbols := []string{"NASDAQ:AAPL", "NASDAQ:TSLA", "NASDAQ:NVDA"}
 	for _, symbol := range symbols {
 		if _, err := symbolService.Create(symbol); err != nil {
 			t.Fatalf("Failed to create symbol %s: %v", symbol, err)

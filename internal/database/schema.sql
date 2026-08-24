@@ -78,8 +78,15 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 
 -- Insert default POLYGON_API_KEY setting
+INSERT OR IGNORE INTO settings (name, value, description)
+VALUES ('DATA_PROVIDER_TYPE', 'polygon', 'Active market data provider: polygon, google_finance (google/googlefinance), or yfinance (yahoo/yahoo_finance)');
+
 INSERT OR IGNORE INTO settings (name, value, description) 
 VALUES ('POLYGON_API_KEY', '', 'API key for Polygon.io stock market data integration');
+
+INSERT OR IGNORE INTO settings (name, value, description)
+VALUES ('GOOGLE_FINANCE_EXCHANGE', 'NASDAQ', 'Legacy default exchange; new symbols select their market individually');
+
 
 -- Indexes for performance
 -- Note: Primary key columns automatically have indexes, so we don't need explicit indexes for:

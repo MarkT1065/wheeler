@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"html/template"
@@ -9,28 +10,57 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"stonks/internal/database"
 	"stonks/internal/models"
-	"stonks/internal/polygon"
+	"stonks/internal/providers"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Server struct {
-	db                  *sql.DB
-	optionService       *models.OptionService
-	symbolService       *models.SymbolService
-	treasuryService     *models.TreasuryService
-	longPositionService *models.LongPositionService
-	dividendService     *models.DividendService
-	settingService      *models.SettingService
-	metricService       *models.MetricService
-	polygonService      *polygon.Service
-	templates           *template.Template
+	servicesMu                   sync.RWMutex
+	db                           *sql.DB
+	optionService                *models.OptionService
+	symbolService                *models.SymbolService
+	treasuryService              *models.TreasuryService
+	longPositionService          *models.LongPositionService
+	dividendService              *models.DividendService
+	settingService               *models.SettingService
+	metricService                *models.MetricService
+	providerService              *providers.Service
+	serviceLeases                map[*sql.DB]int
+	retiredDatabases             map[*sql.DB]struct{}
+	providerValidation           map[string]providerValidationCacheEntry
+	providerValidationInFlight   map[string]*providerValidationCall
+	providerValidationGeneration uint64
+	providerValidationMu         sync.Mutex
+	providerValidationWaitHook   func()
+	templates                    *template.Template
 }
+
+const providerValidationCacheTTL = time.Minute
+
+type providerValidationCacheEntry struct {
+	checkedAt time.Time
+	valid     bool
+	err       string
+}
+
+type providerValidationCall struct {
+	done       chan struct{}
+	generation uint64
+}
+
+type providerServicesSnapshot struct {
+	providerService *providers.Service
+	symbolService   *models.SymbolService
+}
+
+type providerServicesContextKey struct{}
 
 func NewServer() (*Server, error) {
 	log.Printf("[SERVER] Initializing Wheeler web server")
@@ -51,7 +81,7 @@ func NewServer() (*Server, error) {
 	// Load templates with custom functions
 	templatePath := filepath.Join("internal", "web", "templates", "*.html")
 	log.Printf("[SERVER] Loading HTML templates from: %s", templatePath)
-	
+
 	// Create template with custom functions
 	funcMap := template.FuncMap{
 		"groupByExpiration": groupPositionsByExpiration,
@@ -119,19 +149,19 @@ func NewServer() (*Server, error) {
 			default:
 				return "$0"
 			}
-			
+
 			// Round to nearest whole number
 			rounded := int64(floatVal + 0.5)
 			if floatVal < 0 {
 				rounded = int64(floatVal - 0.5)
 			}
-			
+
 			// Format with commas
 			str := fmt.Sprintf("%d", rounded)
 			if rounded < 0 {
 				str = str[1:] // Remove negative sign temporarily
 			}
-			
+
 			// Add commas
 			if len(str) > 3 {
 				var result string
@@ -143,7 +173,7 @@ func NewServer() (*Server, error) {
 				}
 				str = result
 			}
-			
+
 			if floatVal < 0 {
 				return "-$" + str
 			}
@@ -165,22 +195,22 @@ func NewServer() (*Server, error) {
 			default:
 				return "$0.00"
 			}
-			
+
 			// Format to 2 decimal places
 			formatted := fmt.Sprintf("%.2f", floatVal)
-			
+
 			// Split into integer and decimal parts
 			parts := strings.Split(formatted, ".")
 			intPart := parts[0]
 			decPart := parts[1]
-			
+
 			// Handle negative numbers
 			isNegative := false
 			if strings.HasPrefix(intPart, "-") {
 				isNegative = true
 				intPart = intPart[1:]
 			}
-			
+
 			// Add commas to integer part
 			if len(intPart) > 3 {
 				var result string
@@ -192,7 +222,7 @@ func NewServer() (*Server, error) {
 				}
 				intPart = result
 			}
-			
+
 			// Combine with decimals
 			formatted = intPart + "." + decPart
 			if isNegative {
@@ -210,14 +240,14 @@ func NewServer() (*Server, error) {
 			default:
 				return "0"
 			}
-			
+
 			str := fmt.Sprintf("%d", intVal)
 			isNegative := false
 			if intVal < 0 {
 				isNegative = true
 				str = str[1:]
 			}
-			
+
 			// Add commas
 			if len(str) > 3 {
 				var result string
@@ -229,14 +259,14 @@ func NewServer() (*Server, error) {
 				}
 				str = result
 			}
-			
+
 			if isNegative {
 				return "-" + str
 			}
 			return str
 		},
 	}
-	
+
 	templates, err := template.New("").Funcs(funcMap).ParseGlob(templatePath)
 	if err != nil {
 		log.Printf("[SERVER] ERROR: Failed to parse templates: %v", err)
@@ -245,23 +275,12 @@ func NewServer() (*Server, error) {
 	log.Printf("[SERVER] HTML templates loaded successfully")
 
 	log.Printf("[SERVER] Initializing service layers")
-	
-	// Initialize core services
-	symbolService := models.NewSymbolService(dbWrapper.DB)
-	settingService := models.NewSettingService(dbWrapper.DB)
-	
+
 	server := &Server{
-		db:                  dbWrapper.DB,
-		optionService:       models.NewOptionService(dbWrapper.DB),
-		symbolService:       symbolService,
-		treasuryService:     models.NewTreasuryService(dbWrapper.DB),
-		longPositionService: models.NewLongPositionService(dbWrapper.DB),
-		dividendService:     models.NewDividendService(dbWrapper.DB),
-		settingService:      settingService,
-		metricService:       models.NewMetricService(dbWrapper.DB),
-		polygonService:      polygon.NewService(symbolService, settingService),
-		templates:           templates,
+		db:        dbWrapper.DB,
+		templates: templates,
 	}
+	server.initializeServices(dbWrapper.DB)
 
 	log.Printf("[SERVER] All services initialized successfully")
 	log.Printf("[SERVER] Server creation completed")
@@ -269,11 +288,180 @@ func NewServer() (*Server, error) {
 	return server, nil
 }
 
+// initializeServices binds every server service to the supplied database.
+// It is used at startup and after a database switch to avoid stale service
+// pointers, including provider configuration from the previous database.
+func (s *Server) initializeServices(db *sql.DB) {
+	s.servicesMu.Lock()
+	defer s.servicesMu.Unlock()
+	s.initializeServicesLocked(db)
+	s.invalidateProviderValidation()
+}
+
+func (s *Server) initializeServicesLocked(db *sql.DB) {
+	s.db = db
+	s.optionService = models.NewOptionService(db)
+	s.symbolService = models.NewSymbolService(db)
+	s.treasuryService = models.NewTreasuryService(db)
+	s.longPositionService = models.NewLongPositionService(db)
+	s.dividendService = models.NewDividendService(db)
+	s.settingService = models.NewSettingService(db)
+	s.metricService = models.NewMetricService(db)
+	s.providerService = providers.NewService(s.symbolService, s.settingService)
+}
+
+func (s *Server) cachedProviderValidation(provider string, validate func() error) (bool, string) {
+	for {
+		s.providerValidationMu.Lock()
+		generation := s.providerValidationGeneration
+		// A fresh entry is safe to return immediately. Cache invalidation bumps
+		// the generation, so entries from an earlier provider configuration are
+		// never reused after a settings or database change.
+		if entry, ok := s.providerValidation[provider]; ok && time.Since(entry.checkedAt) < providerValidationCacheTTL {
+			s.providerValidationMu.Unlock()
+			return entry.valid, entry.err
+		}
+		// One caller validates outside the mutex. Other callers wait for that
+		// result instead of serializing multiple provider HTTP requests.
+		if call, ok := s.providerValidationInFlight[provider]; ok && call.generation == generation {
+			done := call.done
+			waitHook := s.providerValidationWaitHook
+			s.providerValidationMu.Unlock()
+			if waitHook != nil {
+				waitHook()
+			}
+			<-done
+			continue
+		}
+		if s.providerValidationInFlight == nil {
+			s.providerValidationInFlight = make(map[string]*providerValidationCall)
+		}
+		call := &providerValidationCall{done: make(chan struct{}), generation: generation}
+		s.providerValidationInFlight[provider] = call
+		s.providerValidationMu.Unlock()
+
+		// This request owns the validation for this provider and generation.
+		// Never hold providerValidationMu across the potentially slow HTTP call.
+		entry := providerValidationCacheEntry{checkedAt: time.Now()}
+		if err := validate(); err != nil {
+			entry.err = err.Error()
+		} else {
+			entry.valid = true
+		}
+
+		s.providerValidationMu.Lock()
+		if s.providerValidationGeneration == generation {
+			if s.providerValidation == nil {
+				s.providerValidation = make(map[string]providerValidationCacheEntry)
+			}
+			s.providerValidation[provider] = entry
+		}
+		if s.providerValidationInFlight[provider] == call {
+			delete(s.providerValidationInFlight, provider)
+			close(call.done)
+		}
+		isCurrentGeneration := s.providerValidationGeneration == generation
+		s.providerValidationMu.Unlock()
+		if isCurrentGeneration {
+			return entry.valid, entry.err
+		}
+		// Configuration changed while validation was in progress. Repeat using
+		// the current generation rather than returning a stale result.
+	}
+}
+
+// invalidateProviderValidation makes cached and in-flight validations from a
+// previous configuration obsolete. In-flight callers wake their waiters, which
+// retry against this newer generation.
+func (s *Server) invalidateProviderValidation() {
+	s.providerValidationMu.Lock()
+	defer s.providerValidationMu.Unlock()
+	s.providerValidation = make(map[string]providerValidationCacheEntry)
+	s.providerValidationGeneration++
+}
+
 // Close closes the database connection
 func (s *Server) Close() error {
+	s.servicesMu.Lock()
+	defer s.servicesMu.Unlock()
 	if s.db != nil {
 		log.Printf("[SERVER] Closing database connection")
 		return s.db.Close()
+	}
+	return nil
+}
+
+func (s *Server) handleServiceFunc(pattern string, handler http.HandlerFunc) {
+	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		s.servicesMu.RLock()
+		defer s.servicesMu.RUnlock()
+		handler(w, r)
+	})
+}
+
+// handleProviderServiceFunc leases the current provider services for long bulk
+// requests. The lease keeps their database open after a switch, but does not
+// hold servicesMu while network and rate-limit waits are in progress.
+func (s *Server) handleProviderServiceFunc(pattern string, handler http.HandlerFunc) {
+	http.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+		snapshot, release := s.acquireProviderServices()
+		defer release()
+		ctx := context.WithValue(r.Context(), providerServicesContextKey{}, snapshot)
+		handler(w, r.WithContext(ctx))
+	})
+}
+
+func (s *Server) acquireProviderServices() (providerServicesSnapshot, func()) {
+	s.servicesMu.Lock()
+	db := s.db
+	if s.serviceLeases == nil {
+		s.serviceLeases = make(map[*sql.DB]int)
+	}
+	s.serviceLeases[db]++
+	snapshot := providerServicesSnapshot{providerService: s.providerService, symbolService: s.symbolService}
+	s.servicesMu.Unlock()
+
+	return snapshot, func() {
+		s.servicesMu.Lock()
+		defer s.servicesMu.Unlock()
+		s.serviceLeases[db]--
+		if s.serviceLeases[db] != 0 {
+			return
+		}
+		delete(s.serviceLeases, db)
+		if _, retired := s.retiredDatabases[db]; retired {
+			delete(s.retiredDatabases, db)
+			if err := db.Close(); err != nil {
+				log.Printf("[SERVER] Error closing retired database: %v", err)
+			}
+		}
+	}
+}
+
+func providerServicesFromContext(ctx context.Context) (providerServicesSnapshot, bool) {
+	snapshot, ok := ctx.Value(providerServicesContextKey{}).(providerServicesSnapshot)
+	return snapshot, ok
+}
+
+// switchServices atomically replaces the service set. A database leased by a
+// long provider request is closed by that request's release function instead
+// of delaying the switch or invalidating the in-flight request.
+func (s *Server) switchServices(db *sql.DB) error {
+	s.servicesMu.Lock()
+	defer s.servicesMu.Unlock()
+
+	oldDB := s.db
+	s.initializeServicesLocked(db)
+	s.invalidateProviderValidation()
+	if oldDB != nil && oldDB != db {
+		if s.serviceLeases[oldDB] > 0 {
+			if s.retiredDatabases == nil {
+				s.retiredDatabases = make(map[*sql.DB]struct{})
+			}
+			s.retiredDatabases[oldDB] = struct{}{}
+			return nil
+		}
+		return oldDB.Close()
 	}
 	return nil
 }
@@ -285,58 +473,58 @@ func (s *Server) setupRoutes() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("internal/web/static"))))
 	log.Printf("[SERVER] Route registered: /static/ -> file server")
 
-	http.HandleFunc("/", s.dashboardHandler)
+	s.handleServiceFunc("/", s.dashboardHandler)
 	log.Printf("[SERVER] Route registered: / -> dashboardHandler")
 
-	http.HandleFunc("/monthly", s.monthlyHandler)
+	s.handleServiceFunc("/monthly", s.monthlyHandler)
 	log.Printf("[SERVER] Route registered: /monthly -> monthlyHandler")
 
-	http.HandleFunc("/options", s.optionsHandler)
+	s.handleServiceFunc("/options", s.optionsHandler)
 	log.Printf("[SERVER] Route registered: /options -> optionsHandler")
 
-	http.HandleFunc("/all-options", s.allOptionsHandler)
+	s.handleServiceFunc("/all-options", s.allOptionsHandler)
 	log.Printf("[SERVER] Route registered: /all-options -> allOptionsHandler")
 
-	http.HandleFunc("/treasuries", s.treasuriesHandler)
+	s.handleServiceFunc("/treasuries", s.treasuriesHandler)
 	log.Printf("[SERVER] Route registered: /treasuries -> treasuriesHandler")
 
-	http.HandleFunc("/dividends", s.dividendsHandler)
+	s.handleServiceFunc("/dividends", s.dividendsHandler)
 	log.Printf("[SERVER] Route registered: /dividends -> dividendsHandler")
 
-	http.HandleFunc("/metrics", s.metricsHandler)
+	s.handleServiceFunc("/metrics", s.metricsHandler)
 	log.Printf("[SERVER] Route registered: /metrics -> metricsHandler")
 
-	http.HandleFunc("/zen", s.zenHandler)
+	s.handleServiceFunc("/zen", s.zenHandler)
 	log.Printf("[SERVER] Route registered: /zen -> zenHandler")
 
-	http.HandleFunc("/symbol/", s.symbolHandler)
+	s.handleServiceFunc("/symbol/", s.symbolHandler)
 	log.Printf("[SERVER] Route registered: /symbol/ -> symbolHandler")
 
-	http.HandleFunc("/api/premium-data", s.premiumDataHandler)
+	s.handleServiceFunc("/api/premium-data", s.premiumDataHandler)
 	log.Printf("[SERVER] Route registered: /api/premium-data -> premiumDataHandler")
 
-	http.HandleFunc("/api/options", s.optionAPIHandler)
+	s.handleServiceFunc("/api/options", s.optionAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/options -> optionAPIHandler")
 
-	http.HandleFunc("/api/options/", s.individualOptionAPIHandler)
+	s.handleServiceFunc("/api/options/", s.individualOptionAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/options/ -> individualOptionAPIHandler")
 
-	http.HandleFunc("/api/options/filter", s.optionsFilterHandler)
+	s.handleServiceFunc("/api/options/filter", s.optionsFilterHandler)
 	log.Printf("[SERVER] Route registered: /api/options/filter -> optionsFilterHandler")
 
-	http.HandleFunc("/api/symbols/", s.symbolAPIHandler)
+	s.handleServiceFunc("/api/symbols/", s.symbolAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/symbols/ -> symbolAPIHandler")
 
-	http.HandleFunc("/api/dividends", s.dividendsAPIHandler)
+	s.handleServiceFunc("/api/dividends", s.dividendsAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/dividends -> dividendsAPIHandler")
 
-	http.HandleFunc("/api/long-positions", s.longPositionsAPIHandler)
+	s.handleServiceFunc("/api/long-positions", s.longPositionsAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/long-positions -> longPositionsAPIHandler")
 
-	http.HandleFunc("/api/treasuries/", s.treasuryAPIHandler)
+	s.handleServiceFunc("/api/treasuries/", s.treasuryAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/treasuries/ -> treasuryAPIHandler")
 
-	http.HandleFunc("/api/metrics", func(w http.ResponseWriter, r *http.Request) {
+	s.handleServiceFunc("/api/metrics", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			s.getMetricsHandler(w, r)
@@ -348,7 +536,7 @@ func (s *Server) setupRoutes() {
 	})
 	log.Printf("[SERVER] Route registered: /api/metrics -> metrics API handler")
 
-	http.HandleFunc("/api/metrics/", func(w http.ResponseWriter, r *http.Request) {
+	s.handleServiceFunc("/api/metrics/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPut:
 			s.updateMetricHandler(w, r)
@@ -360,86 +548,92 @@ func (s *Server) setupRoutes() {
 	})
 	log.Printf("[SERVER] Route registered: /api/metrics/ -> individual metric API handler")
 
-	http.HandleFunc("/api/metrics/snapshot", s.createMetricsSnapshotHandler)
+	s.handleServiceFunc("/api/metrics/snapshot", s.createMetricsSnapshotHandler)
 	log.Printf("[SERVER] Route registered: /api/metrics/snapshot -> createMetricsSnapshotHandler")
 
-	http.HandleFunc("/api/metrics/chart-data", s.getMetricsChartDataHandler)
+	s.handleServiceFunc("/api/metrics/chart-data", s.getMetricsChartDataHandler)
 	log.Printf("[SERVER] Route registered: /api/metrics/chart-data -> getMetricsChartDataHandler")
 
-	http.HandleFunc("/add-option", s.addOptionHandler)
+	s.handleServiceFunc("/add-option", s.addOptionHandler)
 	log.Printf("[SERVER] Route registered: /add-option -> addOptionHandler")
 
-	http.HandleFunc("/add-treasury", s.addTreasuryHandler)
+	s.handleServiceFunc("/add-treasury", s.addTreasuryHandler)
 	log.Printf("[SERVER] Route registered: /add-treasury -> addTreasuryHandler")
 
-	http.HandleFunc("/api/allocation-data", s.allocationDataHandler)
+	s.handleServiceFunc("/api/allocation-data", s.allocationDataHandler)
 	log.Printf("[SERVER] Route registered: /api/allocation-data -> allocationDataHandler")
 
-	http.HandleFunc("/api/optionable-positions", s.optionablePositionsHandler)
+	s.handleServiceFunc("/api/optionable-positions", s.optionablePositionsHandler)
 	log.Printf("[SERVER] Route registered: /api/optionable-positions -> optionablePositionsHandler")
 
-	http.HandleFunc("/import", s.HandleImport)
+	s.handleServiceFunc("/import", s.HandleImport)
 	log.Printf("[SERVER] Route registered: /import -> HandleImport")
 
-	http.HandleFunc("/backup", s.HandleBackup)
+	s.handleServiceFunc("/backup", s.HandleBackup)
 	log.Printf("[SERVER] Route registered: /backup -> HandleBackup")
 
-	http.HandleFunc("/backup/", s.HandleBackupFile)
+	s.handleServiceFunc("/backup/", s.HandleBackupFile)
 	log.Printf("[SERVER] Route registered: /backup/ -> HandleBackupFile")
 
 	http.HandleFunc("/database/set-current", s.handleSetCurrentDatabase)
 	log.Printf("[SERVER] Route registered: /database/set-current -> handleSetCurrentDatabase")
 
-	http.HandleFunc("/database/create", s.handleCreateDatabase)
+	s.handleServiceFunc("/database/create", s.handleCreateDatabase)
 	log.Printf("[SERVER] Route registered: /database/create -> handleCreateDatabase")
 
-	http.HandleFunc("/database/delete/", s.handleDeleteDatabase)
+	s.handleServiceFunc("/database/delete/", s.handleDeleteDatabase)
 	log.Printf("[SERVER] Route registered: /database/delete/ -> handleDeleteDatabase")
 
 	http.Handle("/backups/", http.StripPrefix("/backups/", http.FileServer(http.Dir("./data/backups"))))
 	log.Printf("[SERVER] Route registered: /backups/ -> file server for backup directory")
 
-	http.HandleFunc("/import/upload", s.HandleImportUpload)
+	s.handleServiceFunc("/import/upload", s.HandleImportUpload)
 	log.Printf("[SERVER] Route registered: /import/upload -> HandleImportUpload")
 
-	http.HandleFunc("/import/upload/stocks", s.HandleStocksImportUpload)
+	s.handleServiceFunc("/import/upload/stocks", s.HandleStocksImportUpload)
 	log.Printf("[SERVER] Route registered: /import/upload/stocks -> HandleStocksImportUpload")
 
-	http.HandleFunc("/import/upload/dividends", s.HandleDividendsImportUpload)
+	s.handleServiceFunc("/import/upload/dividends", s.HandleDividendsImportUpload)
 	log.Printf("[SERVER] Route registered: /import/upload/dividends -> HandleDividendsImportUpload")
 
-	http.HandleFunc("/import/upload/treasuries", s.HandleTreasuriesImportUpload)
+	s.handleServiceFunc("/import/upload/treasuries", s.HandleTreasuriesImportUpload)
 	log.Printf("[SERVER] Route registered: /import/upload/treasuries -> HandleTreasuriesImportUpload")
 
-	http.HandleFunc("/api/generate-test-data", s.HandleGenerateTestData)
+	s.handleServiceFunc("/api/generate-test-data", s.HandleGenerateTestData)
 	log.Printf("[SERVER] Route registered: /api/generate-test-data -> HandleGenerateTestData")
 
-	http.HandleFunc("/help", s.helpHandler)
+	s.handleServiceFunc("/help", s.helpHandler)
 	log.Printf("[SERVER] Route registered: /help -> helpHandler")
 
-	http.HandleFunc("/settings", s.settingsHandler)
+	s.handleServiceFunc("/settings", s.settingsHandler)
 	log.Printf("[SERVER] Route registered: /settings -> settingsHandler")
 
-	http.HandleFunc("/api/settings", s.settingsAPIHandler)
+	s.handleServiceFunc("/api/settings", s.settingsAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/settings -> settingsAPIHandler")
 
-	http.HandleFunc("/api/settings/", s.individualSettingAPIHandler)
+	s.handleServiceFunc("/api/settings/", s.individualSettingAPIHandler)
 	log.Printf("[SERVER] Route registered: /api/settings/ -> individualSettingAPIHandler")
 
-	http.HandleFunc("/api/polygon/test", s.polygonTestHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/test -> polygonTestHandler")
+	s.handleServiceFunc("/api/provider/configuration", s.providerConfigurationAPIHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/configuration -> providerConfigurationAPIHandler")
 
-	http.HandleFunc("/api/polygon/update-prices", s.polygonUpdatePricesHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/update-prices -> polygonUpdatePricesHandler")
+	s.handleServiceFunc("/api/markets", s.marketsAPIHandler)
+	log.Printf("[SERVER] Route registered: /api/markets -> marketsAPIHandler")
 
-	http.HandleFunc("/api/polygon/symbol-info/", s.polygonSymbolInfoHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/symbol-info/ -> polygonSymbolInfoHandler")
+	s.handleServiceFunc("/api/provider/test", s.providerTestHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/test -> providerTestHandler")
 
-	http.HandleFunc("/api/polygon/status", s.polygonStatusHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/status -> polygonStatusHandler")
+	s.handleProviderServiceFunc("/api/provider/update-prices", s.providerUpdatePricesHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/update-prices -> providerUpdatePricesHandler")
 
-	http.HandleFunc("/api/polygon/fetch-dividends", s.polygonFetchDividendsHandler)
-	log.Printf("[SERVER] Route registered: /api/polygon/fetch-dividends -> polygonFetchDividendsHandler")
+	s.handleServiceFunc("/api/provider/symbol-info/", s.providerSymbolInfoHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/symbol-info/ -> providerSymbolInfoHandler")
+
+	s.handleServiceFunc("/api/provider/status", s.providerStatusHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/status -> providerStatusHandler")
+
+	s.handleProviderServiceFunc("/api/provider/fetch-dividends", s.providerFetchDividendsHandler)
+	log.Printf("[SERVER] Route registered: /api/provider/fetch-dividends -> providerFetchDividendsHandler")
 
 	log.Printf("[SERVER] All routes registered successfully")
 }
@@ -472,13 +666,13 @@ type ExpirationGroup struct {
 // groupPositionsByExpiration groups open positions by expiration date and returns them sorted
 func groupPositionsByExpiration(positions []*models.OpenPositionData) []ExpirationGroup {
 	grouped := make(map[time.Time][]*models.OpenPositionData)
-	
+
 	// Group positions by expiration date
 	for _, position := range positions {
 		expDate := position.Expiration
 		grouped[expDate] = append(grouped[expDate], position)
 	}
-	
+
 	// Convert to slice and sort by expiration date
 	var groups []ExpirationGroup
 	for expDate, posGroup := range grouped {
@@ -490,25 +684,25 @@ func groupPositionsByExpiration(positions []*models.OpenPositionData) []Expirati
 			}
 			return posI.Strike < posJ.Strike
 		})
-		
+
 		groups = append(groups, ExpirationGroup{
 			Expiration: expDate,
 			DateStr:    expDate.Format("01/02/2006"),
 			Positions:  posGroup,
 		})
 	}
-	
+
 	// Sort groups by expiration date (earliest first)
 	sort.Slice(groups, func(i, j int) bool {
 		return groups[i].Expiration.Before(groups[j].Expiration)
 	})
-	
+
 	return groups
 }
 
 func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
 	log.Printf("[TEMPLATE] Starting template execution for: %s", templateName)
-	
+
 	// Use a buffer to execute template first, then write to response if successful
 	var buf bytes.Buffer
 	err := s.templates.ExecuteTemplate(&buf, templateName, data)
@@ -517,7 +711,7 @@ func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// Template executed successfully, write to response
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, err = w.Write(buf.Bytes())

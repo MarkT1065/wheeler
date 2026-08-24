@@ -58,9 +58,11 @@ The Database view manages the Wheeler datastore. SQLite is used and it's a singl
 
 ![Database](./screenshots/database.png)
 
-### Polygon
+### Market Data Providers
 
-The Polygon view allows configuration of Polygon.io API and sync'ing of data. The free tier is used to get current price and other data.
+The Market Data view configures the live-data source per Wheeler database. New symbols use the canonical `MARKET:TICKER` key, such as `BVMF:PETR4`. Polygon.io requires an API key; Google Finance supports prices/details; Yahoo Finance (yfinance-compatible HTTP provider) requires no API key and also supports dividend history.
+
+Wheeler currently supports NASDAQ, NYSE, NYSE Arca, and B3 (`BVMF`). It resolves each canonical key to the provider format: Google Finance receives `TICKER:MARKET`, while Yahoo Finance receives a bare US ticker or the B3 `.SA` suffix. Existing bare tickers are historical records and must be manually qualified before provider updates.
 
 ![Polygon](./screenshots/polygon.png)
 
@@ -139,7 +141,7 @@ Edit `docker-compose.yml` to customize:
 
 - **Port**: Change `8077:8080` to use a different external port
 - **Volume**: Change `./data:/app/data` to your preferred data path
-- **Environment**: Uncomment and set `POLYGON_API_KEY` for market data
+- **Market data**: Configure the provider in **Admin → Market Data** after starting Wheeler. Polygon.io requires `POLYGON_API_KEY`; Yahoo Finance requires no credential. The legacy `GOOGLE_FINANCE_EXCHANGE` setting is no longer used for new symbols.
 
 ### Stopping Wheeler
 
@@ -177,6 +179,12 @@ Wheeler provides comprehensive RESTful APIs:
 - `GET/POST/PUT/DELETE /api/treasuries/{cuspid}` - Treasury operations
 - `GET /api/allocation-data` - Portfolio allocation data for charts
 - `POST /api/generate-test-data` - Test data generation for tutorials
+- `GET/POST /api/settings`, `GET/PUT/DELETE /api/settings/{name}` - Per-database application settings
+- `PUT /api/provider/configuration` - Atomically select and configure Polygon, Google Finance, or Yahoo Finance
+- `GET /api/provider/status`, `POST /api/provider/test` - Provider configuration and connectivity status
+- `POST /api/provider/update-prices` - Refresh prices (`{"all":true}` or `{"symbols":["NASDAQ:AAPL"]}`; requests process at most 20 symbols)
+- `GET /api/provider/symbol-info/{symbol}` - Fetch provider details using the canonical `MARKET:TICKER` key, such as `NASDAQ:AAPL`; the provider layer performs provider-specific conversion
+- `POST /api/provider/fetch-dividends` - Fetch dividend histories when supported by the selected provider
 
 ## Project Structure
 
@@ -231,7 +239,7 @@ wheeler/
 │       ├── position_handlers.go     # Position management handlers
 │       ├── treasury_handlers.go     # Treasury management handlers
 │       ├── import_handlers.go       # Import/backup/database handlers
-│       ├── polygon_handlers.go      # Polygon.io integration handlers
+│       ├── provider_handlers.go     # Market data provider integration handlers
 │       ├── settings_handlers.go     # Settings management handlers
 │       ├── utility_handlers.go      # Utility functions
 │       ├── types.go                 # Web data types and structures
@@ -245,7 +253,7 @@ wheeler/
 │       │   ├── help.html            # Tabbed help system
 │       │   ├── backup.html          # Database management
 │       │   ├── import.html          # CSV import tools
-│       │   └── settings.html        # Polygon.io configuration
+│       │   └── settings.html        # Market-data provider configuration
 │       └── static/                  # Static web assets
 │           ├── assets/              # Static asset files
 │           ├── css/

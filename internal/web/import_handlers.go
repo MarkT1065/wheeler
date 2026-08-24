@@ -1011,9 +1011,9 @@ func (s *Server) processTreasuryRecord(csvRecord CSVTreasuryRecord, rowNum int) 
 	existingTreasury, err := s.treasuryService.GetByCUSPID(csvRecord.CUSPID)
 	if err == nil && existingTreasury != nil {
 		// Treasury already exists, check if it's the same one
-		if existingTreasury.Purchased.Equal(purchasedDate) && 
-		   existingTreasury.Maturity.Equal(maturityDate) && 
-		   existingTreasury.Amount == amount {
+		if existingTreasury.Purchased.Equal(purchasedDate) &&
+			existingTreasury.Maturity.Equal(maturityDate) &&
+			existingTreasury.Amount == amount {
 			return existingTreasury, false, nil // Already exists, skip
 		}
 	}
@@ -1145,7 +1145,7 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 
 	// Construct full path to database file in data directory
 	sourceFilePath := filepath.Join("./data", dbFileName)
-	
+
 	// Check if source file exists
 	if _, err := os.Stat(sourceFilePath); os.IsNotExist(err) {
 		log.Printf("[BACKUP] Source file does not exist: %s", sourceFilePath)
@@ -1323,19 +1323,6 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Close existing database connection
-	log.Printf("[SET_DATABASE] Closing existing database connection")
-	if err := s.db.Close(); err != nil {
-		log.Printf("[SET_DATABASE] Warning: Error closing existing database: %v", err)
-	}
-
-	// Set the current database in the filesystem
-	if err := database.SetCurrentDatabase(dbName); err != nil {
-		log.Printf("[SET_DATABASE] Error setting current database: %v", err)
-		http.Error(w, `{"success": false, "error": "Failed to set current database"}`, http.StatusInternalServerError)
-		return
-	}
-
 	// Connect to the new database
 	log.Printf("[SET_DATABASE] Connecting to new database: %s", dbPath)
 	dbWrapper, err := database.NewDB(dbPath)
@@ -1344,17 +1331,20 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"success": false, "error": "Failed to connect to new database"}`, http.StatusInternalServerError)
 		return
 	}
+	// Set the current database in the filesystem only after a connection to it
+	// has been established, so a failed switch leaves the active service set intact.
+	if err := database.SetCurrentDatabase(dbName); err != nil {
+		log.Printf("[SET_DATABASE] Error setting current database: %v", err)
+		dbWrapper.DB.Close()
+		http.Error(w, `{"success": false, "error": "Failed to set current database"}`, http.StatusInternalServerError)
+		return
+	}
 
-	// Update server's database connection and reinitialize all services
+	// Update server's database connection and reinitialize all services.
 	log.Printf("[SET_DATABASE] Reinitializing services with new database connection")
-	s.db = dbWrapper.DB
-	s.optionService = models.NewOptionService(dbWrapper.DB)
-	s.symbolService = models.NewSymbolService(dbWrapper.DB)
-	s.treasuryService = models.NewTreasuryService(dbWrapper.DB)
-	s.longPositionService = models.NewLongPositionService(dbWrapper.DB)
-	s.dividendService = models.NewDividendService(dbWrapper.DB)
-	s.settingService = models.NewSettingService(dbWrapper.DB)
-	s.metricService = models.NewMetricService(dbWrapper.DB)
+	if err := s.switchServices(dbWrapper.DB); err != nil {
+		log.Printf("[SET_DATABASE] Warning: Error closing previous database: %v", err)
+	}
 
 	log.Printf("[SET_DATABASE] Successfully switched to database: %s", dbName)
 
@@ -1619,15 +1609,15 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 	lines := strings.Split(sqlContent, "\n")
 	var statements []string
 	var currentStatement strings.Builder
-	
+
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
-		
+
 		// Skip empty lines and comment lines
 		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "--") {
 			continue
 		}
-		
+
 		// Remove inline comments (everything after -- on the same line)
 		if commentPos := strings.Index(trimmedLine, "--"); commentPos != -1 {
 			trimmedLine = strings.TrimSpace(trimmedLine[:commentPos])
@@ -1635,13 +1625,13 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 				continue // Skip if line becomes empty after removing comment
 			}
 		}
-		
+
 		// Add line to current statement
 		if currentStatement.Len() > 0 {
 			currentStatement.WriteString(" ")
 		}
 		currentStatement.WriteString(trimmedLine)
-		
+
 		// If line ends with semicolon, we have a complete statement
 		if strings.HasSuffix(trimmedLine, ";") {
 			statement := strings.TrimSpace(currentStatement.String())
@@ -1654,7 +1644,7 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 			currentStatement.Reset()
 		}
 	}
-	
+
 	// Handle any remaining statement that doesn't end with semicolon
 	if currentStatement.Len() > 0 {
 		statement := strings.TrimSpace(currentStatement.String())
@@ -1662,6 +1652,6 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 			statements = append(statements, statement)
 		}
 	}
-	
+
 	return statements
 }

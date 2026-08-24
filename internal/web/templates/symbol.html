@@ -746,6 +746,22 @@
         const cancelModal = document.getElementById('cancelModal');
         const symbolForm = document.getElementById('symbolForm');
         const modalTitle = document.getElementById('modalTitle');
+        const marketInput = document.getElementById('marketInput');
+        let editingLegacySymbol = null;
+		let selectedMarket = '';
+
+        fetch('/api/markets').then(response => response.json()).then(markets => {
+            marketInput.innerHTML = '<option value="">Select a market</option>';
+            markets.forEach(market => {
+                const option = document.createElement('option');
+                option.value = market.id;
+                option.textContent = market.display_name;
+                marketInput.appendChild(option);
+            });
+			if (selectedMarket) {
+				marketInput.value = selectedMarket;
+			}
+        });
         
         // Open modal for editing current symbol
         console.log('About to set up editSymbolBtn listener...');
@@ -793,15 +809,27 @@
             modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
             
             if (editMode && symbolData) {
-                document.getElementById('symbolInput').value = symbolData.symbol;
+                const parts = symbolData.symbol.split(':');
+                const isCanonical = parts.length === 2;
+                document.getElementById('symbolInput').value = isCanonical ? parts[1] : symbolData.symbol;
+				selectedMarket = isCanonical ? parts[0] : '';
+                marketInput.value = selectedMarket;
                 document.getElementById('priceInput').value = symbolData.price || '';
                 document.getElementById('dividendInput').value = symbolData.dividend || '';
                 document.getElementById('exDividendDateInput').value = symbolData.exDividendDate || '';
                 document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
                 document.getElementById('symbolInput').disabled = true;
+				marketInput.disabled = isCanonical;
+				editingLegacySymbol = isCanonical ? null : symbolData.symbol;
+				if (!isCanonical) {
+					modalTitle.textContent = 'Select market for legacy symbol';
+				}
             } else {
                 symbolForm.reset();
                 document.getElementById('symbolInput').disabled = false;
+				marketInput.disabled = false;
+				selectedMarket = '';
+				editingLegacySymbol = null;
             }
             
             modal.style.display = 'block';
@@ -817,20 +845,29 @@
             e.preventDefault();
             
             const exDivDateValue = document.getElementById('exDividendDateInput').value;
+            const ticker = document.getElementById('symbolInput').value.toUpperCase().trim();
+            const market = marketInput.value;
             const symbolData = {
-                symbol: document.getElementById('symbolInput').value.toUpperCase(),
+                symbol: `${market}:${ticker}`,
                 price: parseFloat(document.getElementById('priceInput').value) || 0,
                 dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
                 ex_dividend_date: exDivDateValue || null,
                 pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
             };
             
-            const url = `/api/symbols/${symbolData.symbol}`;
+            const url = editingLegacySymbol
+                ? `/api/symbols/${encodeURIComponent(editingLegacySymbol)}/qualify`
+                : `/api/symbols/${encodeURIComponent(symbolData.symbol)}`;
+
+            if (!market) {
+                alert('Select a market');
+                return;
+            }
             
             fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: editingLegacySymbol ? JSON.stringify({ market }) : JSON.stringify({
                     price: symbolData.price,
                     dividend: symbolData.dividend,
                     ex_dividend_date: symbolData.ex_dividend_date,
@@ -1578,6 +1615,11 @@
         }
 
         function fetchSymbolDividends(symbol) {
+            const supportsDividends = {{.SupportsDividends}};
+            if (!supportsDividends) {
+                alert('The configured market data provider does not support dividend history.');
+                return;
+            }
             const fetchBtn = document.getElementById('fetchDividendsBtn');
             const originalText = fetchBtn.innerHTML;
             

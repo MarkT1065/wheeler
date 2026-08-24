@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polygon - Wheeler</title>
+    <title>{{.ProviderName}} Settings - Wheeler</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
@@ -15,26 +15,54 @@
         <!-- Main Content -->
         <div class="main-content">
             <div class="content-section">
-                <div class="section-title">Polygon</div>
-                <div class="section-subtitle">Configure your Polygon.io API key for live market data</div>
+                <div class="section-title">Market Data Provider</div>
+                <div class="section-subtitle">Choose the source Wheeler uses for live market data in this database.</div>
+
+                {{if .LegacySymbols}}
+                <div class="info-card" style="margin: 16px 0; border-left: 4px solid #f59e0b;">
+                    <div class="info-header">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h4>Market selection required</h4>
+                    </div>
+                    <div class="info-content">
+                        <p>Provider updates require symbols in <code>MARKET:TICKER</code> form. Edit each legacy symbol below and select its market before requesting provider data.</p>
+                        <p>{{range $index, $symbol := .LegacySymbols}}{{if $index}}, {{end}}<code>{{$symbol}}</code>{{end}}</p>
+                    </div>
+                </div>
+                {{end}}
                 
                 <!-- API Key Configuration Form -->
                 <div class="settings-form-container">
                     <div class="settings-card">
                         <div class="settings-card-header">
-                            <i class="fas fa-key"></i>
-                            <h3>Polygon.io API Configuration</h3>
+                            <i class="fas fa-chart-line"></i>
+                            <h3>Provider Configuration</h3>
                         </div>
                         <div class="settings-card-body">
-                            <form id="apiKeyForm">
+                            <form id="providerConfigForm">
                                 <div class="form-group">
+                                    <label for="providerTypeInput" class="form-label">Market data provider</label>
+                                    <select id="providerTypeInput" class="form-input">
+                                        {{range .ProviderProfiles}}
+                                        <option value="{{.ID}}" data-requires-api-key="{{.RequiresAPIKey}}" data-supports-dividends="{{.SupportsDividends}}" {{if eq .ID $.ActiveProvider}}selected{{end}}>{{.DisplayName}}</option>
+                                        {{end}}
+                                    </select>
+                                    <div class="form-help">The choice is saved only in the active Wheeler database.</div>
+                                </div>
+                                <div class="form-group">
+                                    <div id="apiKeyField">
                                     <label for="apiKeyInput" class="form-label">API Key</label>
-                                    <input type="password" id="apiKeyInput" class="form-input" 
-                                           placeholder="Enter your Polygon.io API key"
+                                     <input type="password" id="apiKeyInput" class="form-input" 
+                                         placeholder="Enter your Polygon.io API key"
                                            value="{{if .ApiKey}}{{.ApiKey}}{{end}}">
                                     <div class="form-help">
                                         <i class="fas fa-info-circle"></i>
-                                        Get your free API key from <a href="https://polygon.io" target="_blank" rel="noopener">Polygon.io</a>
+                                        Polygon requires an API key. <a href="https://polygon.io" target="_blank" rel="noopener">Create one at Polygon.io</a>.
+                                    </div>
+                                    </div>
+                                    <div id="noApiKeyField" class="form-help" style="display: none;">
+                                        <i class="fas fa-info-circle"></i>
+                                        This provider does not require an API key.
                                     </div>
                                 </div>
                                 <div class="form-group">
@@ -43,9 +71,9 @@
                                             <i class="fas fa-eye" id="eyeIcon"></i>
                                             <span id="toggleText">Show</span>
                                         </button>
-                                        <button type="submit" class="btn btn-primary" id="saveApiKeyBtn">
+                                        <button type="submit" class="btn btn-primary" id="saveProviderBtn">
                                             <i class="fas fa-save"></i>
-                                            Save API Key
+                                            Save Configuration
                                         </button>
                                     </div>
                                 </div>
@@ -58,7 +86,7 @@
                                     <span id="statusText">Not configured</span>
                                 </div>
                                 <div class="status-description" id="statusDescription">
-                                    Configure your API key to enable live market data updates
+                                    Loading provider configuration…
                                 </div>
                             </div>
                             
@@ -82,16 +110,16 @@
                     <div class="info-card">
                         <div class="info-header">
                             <i class="fas fa-lightbulb"></i>
-                            <h4>About Polygon.io API</h4>
+                            <h4>About {{.ProviderName}}</h4>
                         </div>
                         <div class="info-content">
-                            <p>The Polygon.io API provides real-time and historical market data for stocks, options, and other financial instruments.</p>
+                            <p id="providerDescription">{{.ProviderName}} powers live price checks and symbol lookups inside Wheeler.</p>
                             <ul>
-                                <li><strong>Free Tier:</strong> 5 API calls per minute, delayed data</li>
-                                <li><strong>Starter Plan:</strong> 100 API calls per minute, real-time data</li>
-                                <li><strong>Developer Plan:</strong> 1000 API calls per minute, additional endpoints</li>
+                                <li><strong>Requests:</strong> Price updates and symbol insights use the selected provider.</li>
+                                <li><strong>Rate Limits:</strong> Bulk actions pace themselves to respect your provider's published limits.</li>
+                                <li id="dividendCapability"><strong>Dividend history:</strong> Loading capability…</li>
                             </ul>
-                            <p>Your API key will be used to automatically update stock prices and fetch dividend information.</p>
+                            <p>Changing provider does not modify existing prices or dividends stored in Wheeler.</p>
                         </div>
                     </div>
                 </div>
@@ -267,11 +295,31 @@
     </style>
 
     <script>
-        // Get API key value from backend
         let currentApiKey = '{{if .ApiKey}}{{.ApiKey}}{{end}}';
+        let savedProviderType = '{{.ActiveProvider}}';
+        const providerTypeInput = document.getElementById('providerTypeInput');
+        const apiKeyField = document.getElementById('apiKeyField');
+        const noApiKeyField = document.getElementById('noApiKeyField');
+        const toggleVisibilityBtn = document.getElementById('toggleVisibilityBtn');
+
+        function selectedProvider() {
+            return providerTypeInput.options[providerTypeInput.selectedIndex];
+        }
+
+        function providerName() {
+            return selectedProvider().textContent;
+        }
+
+        function providerCapabilities() {
+            const option = selectedProvider();
+            return {
+                requiresApiKey: option.dataset.requiresApiKey === 'true',
+                supportsDividends: option.dataset.supportsDividends === 'true'
+            };
+        }
         
         // Toggle API key visibility
-        document.getElementById('toggleVisibilityBtn').addEventListener('click', function() {
+        toggleVisibilityBtn.addEventListener('click', function() {
             const input = document.getElementById('apiKeyInput');
             const eyeIcon = document.getElementById('eyeIcon');
             const toggleText = document.getElementById('toggleText');
@@ -287,8 +335,20 @@
             }
         });
 
-        // Update API status display
-        function updateApiStatus(hasKey, isValid = null) {
+        function updateProviderUI() {
+            const capabilities = providerCapabilities();
+            apiKeyField.style.display = capabilities.requiresApiKey ? 'block' : 'none';
+            noApiKeyField.style.display = capabilities.requiresApiKey ? 'none' : 'flex';
+            toggleVisibilityBtn.style.display = capabilities.requiresApiKey ? 'inline-flex' : 'none';
+            document.getElementById('providerDescription').textContent = `${providerName()} powers live price checks and symbol lookups inside Wheeler.`;
+            document.getElementById('dividendCapability').innerHTML = capabilities.supportsDividends
+                ? '<strong>Dividend history:</strong> supported by this provider.'
+                : '<strong>Dividend history:</strong> not available from Google Finance; Wheeler will not request it.';
+            updateApiStatus(capabilities);
+        }
+
+        // Update provider readiness display.
+        function updateApiStatus(capabilities) {
             const statusIndicator = document.querySelector('.status-indicator');
             const statusIcon = document.getElementById('statusIcon');
             const statusText = document.getElementById('statusText');
@@ -300,7 +360,19 @@
             apiStatus.classList.remove('configured', 'error', 'not-configured');
             statusIndicator.classList.remove('configured', 'error', 'not-configured');
             
-            if (!hasKey) {
+            if (providerTypeInput.value !== savedProviderType) {
+                apiStatus.classList.add('not-configured');
+                statusIndicator.classList.add('not-configured');
+                statusText.textContent = 'Unsaved provider selection';
+                statusDescription.textContent = 'Save this provider configuration before testing or updating prices.';
+                apiActions.style.display = 'none';
+            } else if (!capabilities.requiresApiKey) {
+                apiStatus.classList.add('configured');
+                statusIndicator.classList.add('configured');
+                statusText.textContent = 'Ready';
+                statusDescription.textContent = 'No API key is required for this provider';
+                apiActions.style.display = 'flex';
+            } else if (!currentApiKey) {
                 apiStatus.classList.add('not-configured');
                 statusIndicator.classList.add('not-configured');
                 statusText.textContent = 'Not configured';
@@ -315,43 +387,44 @@
             }
         }
 
+        providerTypeInput.addEventListener('change', updateProviderUI);
+
         // Form submission
-        document.getElementById('apiKeyForm').addEventListener('submit', function(e) {
+        document.getElementById('providerConfigForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+            const capabilities = providerCapabilities();
+            const providerType = providerTypeInput.value;
             const apiKey = document.getElementById('apiKeyInput').value.trim();
-            const saveBtn = document.getElementById('saveApiKeyBtn');
+            const saveBtn = document.getElementById('saveProviderBtn');
             
             // Disable button and show loading state
             saveBtn.disabled = true;
             const originalText = saveBtn.innerHTML;
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             
-            // Update API key via API
-            fetch('/api/settings/POLYGON_API_KEY', {
+            fetch('/api/provider/configuration', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    value: apiKey,
-                    description: 'API key for Polygon.io stock market data integration'
+                    provider_type: providerType,
+                    polygon_api_key: capabilities.requiresApiKey ? apiKey : ''
                 })
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Failed to save API key');
+                    return response.text().then(message => { throw new Error(message || 'Failed to save provider configuration'); });
                 }
                 return response.json();
             })
             .then(data => {
                 currentApiKey = apiKey;
-                updateApiStatus(apiKey.length > 0);
-                showNotification('API key saved successfully!', 'success');
+                savedProviderType = data.provider;
+                updateProviderUI();
+                showNotification('Provider configuration saved successfully!', 'success');
             })
             .catch(error => {
-                console.error('Error saving API key:', error);
-                showNotification('Error saving API key: ' + error.message, 'error');
+                console.error('Error saving provider configuration:', error);
+                showNotification('Error saving provider configuration: ' + error.message, 'error');
             })
             .finally(() => {
                 // Restore button state
@@ -367,7 +440,7 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
             
-            fetch('/api/polygon/test', {
+            fetch('/api/provider/test', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -395,7 +468,7 @@
         document.getElementById('updatePricesBtn').addEventListener('click', function() {
             const btn = this;
             
-            if (!confirm('This will update prices for all symbols using your Polygon.io API quota. Continue?')) {
+            if (!confirm('This updates at most 20 symbols per request to respect provider rate limits. Run it again to process any remaining symbols. Continue?')) {
                 return;
             }
             
@@ -403,7 +476,7 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
             
-            fetch('/api/polygon/update-prices', {
+            fetch('/api/provider/update-prices', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -413,7 +486,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showNotification(`Price update completed! Updated: ${data.updated}, Failed: ${data.failed}`, 'success');
+                    let message = `Price update completed! Updated: ${data.updated}, Failed: ${data.failed}`;
+                    if (data.skipped > 0) {
+                        message += ` ${data.skipped} symbols remain; run Update All again to continue.`;
+                    }
+                    showNotification(message, 'success');
                 } else {
                     showNotification('Price update failed: ' + (data.message || 'Unknown error'), 'error');
                 }
@@ -431,7 +508,7 @@
 
         // Initialize status display
         document.addEventListener('DOMContentLoaded', function() {
-            updateApiStatus(currentApiKey.length > 0);
+            updateProviderUI();
         });
 
         function showNotification(message, type) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"stonks/internal/markets"
 	"strings"
 	"time"
 )
@@ -307,19 +308,75 @@ func NewSymbolService(db *sql.DB) *SymbolService {
 }
 
 func (s *SymbolService) Create(symbol string) (*Symbol, error) {
-	symbol = strings.TrimSpace(strings.ToUpper(symbol))
-	if symbol == "" {
-		return nil, fmt.Errorf("symbol cannot be empty")
+	instrument, err := markets.Parse(symbol)
+	if err != nil {
+		return nil, err
 	}
+	symbol = instrument.Key()
 
 	query := `INSERT INTO symbols (symbol) VALUES (?) RETURNING symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at`
 	var sym Symbol
-	err := s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
+	err = s.db.QueryRow(query, symbol).Scan(&sym.Symbol, &sym.Price, &sym.Dividend, &sym.ExDividendDate, &sym.PERatio, &sym.CreatedAt, &sym.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create symbol: %w", err)
 	}
 
 	return &sym, nil
+}
+
+// QualifyLegacySymbol replaces a bare legacy ticker with a canonical
+// MARKET:TICKER key and moves every dependent record in one transaction.
+func (s *SymbolService) QualifyLegacySymbol(legacySymbol, market string) (*Symbol, error) {
+	legacySymbol = strings.ToUpper(strings.TrimSpace(legacySymbol))
+	if !markets.IsLegacyKey(legacySymbol) {
+		return nil, fmt.Errorf("symbol %q is already market-qualified", legacySymbol)
+	}
+	instrument, err := markets.New(market, legacySymbol)
+	if err != nil {
+		return nil, err
+	}
+	canonicalSymbol := instrument.Key()
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, fmt.Errorf("start symbol qualification transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var count int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM symbols WHERE symbol = ?`, legacySymbol).Scan(&count); err != nil {
+		return nil, fmt.Errorf("find legacy symbol: %w", err)
+	}
+	if count == 0 {
+		return nil, fmt.Errorf("symbol not found")
+	}
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM symbols WHERE symbol = ?`, canonicalSymbol).Scan(&count); err != nil {
+		return nil, fmt.Errorf("find canonical symbol: %w", err)
+	}
+	if count > 0 {
+		return nil, fmt.Errorf("symbol %s already exists", canonicalSymbol)
+	}
+
+	if _, err := tx.Exec(`INSERT INTO symbols (symbol, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at)
+		SELECT ?, price, dividend, ex_dividend_date, pe_ratio, created_at, updated_at FROM symbols WHERE symbol = ?`, canonicalSymbol, legacySymbol); err != nil {
+		return nil, fmt.Errorf("create canonical symbol: %w", err)
+	}
+	for table, query := range map[string]string{
+		"options":        `UPDATE options SET symbol = ? WHERE symbol = ?`,
+		"long_positions": `UPDATE long_positions SET symbol = ? WHERE symbol = ?`,
+		"dividends":      `UPDATE dividends SET symbol = ? WHERE symbol = ?`,
+	} {
+		if _, err := tx.Exec(query, canonicalSymbol, legacySymbol); err != nil {
+			return nil, fmt.Errorf("move %s records: %w", table, err)
+		}
+	}
+	if _, err := tx.Exec(`DELETE FROM symbols WHERE symbol = ?`, legacySymbol); err != nil {
+		return nil, fmt.Errorf("delete legacy symbol: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit symbol qualification: %w", err)
+	}
+	return s.GetBySymbol(canonicalSymbol)
 }
 
 func (s *SymbolService) GetBySymbol(symbol string) (*Symbol, error) {

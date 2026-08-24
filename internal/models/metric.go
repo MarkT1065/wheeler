@@ -47,11 +47,19 @@ type Metric struct {
 }
 
 type MetricService struct {
-	db *sql.DB
+	db  *sql.DB
+	now func() time.Time
 }
 
 func NewMetricService(db *sql.DB) *MetricService {
-	return &MetricService{db: db}
+	return &MetricService{db: db, now: time.Now}
+}
+
+func (ms *MetricService) currentTime() time.Time {
+	if ms.now == nil {
+		return time.Now()
+	}
+	return ms.now()
 }
 
 func (ms *MetricService) Create(metricType MetricType, value float64) (*Metric, error) {
@@ -186,7 +194,7 @@ func (ms *MetricService) ComprehensiveSnapshot(days int) error {
 	}
 
 	// Get today's date and calculate the start date
-	today := time.Now()
+	today := ms.currentTime()
 
 	// For each day in the range, calculate and upsert all metrics
 	for i := 0; i < days; i++ {
@@ -284,7 +292,7 @@ func (ms *MetricService) calculateTreasuryValueForDate(date time.Time) (float64,
 	//   but included in historical dates before they were sold (assuming sold at maturity for historical data)
 
 	// For current date calculations, only include unsold treasuries
-	if date.Format("2006-01-02") == time.Now().Format("2006-01-02") {
+	if date.Format("2006-01-02") == ms.currentTime().Format("2006-01-02") {
 		query := `
 			SELECT COALESCE(SUM(amount), 0) as total_value
 			FROM treasuries 

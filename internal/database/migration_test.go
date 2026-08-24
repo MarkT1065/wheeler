@@ -37,6 +37,32 @@ func TestMigrationSystem(t *testing.T) {
 		}
 	})
 
+	t.Run("provider settings migration applied", func(t *testing.T) {
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = '20260822220000_add_provider_settings'").Scan(&count)
+		if err != nil {
+			t.Fatalf("Failed to query provider settings migration: %v", err)
+		}
+		if count != 1 {
+			t.Errorf("Expected provider settings migration to be applied, got count=%d", count)
+		}
+
+		for _, name := range []string{"DATA_PROVIDER_TYPE", "GOOGLE_FINANCE_EXCHANGE"} {
+			var value string
+			if err := db.QueryRow("SELECT value FROM settings WHERE name = ?", name).Scan(&value); err != nil {
+				t.Errorf("Expected setting %s to exist: %v", name, err)
+			}
+		}
+	})
+
+	t.Run("legacy Google exchange migration applied", func(t *testing.T) {
+		var count int
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = '20260823211500_mark_google_exchange_legacy'").Scan(&count)
+		if err != nil || count != 1 {
+			t.Fatalf("expected legacy Google exchange migration, count=%d err=%v", count, err)
+		}
+	})
+
 	t.Run("all expected tables exist", func(t *testing.T) {
 		expectedTables := []string{
 			"schema_migrations",
@@ -114,8 +140,8 @@ func TestMigrationSystem(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query schema_migrations: %v", err)
 		}
-		if count != 1 {
-			t.Errorf("Expected only 1 migration record after re-running migrations, got %d", count)
+		if count != 3 {
+			t.Errorf("Expected 3 migration records after re-running migrations, got %d", count)
 		}
 	})
 }

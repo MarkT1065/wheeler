@@ -15,4 +15,5 @@ services:
     restart: unless-stopped
     # Optional: uncomment to set environment variables
     # environment:
-    #   - POLYGON_API_KEY=your_api_key_here
+    # Configure a provider in Admin -> Market Data after startup.
+    # Polygon API keys are stored per Wheeler database.
