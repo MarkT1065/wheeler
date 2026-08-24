@@ -585,7 +585,7 @@
             // Collect all put options
             const putOptions = [];
             {{range .Options}}
-                {{if eq .Type "Put"}}
+                {{if and (eq .Type "Put") .IsShort}}
                     {
                         const opened = new Date('{{.Opened.Format "2006-01-02"}}');
                         const expiration = new Date('{{.Expiration.Format "2006-01-02"}}');

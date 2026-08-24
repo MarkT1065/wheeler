@@ -23,19 +23,19 @@ const (
 	// LongCount is the count of open long_positions
 	LongCount MetricType = "long_count"
 
-	// PutExposure is the total value of all open Put options
+	// PutExposure is the collateral exposure of open short Put options.
 	PutExposure MetricType = "put_exposure"
 
-	// OpenPutPremium is the total of all open Put option premiums
+	// OpenPutPremium is the credit collected from open short Put options.
 	OpenPutPremium MetricType = "open_put_premium"
 
-	// OpenPutCount is the count of open Put options
+	// OpenPutCount is the count of open short Put options.
 	OpenPutCount MetricType = "open_put_count"
 
-	//OpenCallPremium is the total of all open Call option premiums
+	// OpenCallPremium is the credit collected from open short Call options.
 	OpenCallPremium MetricType = "open_call_premium"
 
-	// OpenCallCount is the count of open Call options
+	// OpenCallCount is the count of open short Call options.
 	OpenCallCount MetricType = "open_call_count"
 )
 
@@ -47,11 +47,19 @@ type Metric struct {
 }
 
 type MetricService struct {
-	db *sql.DB
+	db  *sql.DB
+	now func() time.Time
 }
 
 func NewMetricService(db *sql.DB) *MetricService {
-	return &MetricService{db: db}
+	return &MetricService{db: db, now: time.Now}
+}
+
+func (ms *MetricService) currentTime() time.Time {
+	if ms.now == nil {
+		return time.Now()
+	}
+	return ms.now()
 }
 
 func (ms *MetricService) Create(metricType MetricType, value float64) (*Metric, error) {
@@ -186,7 +194,7 @@ func (ms *MetricService) ComprehensiveSnapshot(days int) error {
 	}
 
 	// Get today's date and calculate the start date
-	today := time.Now()
+	today := ms.currentTime()
 
 	// For each day in the range, calculate and upsert all metrics
 	for i := 0; i < days; i++ {
@@ -284,7 +292,7 @@ func (ms *MetricService) calculateTreasuryValueForDate(date time.Time) (float64,
 	//   but included in historical dates before they were sold (assuming sold at maturity for historical data)
 
 	// For current date calculations, only include unsold treasuries
-	if date.Format("2006-01-02") == time.Now().Format("2006-01-02") {
+	if date.Format("2006-01-02") == ms.currentTime().Format("2006-01-02") {
 		query := `
 			SELECT COALESCE(SUM(amount), 0) as total_value
 			FROM treasuries 
@@ -371,7 +379,7 @@ func (ms *MetricService) calculatePutExposureForDate(date time.Time) (float64, e
 		FROM options 
 		WHERE date(opened) <= date(?) 
 		AND (closed IS NULL OR date(closed) > date(?))
-		AND type = 'Put'
+		AND type = 'Put' AND (direction IS NULL OR direction = '' OR direction = 'Short')
 	`
 
 	dateStr := date.Format("2006-01-02")
@@ -384,7 +392,7 @@ func (ms *MetricService) calculatePutExposureForDate(date time.Time) (float64, e
 	return totalExposure, nil
 }
 
-// calculateOpenPutPremiumForDate calculates total premium value of open put options as of a specific date
+// calculateOpenPutPremiumForDate calculates credit collected from active short puts.
 func (ms *MetricService) calculateOpenPutPremiumForDate(date time.Time) (float64, error) {
 	// Query for put options that were active on the given date
 	// Active means: opened <= date AND (closed IS NULL OR closed > date) AND type = 'Put'
@@ -394,7 +402,7 @@ func (ms *MetricService) calculateOpenPutPremiumForDate(date time.Time) (float64
 		FROM options 
 		WHERE date(opened) <= date(?) 
 		AND (closed IS NULL OR date(closed) > date(?))
-		AND type = 'Put'
+		AND type = 'Put' AND (direction IS NULL OR direction = '' OR direction = 'Short')
 	`
 
 	dateStr := date.Format("2006-01-02")
@@ -407,7 +415,7 @@ func (ms *MetricService) calculateOpenPutPremiumForDate(date time.Time) (float64
 	return totalPremium, nil
 }
 
-// calculateOpenPutCountForDate calculates total count of open put options as of a specific date
+// calculateOpenPutCountForDate counts active short puts.
 func (ms *MetricService) calculateOpenPutCountForDate(date time.Time) (float64, error) {
 	// Query for put options that were active on the given date
 	// Active means: opened <= date AND (closed IS NULL OR closed > date) AND type = 'Put'
@@ -416,7 +424,7 @@ func (ms *MetricService) calculateOpenPutCountForDate(date time.Time) (float64, 
 		FROM options 
 		WHERE date(opened) <= date(?) 
 		AND (closed IS NULL OR date(closed) > date(?))
-		AND type = 'Put'
+		AND type = 'Put' AND (direction IS NULL OR direction = '' OR direction = 'Short')
 	`
 
 	dateStr := date.Format("2006-01-02")
@@ -429,7 +437,7 @@ func (ms *MetricService) calculateOpenPutCountForDate(date time.Time) (float64, 
 	return float64(totalCount), nil
 }
 
-// calculateOpenCallPremiumForDate calculates total premium value of open call options as of a specific date
+// calculateOpenCallPremiumForDate calculates credit collected from active short calls.
 func (ms *MetricService) calculateOpenCallPremiumForDate(date time.Time) (float64, error) {
 	// Query for call options that were active on the given date
 	// Active means: opened <= date AND (closed IS NULL OR closed > date) AND type = 'Call'
@@ -439,7 +447,7 @@ func (ms *MetricService) calculateOpenCallPremiumForDate(date time.Time) (float6
 		FROM options 
 		WHERE date(opened) <= date(?) 
 		AND (closed IS NULL OR date(closed) > date(?))
-		AND type = 'Call'
+		AND type = 'Call' AND (direction IS NULL OR direction = '' OR direction = 'Short')
 	`
 
 	dateStr := date.Format("2006-01-02")
@@ -452,7 +460,7 @@ func (ms *MetricService) calculateOpenCallPremiumForDate(date time.Time) (float6
 	return totalPremium, nil
 }
 
-// calculateOpenCallCountForDate calculates total count of open call options as of a specific date
+// calculateOpenCallCountForDate counts active short calls.
 func (ms *MetricService) calculateOpenCallCountForDate(date time.Time) (float64, error) {
 	// Query for call options that were active on the given date
 	// Active means: opened <= date AND (closed IS NULL OR closed > date) AND type = 'Call'
@@ -461,7 +469,7 @@ func (ms *MetricService) calculateOpenCallCountForDate(date time.Time) (float64,
 		FROM options 
 		WHERE date(opened) <= date(?) 
 		AND (closed IS NULL OR date(closed) > date(?))
-		AND type = 'Call'
+		AND type = 'Call' AND (direction IS NULL OR direction = '' OR direction = 'Short')
 	`
 
 	dateStr := date.Format("2006-01-02")

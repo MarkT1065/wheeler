@@ -9,8 +9,15 @@
         </div>
         <form id="symbolForm">
             <div class="form-group">
-                <label for="symbolInput" class="form-label">Symbol *</label>
-                <input type="text" id="symbolInput" class="form-input" placeholder="e.g. AAPL, MSFT" required>
+                <label for="symbolInput" class="form-label">Ticker *</label>
+                <input type="text" id="symbolInput" class="form-input" placeholder="e.g. AAPL, PETR4" required>
+            </div>
+            <div class="form-group">
+                <label for="marketInput" class="form-label">Market *</label>
+                <select id="marketInput" class="form-input" required>
+                    <option value="">Loading supported markets…</option>
+                </select>
+                <div class="form-help">New symbols are stored as MARKET:TICKER.</div>
             </div>
             <div class="form-group">
                 <label for="priceInput" class="form-label">Current Price</label>

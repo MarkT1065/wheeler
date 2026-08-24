@@ -23,10 +23,12 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 	positionService := NewLongPositionService(testDB.DB)
 	optionService := NewOptionService(testDB.DB)
 
-	// Create test treasury data with specific dates spanning several months
-	testDate1 := time.Now().AddDate(0, -4, 0) // 4 months ago
-	testDate2 := time.Now().AddDate(0, -2, 0) // 2 months ago  
-	testDate3 := time.Now().AddDate(0, 0, -30) // 30 days ago
+	// Use a fixed midday UTC reference to make SQLite date comparisons fully deterministic.
+	baseDate := time.Date(2024, 5, 15, 12, 0, 0, 0, time.UTC)
+	metricService.now = func() time.Time { return baseDate }
+	testDate1 := baseDate.AddDate(0, -4, 0)  // 4 months ago
+	testDate2 := baseDate.AddDate(0, -2, 0)  // 2 months ago
+	testDate3 := baseDate.AddDate(0, 0, -30) // 30 days ago
 
 	// Treasury 1: Active for all 3 dates (purchased before testDate1)
 	maturityDate1 := testDate1.AddDate(0, 3, 0) // 3 months later
@@ -57,30 +59,30 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 	}
 
 	// Create symbols for long positions
-	_, err = symbolService.Create("AAPL")
+	_, err = symbolService.Create("NASDAQ:AAPL")
 	if err != nil {
 		t.Fatalf("Failed to create AAPL symbol: %v", err)
 	}
-	_, err = symbolService.Create("TSLA")
+	_, err = symbolService.Create("NASDAQ:TSLA")
 	if err != nil {
 		t.Fatalf("Failed to create TSLA symbol: %v", err)
 	}
 
 	// Create test long positions with specific dates
 	// Position 1: AAPL opened before testDate1, still active (100 shares * $150 = $15000)
-	_, err = positionService.Create("AAPL", testDate1.AddDate(0, 0, -1), 100, 150.0)
+	_, err = positionService.Create("NASDAQ:AAPL", testDate1.AddDate(0, 0, -1), 100, 150.0)
 	if err != nil {
 		t.Fatalf("Failed to create AAPL position: %v", err)
 	}
 
 	// Position 2: TSLA opened on testDate2, still active (50 shares * $250 = $12500)
-	_, err = positionService.Create("TSLA", testDate2, 50, 250.0)
+	_, err = positionService.Create("NASDAQ:TSLA", testDate2, 50, 250.0)
 	if err != nil {
 		t.Fatalf("Failed to create TSLA position: %v", err)
 	}
 
 	// Position 3: AAPL opened before testDate1, closed on testDate2 (25 shares * $150 = $3750)
-	closedPosition, err := positionService.Create("AAPL", testDate1.AddDate(0, 0, -2), 25, 150.0)
+	closedPosition, err := positionService.Create("NASDAQ:AAPL", testDate1.AddDate(0, 0, -2), 25, 150.0)
 	if err != nil {
 		t.Fatalf("Failed to create closed AAPL position: %v", err)
 	}
@@ -92,21 +94,21 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 
 	// Create test options with specific dates
 	expirationDate := testDate3.AddDate(0, 1, 0) // 1 month after testDate3
-	
+
 	// Put option 1: AAPL opened before testDate1, still active (strike $140, 2 contracts, exposure = 140 * 2 * 100 = $28000)
-	_, err = optionService.Create("AAPL", "Put", testDate1.AddDate(0, 0, -1), 140.0, expirationDate, 3.50, 2)
+	_, err = optionService.Create("NASDAQ:AAPL", "Put", testDate1.AddDate(0, 0, -1), 140.0, expirationDate, 3.50, 2)
 	if err != nil {
 		t.Fatalf("Failed to create AAPL put option: %v", err)
 	}
 
 	// Put option 2: TSLA opened on testDate2, still active (strike $230, 1 contract, exposure = 230 * 1 * 100 = $23000)
-	_, err = optionService.Create("TSLA", "Put", testDate2, 230.0, expirationDate, 5.00, 1)
+	_, err = optionService.Create("NASDAQ:TSLA", "Put", testDate2, 230.0, expirationDate, 5.00, 1)
 	if err != nil {
 		t.Fatalf("Failed to create TSLA put option: %v", err)
 	}
 
 	// Put option 3: AAPL opened before testDate1, closed on testDate2 (strike $135, 1 contract, exposure = 135 * 1 * 100 = $13500)
-	closedPutOption, err := optionService.Create("AAPL", "Put", testDate1.AddDate(0, 0, -2), 135.0, expirationDate, 2.75, 1)
+	closedPutOption, err := optionService.Create("NASDAQ:AAPL", "Put", testDate1.AddDate(0, 0, -2), 135.0, expirationDate, 2.75, 1)
 	if err != nil {
 		t.Fatalf("Failed to create closed AAPL put option: %v", err)
 	}
@@ -118,19 +120,19 @@ func TestMetricService_ComprehensiveSnapshot(t *testing.T) {
 
 	// Create test call options with specific dates
 	// Call option 1: AAPL opened before testDate1, still active (premium $2.25, 3 contracts, premium = 2.25 * 3 * 100 = $675)
-	_, err = optionService.Create("AAPL", "Call", testDate1.AddDate(0, 0, -1), 160.0, expirationDate, 2.25, 3)
+	_, err = optionService.Create("NASDAQ:AAPL", "Call", testDate1.AddDate(0, 0, -1), 160.0, expirationDate, 2.25, 3)
 	if err != nil {
 		t.Fatalf("Failed to create AAPL call option: %v", err)
 	}
 
 	// Call option 2: TSLA opened on testDate2, still active (premium $4.75, 2 contracts, premium = 4.75 * 2 * 100 = $950)
-	_, err = optionService.Create("TSLA", "Call", testDate2, 270.0, expirationDate, 4.75, 2)
+	_, err = optionService.Create("NASDAQ:TSLA", "Call", testDate2, 270.0, expirationDate, 4.75, 2)
 	if err != nil {
 		t.Fatalf("Failed to create TSLA call option: %v", err)
 	}
 
 	// Call option 3: AAPL opened before testDate1, closed on testDate2 (premium $1.85, 1 contract, premium = 1.85 * 1 * 100 = $185)
-	closedCallOption, err := optionService.Create("AAPL", "Call", testDate1.AddDate(0, 0, -2), 155.0, expirationDate, 1.85, 1)
+	closedCallOption, err := optionService.Create("NASDAQ:AAPL", "Call", testDate1.AddDate(0, 0, -2), 155.0, expirationDate, 1.85, 1)
 	if err != nil {
 		t.Fatalf("Failed to create closed AAPL call option: %v", err)
 	}

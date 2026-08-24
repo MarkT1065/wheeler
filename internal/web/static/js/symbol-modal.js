@@ -11,9 +11,10 @@ class SymbolModal {
         this.cancelModal = null;
         this.symbolForm = null;
         this.modalTitle = null;
+        this.marketInput = null;
         this.isEditMode = false;
         this.editingSymbol = null;
-        
+
         this.init();
     }
     
@@ -25,10 +26,29 @@ class SymbolModal {
         this.cancelModal = document.getElementById('cancelModal');
         this.symbolForm = document.getElementById('symbolForm');
         this.modalTitle = document.getElementById('modalTitle');
+        this.marketInput = document.getElementById('marketInput');
         
         if (!this.modal) {
             console.warn('Symbol modal not found on this page');
             return;
+        }
+
+        if (this.marketInput) {
+            fetch('/api/markets')
+                .then(response => response.json())
+                .then(markets => {
+                    this.marketInput.innerHTML = '<option value="">Select a market</option>';
+                    markets.forEach(market => {
+                        const option = document.createElement('option');
+                        option.value = market.id;
+                        option.textContent = market.display_name;
+                        this.marketInput.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Failed to load markets:', error);
+                    this.marketInput.innerHTML = '<option value="">Markets unavailable</option>';
+                });
         }
         
         this.bindEvents();
@@ -81,8 +101,14 @@ class SymbolModal {
             const peRatioInput = document.getElementById('peRatioInput');
             
             if (symbolInput) {
-                symbolInput.value = symbolData.symbol;
+                const parts = symbolData.symbol.split(':');
+                symbolInput.value = parts.length === 2 ? parts[1] : symbolData.symbol;
                 symbolInput.disabled = true;
+            }
+            if (this.marketInput) {
+                const parts = symbolData.symbol.split(':');
+                this.marketInput.value = parts.length === 2 ? parts[0] : '';
+                this.marketInput.disabled = parts.length === 2;
             }
             if (priceInput) priceInput.value = symbolData.price || '';
             if (dividendInput) dividendInput.value = symbolData.dividend || '';
@@ -96,6 +122,7 @@ class SymbolModal {
             if (symbolInput) {
                 symbolInput.disabled = false;
             }
+			if (this.marketInput) this.marketInput.disabled = false;
             this.editingSymbol = null;
         }
         
@@ -121,38 +148,52 @@ class SymbolModal {
         const dividendInput = document.getElementById('dividendInput');
         const exDividendDateInput = document.getElementById('exDividendDateInput');
         const peRatioInput = document.getElementById('peRatioInput');
+		const market = this.marketInput?.value;
         
         if (!symbolInput) {
             console.error('Symbol input not found');
             return;
         }
         
+        if (!market) {
+            alert('Select a market');
+            return;
+        }
+
         const symbolData = {
-            symbol: symbolInput.value.toUpperCase(),
+            symbol: `${market}:${symbolInput.value.toUpperCase().trim()}`,
             price: parseFloat(priceInput?.value) || 0,
             dividend: parseFloat(dividendInput?.value) || 0,
             ex_dividend_date: exDividendDateInput?.value || null,
             pe_ratio: parseFloat(peRatioInput?.value) || null
         };
         
-        const url = `/api/symbols/${symbolData.symbol}`;
-        const method = 'PUT'; // Using PUT for both create and update
-        
-        fetch(url, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const isLegacyEdit = this.isEditMode && this.editingSymbol && !this.editingSymbol.includes(':');
+        const url = isLegacyEdit
+            ? `/api/symbols/${encodeURIComponent(this.editingSymbol)}/qualify`
+            : `/api/symbols/${encodeURIComponent(symbolData.symbol)}`;
+        const method = isLegacyEdit ? 'POST' : 'PUT';
+        const body = isLegacyEdit
+            ? { market: market }
+            : {
                 price: symbolData.price,
                 dividend: symbolData.dividend,
                 ex_dividend_date: symbolData.ex_dividend_date,
                 pe_ratio: symbolData.pe_ratio
-            })
+            };
+
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
         })
         .then(response => {
             if (response.ok) {
                 return response.json();
             }
-            throw new Error('Failed to save symbol');
+            return response.text().then(text => {
+                throw new Error(text.trim() || 'Failed to save symbol');
+            });
         })
         .then(data => {
             console.log('Symbol saved successfully:', data);
@@ -162,11 +203,12 @@ class SymbolModal {
         })
         .catch(error => {
             console.error('Error saving symbol:', error);
+            const message = error.message || 'Failed to save symbol. Please try again.';
             // Show error modal if available, otherwise alert
             if (window.showErrorModal) {
-                window.showErrorModal('Failed to save symbol. Please try again.');
+                window.showErrorModal(message);
             } else {
-                alert('Failed to save symbol. Please try again.');
+                alert(message);
             }
         });
     }

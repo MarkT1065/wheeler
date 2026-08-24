@@ -484,6 +484,7 @@
                                     <tr>
                                         <th class="sortable" data-sort="symbol">Symbol <i class="fas fa-sort"></i></th>
                                         <th class="sortable" data-sort="type">Type <i class="fas fa-sort"></i></th>
+                                        <th class="sortable" data-sort="direction">Position <i class="fas fa-sort"></i></th>
                                         <th class="sortable" data-sort="strike">Strike <i class="fas fa-sort"></i></th>
                                         <th class="sortable" data-sort="expiration">Expiration <i class="fas fa-sort"></i></th>
                                         <th class="sortable" data-sort="opened">Opened <i class="fas fa-sort"></i></th>
@@ -501,6 +502,7 @@
                                     <tr>
                                         <td class="summary-label">Summary</td>
                                         <td id="summaryType"></td>
+                                        <td></td>
                                         <td id="summaryStrike"></td>
                                         <td></td>
                                         <td></td>
@@ -895,13 +897,14 @@
                         ${option.type === 'Put' ? 'P' : 'C'}
                     </span>
                 </td>
+                <td class="${option.direction === 'Long' ? 'negative' : 'positive'}">${option.direction || 'Short'}</td>
                 <td class="neutral-currency">$${Math.round(option.strike)}</td>
                 <td>${expirationDate}</td>
                 <td>${openedDate}</td>
                 <td>${closedDate ? closedDate : '<span class="text-muted">Open</span>'}</td>
                 <td>${option.contracts}</td>
                 <td class="neutral-currency">$${option.premium.toFixed(2)}</td>
-                <td class="neutral-currency">$${Math.round(maxProfit)}</td>
+                <td class="neutral-currency">${maxProfit === null ? '-' : '$' + Math.round(maxProfit)}</td>
                 <td class="premium-column ${totalProfit < 0 ? 'negative' : totalProfit > 0 ? 'positive' : 'neutral-currency'}">$${Math.round(totalProfit)}</td>
             `;
             
@@ -909,15 +912,17 @@
         }
         
         function calculateMaxProfit(option) {
+            if (option.direction === 'Long') return null;
             return option.premium * option.contracts * 100;
         }
         
         function calculateTotalProfit(option) {
-            let totalProfit = option.premium * option.contracts * 100; // Premium collected
+            const multiplier = option.direction === 'Long' ? -1 : 1;
+            let totalProfit = multiplier * option.premium * option.contracts * 100;
             
             if (option.closed && option.exit_price) {
                 // Subtract the cost to close the position
-                totalProfit -= option.exit_price * option.contracts * 100;
+                totalProfit -= multiplier * option.exit_price * option.contracts * 100;
             }
             
             // Subtract commissions
@@ -972,9 +977,12 @@
                 }
                 
                 totalStrike += option.strike;
-                totalPremium += option.premium;
+                totalPremium += option.direction === 'Long' ? -option.premium : option.premium;
                 totalContracts += option.contracts;
-                totalMaxProfit += calculateMaxProfit(option);
+                const maxProfit = calculateMaxProfit(option);
+                if (Number.isFinite(maxProfit)) {
+                    totalMaxProfit += maxProfit;
+                }
                 totalProfit += calculateTotalProfit(option);
             });
             

@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-
 // optionsHandler serves the options analysis view
 func (s *Server) optionsHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[OPTIONS PAGE] %s %s - Start processing options page request", r.Method, r.URL.Path)
@@ -106,12 +105,12 @@ func (s *Server) allOptionsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := AllOptionsDataWithJSON{
-		Symbols:         symbols,
-		AllSymbols:      symbols, // For navigation compatibility
-		OptionsIndex:    optionsIndex,
+		Symbols:          symbols,
+		AllSymbols:       symbols, // For navigation compatibility
+		OptionsIndex:     optionsIndex,
 		OptionsIndexJSON: template.JS(string(indexJSON)),
-		CurrentDB:       s.getCurrentDatabaseName(),
-		ActivePage:      "all-options",
+		CurrentDB:        s.getCurrentDatabaseName(),
+		ActivePage:       "all-options",
 	}
 
 	log.Printf("[ALL OPTIONS PAGE] Rendering all-options.html template with index containing %d options", totalOptions)
@@ -248,6 +247,13 @@ func (s *Server) createOption(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Type must be 'Put' or 'Call'", http.StatusBadRequest)
 		return
 	}
+	if req.Direction == "" {
+		req.Direction = "Short"
+	}
+	if req.Direction != "Short" && req.Direction != "Long" {
+		http.Error(w, "Direction must be 'Short' or 'Long'", http.StatusBadRequest)
+		return
+	}
 
 	// Parse dates
 	opened, err := time.Parse("2006-01-02", req.Opened)
@@ -263,7 +269,7 @@ func (s *Server) createOption(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the option
-	option, err := s.optionService.CreateWithCommission(req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission)
+	option, err := s.optionService.CreateWithCommissionAndDirection(req.Symbol, req.Type, req.Direction, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create option: %v", err), http.StatusInternalServerError)
 		return
@@ -282,7 +288,7 @@ func (s *Server) createOption(w http.ResponseWriter, r *http.Request) {
 			exitPrice = *req.ExitPrice
 		}
 
-		err = s.optionService.Close(req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, closed, exitPrice)
+		err = s.optionService.CloseWithDirection(req.Symbol, req.Type, req.Direction, opened, req.Strike, expiration, req.Premium, req.Contracts, closed, exitPrice)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to close option: %v", err), http.StatusInternalServerError)
 			return
@@ -317,6 +323,13 @@ func (s *Server) updateOption(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Type must be 'Put' or 'Call'", http.StatusBadRequest)
 		return
 	}
+	if req.Direction == "" {
+		req.Direction = "Short"
+	}
+	if req.Direction != "Short" && req.Direction != "Long" {
+		http.Error(w, "Direction must be 'Short' or 'Long'", http.StatusBadRequest)
+		return
+	}
 
 	// Parse dates
 	opened, err := time.Parse("2006-01-02", req.Opened)
@@ -343,7 +356,7 @@ func (s *Server) updateOption(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the option
-	option, err := s.optionService.UpdateByID(*req.ID, req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission, closed, req.ExitPrice)
+	option, err := s.optionService.UpdateByIDWithDirection(*req.ID, req.Symbol, req.Type, req.Direction, opened, req.Strike, expiration, req.Premium, req.Contracts, req.Commission, closed, req.ExitPrice)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to update option: %v", err), http.StatusInternalServerError)
 		return
@@ -385,6 +398,13 @@ func (s *Server) deleteOption(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Missing required fields for deletion", http.StatusBadRequest)
 			return
 		}
+		if req.Direction == "" {
+			req.Direction = "Short"
+		}
+		if req.Direction != "Short" && req.Direction != "Long" {
+			http.Error(w, "Direction must be 'Short' or 'Long'", http.StatusBadRequest)
+			return
+		}
 
 		// Parse dates
 		opened, err := time.Parse("2006-01-02", req.Opened)
@@ -405,7 +425,7 @@ func (s *Server) deleteOption(w http.ResponseWriter, r *http.Request) {
 			req.Symbol, req.Type, req.Opened, req.Strike, req.Expiration)
 
 		// Delete the option using compound key
-		err = s.optionService.Delete(req.Symbol, req.Type, opened, req.Strike, expiration, req.Premium, req.Contracts)
+		err = s.optionService.DeleteWithDirection(req.Symbol, req.Type, req.Direction, opened, req.Strike, expiration, req.Premium, req.Contracts)
 		if err != nil {
 			log.Printf("[DELETE OPTION] ERROR: Compound key deletion failed: %v", err)
 			http.Error(w, fmt.Sprintf("Failed to delete option: %v", err), http.StatusInternalServerError)

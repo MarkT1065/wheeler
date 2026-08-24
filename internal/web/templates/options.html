@@ -196,12 +196,12 @@
                                         {{$putExposed := 0.0}}
                                         {{$totalPremium := 0.0}}
                                         {{range .Positions}}
-                                            {{if eq .Type "Call"}}
+                                                {{if eq .Type "Call"}}
                                                 {{$callCount = add $callCount 1}}
                                                 {{$callNominal = add $callNominal (mul (mul .Strike .Contracts) 100)}}
                                             {{else}}
                                                 {{$putCount = add $putCount 1}}
-                                                {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
+                                                {{if .IsShort}}{{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}{{end}}
                                             {{end}}
                                             {{$totalPremium = add $totalPremium .CalculateTotalProfit}}
                                         {{end}}
@@ -243,6 +243,7 @@
                                             <tr>
                                                 <th>Symbol</th>
                                                 <th>Type</th>
+                                                <th>Position</th>
                                                 <th>Strike</th>
                                                 <th>Quantity</th>
                                                 <th>Nominal</th>
@@ -253,16 +254,17 @@
                                         <tbody>
                                             {{range .Positions}}
                                             <tr>
-                                                <td class="ticker-col"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
-                                                <td>
+                                                <td class="ticker-col" data-symbol="{{.Symbol}}"><a href="/symbol/{{.Symbol}}?edit_option={{.ID}}" class="symbol-link">{{.Symbol}}</a></td>
+                                                <td data-type="{{if eq .Type "Put"}}Put{{else}}Call{{end}}">
                                                     <span class="{{if eq .Type "Put"}}put-badge{{else}}call-badge{{end}}">
                                                         {{if eq .Type "Put"}}P{{else}}C{{end}}
                                                     </span>
                                                 </td>
-                                                <td class="neutral-currency">${{printf "%.2f" .Strike}}</td>
-                                                <td>{{.Contracts}}</td>
+                                                <td data-direction="{{.Direction}}"><span class="{{if .IsLong}}negative{{else}}positive{{end}}">{{.Direction}}</span></td>
+                                                <td class="neutral-currency" data-strike="{{printf "%.2f" .Strike}}">${{printf "%.2f" .Strike}}</td>
+                                                <td data-contracts="{{.Contracts}}">{{.Contracts}}</td>
                                                 <td class="neutral-currency">{{formatCurrency (mul (mul .Strike .Contracts) 100)}}</td>
-                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" .CalculateTotalProfit}}</td>
+                                                <td class="premium-column {{if lt .CalculateTotalProfit 0.0}}negative{{else if gt .CalculateTotalProfit 0.0}}positive{{else}}neutral-currency{{end}}" data-total-profit="{{printf "%.2f" .CalculateTotalProfit}}">${{printf "%.2f" .CalculateTotalProfit}}</td>
                                                 <td>{{.EntryDate.Format "01/02/2006"}}</td>
                                             </tr>
                                             {{end}}
@@ -399,18 +401,14 @@
                     // Process each position row in this expiration group
                     const rows = table.querySelectorAll('tr');
                     rows.forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length >= 4) {
-                            const typeText = cells[1].textContent.trim();
-                            const type = typeText === 'P' ? 'Put' : typeText === 'C' ? 'Call' : typeText;
+                        const type = row.querySelector('[data-type]')?.dataset.type;
+                        const direction = row.querySelector('[data-direction]')?.dataset.direction;
+                        const strike = parseFloat(row.querySelector('[data-strike]')?.dataset.strike);
+                        const quantity = parseInt(row.querySelector('[data-contracts]')?.dataset.contracts, 10);
                             
-                            if (type === 'Put') {
-                                const strike = parseFloat(cells[2].textContent.replace('$', ''));
-                                const quantity = parseInt(cells[3].textContent.trim());
-                                
-                                if (!isNaN(strike) && !isNaN(quantity)) {
-                                    putExposure += strike * quantity * 100;
-                                }
+                        if (type === 'Put' && direction === 'Short') {
+                            if (!isNaN(strike) && !isNaN(quantity)) {
+                                putExposure += strike * quantity * 100;
                             }
                         }
                     });
@@ -581,16 +579,12 @@
                     // Process each position row in this expiration group
                     const rows = table.querySelectorAll('tr');
                     rows.forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length >= 6) {
-                            // Extract: Symbol, Type, Strike, Quantity, Nominal, Total Profit
-                            const symbol = cells[0].textContent.trim();
-                            const typeText = cells[1].textContent.trim();
-                            const type = typeText === 'P' ? 'Put' : typeText === 'C' ? 'Call' : typeText;
-                            const strike = parseFloat(cells[2].textContent.replace('$', ''));
-                            const quantity = parseInt(cells[3].textContent.trim());
-                            const totalProfitText = cells[5].textContent.trim();
-                            const totalProfit = parseFloat(totalProfitText.replace('$', ''));
+						const symbol = row.querySelector('[data-symbol]')?.dataset.symbol;
+                        const type = row.querySelector('[data-type]')?.dataset.type;
+                        const strike = parseFloat(row.querySelector('[data-strike]')?.dataset.strike);
+                        const quantity = parseInt(row.querySelector('[data-contracts]')?.dataset.contracts, 10);
+                        const totalProfit = parseFloat(row.querySelector('[data-total-profit]')?.dataset.totalProfit);
+						if (symbol && type) {
                             
                             if (!isNaN(totalProfit) && !isNaN(quantity)) {
                                 // Calculate nominal value (risk exposure)

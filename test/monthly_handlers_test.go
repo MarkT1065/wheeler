@@ -408,7 +408,7 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 	dividendService := models.NewDividendService(db.DB)
 
 	// Create symbols
-	symbols := []string{"AAPL", "TSLA", "NVDA"}
+	symbols := []string{"NASDAQ:AAPL", "NASDAQ:TSLA", "NASDAQ:NVDA"}
 	for _, symbol := range symbols {
 		if _, err := symbolService.Create(symbol); err != nil {
 			t.Fatalf("Failed to create symbol %s: %v", symbol, err)
@@ -430,7 +430,7 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 		premium := 5.50 + float64(month)*0.25 // Increasing premium
 		_ = 3.25 + float64(month)*0.15        // exitPrice - Increasing exit price
 
-		option, err := optionService.Create("AAPL", "Put", openDate, 145.0, expirationDate, premium, 2)
+		option, err := optionService.Create("NASDAQ:AAPL", "Put", openDate, 145.0, expirationDate, premium, 2)
 		if err != nil {
 			t.Fatalf("Failed to create AAPL put for month %d: %v", month, err)
 		}
@@ -440,7 +440,7 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 		callPremium := 8.75 + float64(month)*0.50
 		_ = 4.25 + float64(month)*0.25 // callExitPrice
 
-		callOption, err := optionService.Create("TSLA", "Call", openDate, 200.0, expirationDate, callPremium, 1)
+		callOption, err := optionService.Create("NASDAQ:TSLA", "Call", openDate, 200.0, expirationDate, callPremium, 1)
 		if err != nil {
 			t.Fatalf("Failed to create TSLA call for month %d: %v", month, err)
 		}
@@ -453,7 +453,7 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 			sellPrice := buyPrice + 10.0 + float64(month)*2.0
 			sellDate := monthDate.AddDate(0, 0, 15)
 
-			_, err := longPositionService.Create("NVDA", openDate, shares, buyPrice)
+			_, err := longPositionService.Create("NASDAQ:NVDA", openDate, shares, buyPrice)
 			if err != nil {
 				t.Fatalf("Failed to create NVDA position for month %d: %v", month, err)
 			}
@@ -468,14 +468,14 @@ func createDeterministicMonthlyData(t *testing.T, db *database.DB) {
 		dividendAmount := 25.50 + float64(month)*2.25
 		dividendDate := monthDate.AddDate(0, 0, 25) // 25th of each month
 
-		_, err = dividendService.Create("AAPL", dividendDate, dividendAmount)
+		_, err = dividendService.Create("NASDAQ:AAPL", dividendDate, dividendAmount)
 		if err != nil {
 			t.Fatalf("Failed to create AAPL dividend for month %d: %v", month, err)
 		}
 
 		// Create TSLA dividends (smaller amount)
 		tslaDividend := 15.25 + float64(month)*1.75
-		_, err = dividendService.Create("TSLA", dividendDate, tslaDividend)
+		_, err = dividendService.Create("NASDAQ:TSLA", dividendDate, tslaDividend)
 		if err != nil {
 			t.Fatalf("Failed to create TSLA dividend for month %d: %v", month, err)
 		}

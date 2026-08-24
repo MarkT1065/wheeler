@@ -79,7 +79,7 @@
                     {{end}}
                     {{$putExposed := 0.0}}
                     {{range .OptionsList}}
-                        {{if and (eq .Type "Put") (not .Closed)}}
+                        {{if and (eq .Type "Put") .IsShort (not .Closed)}}
                             {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
                         {{end}}
                     {{end}}
@@ -230,6 +230,7 @@
                         <thead>
                             <tr>
                                 <th>Call/Put</th>
+                                <th>Position</th>
                                 <th>Date Sold</th>
                                 <th>Closed Date</th>
                                 <th>Strike</th>
@@ -258,6 +259,7 @@
                                             {{if eq .Type "Put"}}P{{else}}C{{end}}
                                         </span>
                                     </td>
+                                    <td><span class="{{if .IsLong}}negative{{else}}positive{{end}}">{{.Direction}}</span></td>
                                     <td>{{.Opened.Format "01/02/2006"}}</td>
                                     <td>{{if .Closed}}{{.Closed.Format "01/02/2006"}}{{else}}-{{end}}</td>
                                     <td class="numeric-cell">{{printf "%.2f" .Strike}}</td>
@@ -281,7 +283,7 @@
                                         <span class="{{if lt $totalProfit 0.0}}negative{{else if gt $totalProfit 0.0}}positive{{else}}neutral-currency{{end}}">${{printf "%.2f" $totalProfit}}</span>
                                     </td>
                                     <td class="numeric-cell">
-                                        {{if .Closed}}
+                                        {{if and .Closed .HasPerformanceMetrics}}
                                             {{$percentProfit := .CalculatePercentOfProfit}}
                                             <span class="{{if lt $percentProfit 0.0}}negative{{else if gt $percentProfit 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentProfit}}%</span>
                                         {{else}}
@@ -290,17 +292,21 @@
                                     </td>
                                     <td class="numeric-cell">
                                         {{if .Closed}}
-                                            {{$percentProfit := .CalculatePercentOfProfit}}
-                                            {{$percentTime := .CalculatePercentOfTime}}
-                                            {{$multiplier := .CalculateMultiplier}}
-                                            <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $percentTime}}%</span>
+                                            {{if .HasPerformanceMetrics}}
+                                                {{$percentProfit := .CalculatePercentOfProfit}}
+                                                {{$percentTime := .CalculatePercentOfTime}}
+                                                {{$multiplier := .CalculateMultiplier}}
+                                                <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $percentTime}}%</span>
+                                            {{else}}
+                                                -
+                                            {{end}}
                                         {{else}}
                                             {{$percentTime := .CalculatePercentOfTime}}
                                             <span class="{{if lt $percentTime 0.0}}negative{{else if gt $percentTime 0.0}}positive{{else}}neutral-currency{{end}}">{{printf "%.2f" $percentTime}}%</span>
                                         {{end}}
                                     </td>
                                     <td class="numeric-cell">
-                                        {{if .Closed}}
+                                        {{if and .Closed .HasPerformanceMetrics}}
                                             {{$multiplier := .CalculateMultiplier}}
                                             <span class="{{if ge $multiplier 2.0}}multiplier-excellent{{else if ge $multiplier 1.5}}multiplier-great{{else if ge $multiplier 1.0}}multiplier-good{{else if ge $multiplier 0.75}}multiplier-fair{{else if ge $multiplier 0.5}}multiplier-poor{{else if ge $multiplier 0.25}}multiplier-losing{{else if ge $multiplier 0.0}}multiplier-verybad{{else}}multiplier-terrible{{end}}">{{printf "%.2f" $multiplier}}</span>
                                         {{else}}
@@ -317,6 +323,7 @@
                                                         data-id="{{.ID}}"
                                                         data-symbol="{{.Symbol | html}}" 
                                                         data-type="{{.Type}}"
+                                                        data-direction="{{.Direction}}"
                                                         data-opened="{{.Opened.Format "2006-01-02"}}"
                                                         data-strike="{{.Strike}}"
                                                         data-expiration="{{.Expiration.Format "2006-01-02"}}"
@@ -345,7 +352,7 @@
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="18" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                    <td colspan="19" style="text-align: center; color: #a0a0a0; padding: 20px;">
                                         No options trades recorded for {{.Symbol}}
                                     </td>
                                 </tr>
@@ -538,6 +545,13 @@
                         <option value="">Select Option Type</option>
                         <option value="Put">Put</option>
                         <option value="Call">Call</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="optionDirectionInput" class="form-label">Position *</label>
+                    <select id="optionDirectionInput" class="form-input" required>
+                        <option value="Short">Short</option>
+                        <option value="Long">Long</option>
                     </select>
                 </div>
                 <div class="form-row">
@@ -746,6 +760,22 @@
         const cancelModal = document.getElementById('cancelModal');
         const symbolForm = document.getElementById('symbolForm');
         const modalTitle = document.getElementById('modalTitle');
+        const marketInput = document.getElementById('marketInput');
+        let editingLegacySymbol = null;
+		let selectedMarket = '';
+
+        fetch('/api/markets').then(response => response.json()).then(markets => {
+            marketInput.innerHTML = '<option value="">Select a market</option>';
+            markets.forEach(market => {
+                const option = document.createElement('option');
+                option.value = market.id;
+                option.textContent = market.display_name;
+                marketInput.appendChild(option);
+            });
+			if (selectedMarket) {
+				marketInput.value = selectedMarket;
+			}
+        });
         
         // Open modal for editing current symbol
         console.log('About to set up editSymbolBtn listener...');
@@ -793,15 +823,27 @@
             modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
             
             if (editMode && symbolData) {
-                document.getElementById('symbolInput').value = symbolData.symbol;
+                const parts = symbolData.symbol.split(':');
+                const isCanonical = parts.length === 2;
+                document.getElementById('symbolInput').value = isCanonical ? parts[1] : symbolData.symbol;
+				selectedMarket = isCanonical ? parts[0] : '';
+                marketInput.value = selectedMarket;
                 document.getElementById('priceInput').value = symbolData.price || '';
                 document.getElementById('dividendInput').value = symbolData.dividend || '';
                 document.getElementById('exDividendDateInput').value = symbolData.exDividendDate || '';
                 document.getElementById('peRatioInput').value = symbolData.pe_ratio || '';
                 document.getElementById('symbolInput').disabled = true;
+				marketInput.disabled = isCanonical;
+				editingLegacySymbol = isCanonical ? null : symbolData.symbol;
+				if (!isCanonical) {
+					modalTitle.textContent = 'Select market for legacy symbol';
+				}
             } else {
                 symbolForm.reset();
                 document.getElementById('symbolInput').disabled = false;
+				marketInput.disabled = false;
+				selectedMarket = '';
+				editingLegacySymbol = null;
             }
             
             modal.style.display = 'block';
@@ -817,20 +859,29 @@
             e.preventDefault();
             
             const exDivDateValue = document.getElementById('exDividendDateInput').value;
+            const ticker = document.getElementById('symbolInput').value.toUpperCase().trim();
+            const market = marketInput.value;
             const symbolData = {
-                symbol: document.getElementById('symbolInput').value.toUpperCase(),
+                symbol: `${market}:${ticker}`,
                 price: parseFloat(document.getElementById('priceInput').value) || 0,
                 dividend: parseFloat(document.getElementById('dividendInput').value) || 0,
                 ex_dividend_date: exDivDateValue || null,
                 pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
             };
             
-            const url = `/api/symbols/${symbolData.symbol}`;
+            const url = editingLegacySymbol
+                ? `/api/symbols/${encodeURIComponent(editingLegacySymbol)}/qualify`
+                : `/api/symbols/${encodeURIComponent(symbolData.symbol)}`;
+
+            if (!market) {
+                alert('Select a market');
+                return;
+            }
             
             fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                body: editingLegacySymbol ? JSON.stringify({ market }) : JSON.stringify({
                     price: symbolData.price,
                     dividend: symbolData.dividend,
                     ex_dividend_date: symbolData.ex_dividend_date,
@@ -1360,6 +1411,7 @@
                     id: parseInt(btn.dataset.id),
                     symbol: btn.dataset.symbol,
                     type: btn.dataset.type,
+                    direction: btn.dataset.direction || 'Short',
                     opened: btn.dataset.opened,
                     strike: parseFloat(btn.dataset.strike),
                     expiration: btn.dataset.expiration,
@@ -1416,6 +1468,7 @@
             if (editMode && optionData) {
                 originalOptionData = optionData;
                 document.getElementById('optionTypeInput').value = optionData.type;
+                document.getElementById('optionDirectionInput').value = optionData.direction || 'Short';
                 document.getElementById('optionOpenedInput').value = optionData.opened;
                 document.getElementById('optionClosedInput').value = optionData.closed || '';
                 document.getElementById('optionStrikeInput').value = optionData.strike;
@@ -1431,6 +1484,7 @@
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('optionOpenedInput').value = today;
                 document.getElementById('optionCommissionInput').value = '0.65';
+                document.getElementById('optionDirectionInput').value = 'Short';
                 originalOptionData = null;
             }
             
@@ -1451,6 +1505,7 @@
             const optionData = {
                 symbol: document.getElementById('optionSymbolInput').value,
                 type: document.getElementById('optionTypeInput').value,
+                direction: document.getElementById('optionDirectionInput').value,
                 opened: document.getElementById('optionOpenedInput').value,
                 closed: document.getElementById('optionClosedInput').value || null,
                 strike: parseFloat(document.getElementById('optionStrikeInput').value),
@@ -1500,6 +1555,7 @@
                     id: originalData.id,
                     symbol: newData.symbol,
                     type: newData.type,
+                    direction: newData.direction,
                     opened: newData.opened,
                     closed: newData.closed || null,
                     strike: newData.strike,
@@ -1578,6 +1634,11 @@
         }
 
         function fetchSymbolDividends(symbol) {
+            const supportsDividends = {{.SupportsDividends}};
+            if (!supportsDividends) {
+                alert('The configured market data provider does not support dividend history.');
+                return;
+            }
             const fetchBtn = document.getElementById('fetchDividendsBtn');
             const originalText = fetchBtn.innerHTML;
             
@@ -1752,6 +1813,7 @@
                         id: optionData.id,
                         symbol: optionData.symbol,
                         type: optionData.type,
+                        direction: optionData.direction || 'Short',
                         opened: formatDateForInput(optionData.opened),
                         strike: optionData.strike,
                         expiration: formatDateForInput(optionData.expiration),
@@ -2110,6 +2172,7 @@
                     const strike = {{.Strike}};
                     const contracts = {{.Contracts}};
                     const type = '{{.Type}}';
+                    const direction = '{{.Direction}}';
                     const isClosed = {{if .Closed}}true{{else}}false{{end}};
                     const nominalValue = strike * contracts * 100;
                     const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
@@ -2129,6 +2192,7 @@
                         r: scaledRadius,
                         symbol: '{{.Symbol}}',
                         type: type,
+                        direction: direction,
                         strike: strike,
                         contracts: contracts,
                         nominalValue: nominalValue,
@@ -2205,7 +2269,7 @@
                             callbacks: {
                                 title: function(context) {
                                     const point = symbolExpirationScatterData[context[0].dataIndex];
-                                    return point.symbol + ' ' + point.type + ' $' + point.strike;
+                                    return point.symbol + ' ' + point.direction + ' ' + point.type + ' $' + point.strike;
                                 },
                                 label: function(context) {
                                     const point = symbolExpirationScatterData[context.dataIndex];
@@ -2260,7 +2324,7 @@
             let earliestOpened = null;
             
             {{range .OptionsList}}
-                {{if eq .Type "Put"}}
+                {{if and (eq .Type "Put") .IsShort}}
                     {
                         const opened = new Date('{{.Opened.Format "2006-01-02"}}');
                         const expiration = new Date('{{.Expiration.Format "2006-01-02"}}');

@@ -25,17 +25,36 @@ func (s *OptionService) Create(symbol, optionType string, opened time.Time, stri
 }
 
 func (s *OptionService) CreateWithCommission(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commission float64) (*Option, error) {
+	return s.CreateWithCommissionAndDirection(symbol, optionType, "Short", opened, strike, expiration, premium, contracts, commission)
+}
+
+func normalizeOptionDirection(direction string) (string, error) {
+	if direction == "" {
+		return "Short", nil
+	}
+	if direction != "Short" && direction != "Long" {
+		return "", fmt.Errorf("option direction must be 'Short' or 'Long'")
+	}
+	return direction, nil
+}
+
+func (s *OptionService) CreateWithCommissionAndDirection(symbol, optionType, direction string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commission float64) (*Option, error) {
 	if optionType != "Put" && optionType != "Call" {
 		return nil, fmt.Errorf("option type must be 'Put' or 'Call'")
 	}
+	var err error
+	direction, err = normalizeOptionDirection(direction)
+	if err != nil {
+		return nil, err
+	}
 
-	query := `INSERT INTO options (symbol, type, opened, strike, expiration, premium, contracts, commission) 
-			  VALUES (?, ?, ?, ?, ?, ?, ?, ?) 
-			  RETURNING id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at`
+	query := `INSERT INTO options (symbol, type, direction, opened, strike, expiration, premium, contracts, commission)
+			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			  RETURNING id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at`
 
 	var option Option
-	err := s.db.QueryRow(query, symbol, optionType, opened, strike, expiration, premium, contracts, commission).Scan(
-		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed, &option.Strike,
+	err = s.db.QueryRow(query, symbol, optionType, direction, opened, strike, expiration, premium, contracts, commission).Scan(
+		&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed, &option.Strike,
 		&option.Expiration, &option.Premium, &option.Contracts, &option.ExitPrice, &option.Commission,
 		&option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt,
 	)
@@ -47,7 +66,7 @@ func (s *OptionService) CreateWithCommission(symbol, optionType string, opened t
 }
 
 func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
+	query := `SELECT id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at
 			  FROM options WHERE symbol = ? ORDER BY expiration DESC, opened DESC`
 
 	rows, err := s.db.Query(query, symbol)
@@ -59,7 +78,7 @@ func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 	var options []*Option
 	for rows.Next() {
 		var option Option
-		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed,
 			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
 			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan option: %w", err)
@@ -75,7 +94,7 @@ func (s *OptionService) GetBySymbol(symbol string) ([]*Option, error) {
 }
 
 func (s *OptionService) GetAll() ([]*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
+	query := `SELECT id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at
 			  FROM options ORDER BY expiration DESC, opened DESC`
 
 	rows, err := s.db.Query(query)
@@ -87,7 +106,7 @@ func (s *OptionService) GetAll() ([]*Option, error) {
 	var options []*Option
 	for rows.Next() {
 		var option Option
-		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed,
 			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
 			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan option: %w", err)
@@ -103,7 +122,7 @@ func (s *OptionService) GetAll() ([]*Option, error) {
 }
 
 func (s *OptionService) GetOpen() ([]*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
+	query := `SELECT id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at
 			  FROM options WHERE closed IS NULL ORDER BY expiration ASC`
 
 	rows, err := s.db.Query(query)
@@ -115,7 +134,7 @@ func (s *OptionService) GetOpen() ([]*Option, error) {
 	var options []*Option
 	for rows.Next() {
 		var option Option
-		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+		if err := rows.Scan(&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed,
 			&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
 			&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan option: %w", err)
@@ -131,14 +150,24 @@ func (s *OptionService) GetOpen() ([]*Option, error) {
 }
 
 func (s *OptionService) Close(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, closed time.Time, exitPrice float64) error {
+	return s.CloseWithDirection(symbol, optionType, "Short", opened, strike, expiration, premium, contracts, closed, exitPrice)
+}
+
+func (s *OptionService) CloseWithDirection(symbol, optionType, direction string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, closed time.Time, exitPrice float64) error {
+	var err error
+	direction, err = normalizeOptionDirection(direction)
+	if err != nil {
+		return err
+	}
+
 	// Calculate closing commission: $0.65 per contract
 	closingCommission := OptionCommissionPerContract * float64(contracts)
 
 	query := `UPDATE options 
 			  SET closed = ?, exit_price = ?, commission = commission + ?, updated_at = CURRENT_TIMESTAMP 
-			  WHERE symbol = ? AND type = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
+			  WHERE symbol = ? AND type = ? AND direction = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
 
-	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, symbol, optionType, opened, strike, expiration, premium, contracts)
+	result, err := s.db.Exec(query, closed, exitPrice, closingCommission, symbol, optionType, direction, opened, strike, expiration, premium, contracts)
 	if err != nil {
 		return fmt.Errorf("failed to close option: %w", err)
 	}
@@ -156,8 +185,18 @@ func (s *OptionService) Close(symbol, optionType string, opened time.Time, strik
 }
 
 func (s *OptionService) Delete(symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int) error {
-	query := `DELETE FROM options WHERE symbol = ? AND type = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
-	result, err := s.db.Exec(query, symbol, optionType, opened, strike, expiration, premium, contracts)
+	return s.DeleteWithDirection(symbol, optionType, "Short", opened, strike, expiration, premium, contracts)
+}
+
+func (s *OptionService) DeleteWithDirection(symbol, optionType, direction string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int) error {
+	var err error
+	direction, err = normalizeOptionDirection(direction)
+	if err != nil {
+		return err
+	}
+
+	query := `DELETE FROM options WHERE symbol = ? AND type = ? AND direction = ? AND opened = ? AND strike = ? AND expiration = ? AND premium = ? AND contracts = ?`
+	result, err := s.db.Exec(query, symbol, optionType, direction, opened, strike, expiration, premium, contracts)
 	if err != nil {
 		return fmt.Errorf("failed to delete option: %w", err)
 	}
@@ -176,12 +215,12 @@ func (s *OptionService) Delete(symbol, optionType string, opened time.Time, stri
 
 // GetByID retrieves an option by its ID
 func (s *OptionService) GetByID(id int) (*Option, error) {
-	query := `SELECT id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at 
+	query := `SELECT id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at
 			  FROM options WHERE id = ?`
 
 	var option Option
 	err := s.db.QueryRow(query, id).Scan(
-		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+		&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed,
 		&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
 		&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt,
 	)
@@ -197,18 +236,27 @@ func (s *OptionService) GetByID(id int) (*Option, error) {
 
 // UpdateByID updates an option by its ID
 func (s *OptionService) UpdateByID(id int, symbol, optionType string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commission float64, closed *time.Time, exitPrice *float64) (*Option, error) {
+	return s.UpdateByIDWithDirection(id, symbol, optionType, "Short", opened, strike, expiration, premium, contracts, commission, closed, exitPrice)
+}
+
+func (s *OptionService) UpdateByIDWithDirection(id int, symbol, optionType, direction string, opened time.Time, strike float64, expiration time.Time, premium float64, contracts int, commission float64, closed *time.Time, exitPrice *float64) (*Option, error) {
 	if optionType != "Put" && optionType != "Call" {
 		return nil, fmt.Errorf("option type must be 'Put' or 'Call'")
 	}
+	var err error
+	direction, err = normalizeOptionDirection(direction)
+	if err != nil {
+		return nil, err
+	}
 
 	query := `UPDATE options 
-			  SET symbol = ?, type = ?, opened = ?, strike = ?, expiration = ?, premium = ?, contracts = ?, commission = ?, closed = ?, exit_price = ?, updated_at = CURRENT_TIMESTAMP 
+			  SET symbol = ?, type = ?, direction = ?, opened = ?, strike = ?, expiration = ?, premium = ?, contracts = ?, commission = ?, closed = ?, exit_price = ?, updated_at = CURRENT_TIMESTAMP
 			  WHERE id = ? 
-			  RETURNING id, symbol, type, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at`
+			  RETURNING id, symbol, type, direction, opened, closed, strike, expiration, premium, contracts, exit_price, commission, current_price, created_at, updated_at`
 
 	var option Option
-	err := s.db.QueryRow(query, symbol, optionType, opened, strike, expiration, premium, contracts, commission, closed, exitPrice, id).Scan(
-		&option.ID, &option.Symbol, &option.Type, &option.Opened, &option.Closed,
+	err = s.db.QueryRow(query, symbol, optionType, direction, opened, strike, expiration, premium, contracts, commission, closed, exitPrice, id).Scan(
+		&option.ID, &option.Symbol, &option.Type, &option.Direction, &option.Opened, &option.Closed,
 		&option.Strike, &option.Expiration, &option.Premium, &option.Contracts,
 		&option.ExitPrice, &option.Commission, &option.CurrentPrice, &option.CreatedAt, &option.UpdatedAt,
 	)
@@ -293,9 +341,13 @@ func (s *OptionService) DeleteBySymbol(symbol string) error {
 type OptionSummary struct {
 	Symbol         string  `json:"symbol"`
 	TotalPositions int     `json:"total_positions"`
+	ShortPositions int     `json:"short_positions"`
+	LongPositions  int     `json:"long_positions"`
 	PutPositions   int     `json:"put_positions"`
 	CallPositions  int     `json:"call_positions"`
 	TotalPremium   float64 `json:"total_premium"`
+	ShortCredit    float64 `json:"short_credit"`
+	LongDebit      float64 `json:"long_debit"`
 	PutPremium     float64 `json:"put_premium"`
 	CallPremium    float64 `json:"call_premium"`
 	NetPremium     float64 `json:"net_premium"`
@@ -315,12 +367,16 @@ func (s *OptionService) GetOptionsSummaryBySymbol() ([]*OptionSummary, error) {
 		SELECT 
 			symbol,
 			COUNT(*) as total_positions,
+			SUM(CASE WHEN direction = 'Short' THEN 1 ELSE 0 END) as short_positions,
+			SUM(CASE WHEN direction = 'Long' THEN 1 ELSE 0 END) as long_positions,
 			SUM(CASE WHEN type = 'Put' THEN 1 ELSE 0 END) as put_positions,
 			SUM(CASE WHEN type = 'Call' THEN 1 ELSE 0 END) as call_positions,
-			SUM(premium) as total_premium,
-			SUM(CASE WHEN type = 'Put' THEN premium ELSE 0 END) as put_premium,
-			SUM(CASE WHEN type = 'Call' THEN premium ELSE 0 END) as call_premium,
-			SUM(premium) as net_premium
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE -premium END) as total_premium,
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE 0 END) as short_credit,
+			SUM(CASE WHEN direction = 'Long' THEN premium ELSE 0 END) as long_debit,
+			SUM(CASE WHEN type = 'Put' AND direction = 'Short' THEN premium WHEN type = 'Put' THEN -premium ELSE 0 END) as put_premium,
+			SUM(CASE WHEN type = 'Call' AND direction = 'Short' THEN premium WHEN type = 'Call' THEN -premium ELSE 0 END) as call_premium,
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE -premium END) as net_premium
 		FROM options 
 		WHERE closed IS NULL
 		GROUP BY symbol 
@@ -336,8 +392,9 @@ func (s *OptionService) GetOptionsSummaryBySymbol() ([]*OptionSummary, error) {
 	for rows.Next() {
 		var summary OptionSummary
 		if err := rows.Scan(
-			&summary.Symbol, &summary.TotalPositions, &summary.PutPositions, &summary.CallPositions,
-			&summary.TotalPremium, &summary.PutPremium, &summary.CallPremium, &summary.NetPremium,
+			&summary.Symbol, &summary.TotalPositions, &summary.ShortPositions, &summary.LongPositions,
+			&summary.PutPositions, &summary.CallPositions, &summary.TotalPremium, &summary.ShortCredit,
+			&summary.LongDebit, &summary.PutPremium, &summary.CallPremium, &summary.NetPremium,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan options summary: %w", err)
 		}
@@ -393,12 +450,16 @@ func (s *OptionService) GetOptionsSummaryTotals() (*OptionSummary, error) {
 	query := `
 		SELECT 
 			COUNT(*) as total_positions,
+			SUM(CASE WHEN direction = 'Short' THEN 1 ELSE 0 END) as short_positions,
+			SUM(CASE WHEN direction = 'Long' THEN 1 ELSE 0 END) as long_positions,
 			SUM(CASE WHEN type = 'Put' THEN 1 ELSE 0 END) as put_positions,
 			SUM(CASE WHEN type = 'Call' THEN 1 ELSE 0 END) as call_positions,
-			SUM(premium) as total_premium,
-			SUM(CASE WHEN type = 'Put' THEN premium ELSE 0 END) as put_premium,
-			SUM(CASE WHEN type = 'Call' THEN premium ELSE 0 END) as call_premium,
-			SUM(premium) as net_premium
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE -premium END) as total_premium,
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE 0 END) as short_credit,
+			SUM(CASE WHEN direction = 'Long' THEN premium ELSE 0 END) as long_debit,
+			SUM(CASE WHEN type = 'Put' AND direction = 'Short' THEN premium WHEN type = 'Put' THEN -premium ELSE 0 END) as put_premium,
+			SUM(CASE WHEN type = 'Call' AND direction = 'Short' THEN premium WHEN type = 'Call' THEN -premium ELSE 0 END) as call_premium,
+			SUM(CASE WHEN direction = 'Short' THEN premium ELSE -premium END) as net_premium
 		FROM options 
 		WHERE closed IS NULL`
 
@@ -406,8 +467,9 @@ func (s *OptionService) GetOptionsSummaryTotals() (*OptionSummary, error) {
 	totals.Symbol = "Total"
 
 	err := s.db.QueryRow(query).Scan(
-		&totals.TotalPositions, &totals.PutPositions, &totals.CallPositions,
-		&totals.TotalPremium, &totals.PutPremium, &totals.CallPremium, &totals.NetPremium,
+		&totals.TotalPositions, &totals.ShortPositions, &totals.LongPositions,
+		&totals.PutPositions, &totals.CallPositions, &totals.TotalPremium, &totals.ShortCredit,
+		&totals.LongDebit, &totals.PutPremium, &totals.CallPremium, &totals.NetPremium,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get options summary totals: %w", err)

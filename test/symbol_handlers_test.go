@@ -23,7 +23,7 @@ func TestSymbolDataStructure(t *testing.T) {
 	createDeterministicSymbolData(t, testDB)
 
 	// Build symbol data (simulating the handler)
-	symbolData := buildTestSymbolData(t, testDB, "AAPL")
+	symbolData := buildTestSymbolData(t, testDB, "NASDAQ:AAPL")
 
 	// Test JSON serialization/deserialization
 	jsonData, err := json.Marshal(symbolData)
@@ -38,8 +38,8 @@ func TestSymbolDataStructure(t *testing.T) {
 
 	// Validate basic symbol information
 	t.Run("BasicSymbolInfo", func(t *testing.T) {
-		if unmarshalled.Symbol != "AAPL" {
-			t.Errorf("Expected symbol AAPL, got %s", unmarshalled.Symbol)
+		if unmarshalled.Symbol != "NASDAQ:AAPL" {
+			t.Errorf("Expected symbol NASDAQ:AAPL, got %s", unmarshalled.Symbol)
 		}
 		if unmarshalled.CompanyName == "" {
 			t.Error("CompanyName should not be empty")
@@ -83,8 +83,8 @@ func TestSymbolDataStructure(t *testing.T) {
 
 		// Validate dividends list structure
 		for i, dividend := range unmarshalled.DividendsList {
-			if dividend.Symbol != "AAPL" {
-				t.Errorf("Dividend %d should be for AAPL, got %s", i, dividend.Symbol)
+			if dividend.Symbol != "NASDAQ:AAPL" {
+				t.Errorf("Dividend %d should be for NASDAQ:AAPL, got %s", i, dividend.Symbol)
 			}
 			if dividend.Amount <= 0 {
 				t.Errorf("Dividend %d amount should be positive, got %f", i, dividend.Amount)
@@ -99,8 +99,8 @@ func TestSymbolDataStructure(t *testing.T) {
 		}
 
 		for i, option := range unmarshalled.OptionsList {
-			if option.Symbol != "AAPL" {
-				t.Errorf("Option %d should be for AAPL, got %s", i, option.Symbol)
+			if option.Symbol != "NASDAQ:AAPL" {
+				t.Errorf("Option %d should be for NASDAQ:AAPL, got %s", i, option.Symbol)
 			}
 			if option.Type != "Put" && option.Type != "Call" {
 				t.Errorf("Option %d should be Put or Call, got %s", i, option.Type)
@@ -153,8 +153,8 @@ func TestSymbolDataStructure(t *testing.T) {
 		}
 
 		for i, position := range unmarshalled.LongPositionsList {
-			if position.Symbol != "AAPL" {
-				t.Errorf("Position %d should be for AAPL, got %s", i, position.Symbol)
+			if position.Symbol != "NASDAQ:AAPL" {
+				t.Errorf("Position %d should be for NASDAQ:AAPL, got %s", i, position.Symbol)
 			}
 			if position.Shares <= 0 {
 				t.Errorf("Position %d shares should be positive, got %d", i, position.Shares)
@@ -271,8 +271,8 @@ func TestSymbolHandlerEndpoint(t *testing.T) {
 	// Create test server with symbol endpoint
 	server := createSymbolTestServer(testDB)
 
-	// Test the AAPL symbol endpoint
-	req, err := http.NewRequest("GET", "/symbol/AAPL", nil)
+	// Test the canonical AAPL symbol endpoint
+	req, err := http.NewRequest("GET", "/symbol/NASDAQ:AAPL", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,7 +310,7 @@ func TestMultipleSymbolsMonthlyData(t *testing.T) {
 	testDB := setupTestDB(t)
 	createDeterministicSymbolData(t, testDB)
 
-	symbols := []string{"AAPL", "TSLA", "NVDA"}
+	symbols := []string{"NASDAQ:AAPL", "NASDAQ:TSLA", "NASDAQ:NVDA"}
 
 	for _, symbol := range symbols {
 		t.Run(symbol, func(t *testing.T) {
@@ -354,7 +354,7 @@ func createDeterministicSymbolData(t *testing.T, db *database.DB) {
 	dividendService := models.NewDividendService(db.DB)
 
 	// Create symbols with detailed information
-	symbols := []string{"AAPL", "TSLA", "NVDA"}
+	symbols := []string{"NASDAQ:AAPL", "NASDAQ:TSLA", "NASDAQ:NVDA"}
 	prices := []float64{150.0, 200.0, 400.0}
 	dividends := []float64{0.75, 0.00, 0.25}
 

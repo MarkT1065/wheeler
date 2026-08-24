@@ -117,7 +117,7 @@ func TestAllocationDataHandler(t *testing.T) {
 		t.Error("Expected non-negative call premiums")
 	}
 
-	t.Logf("✅ AllocationData test passed - found %d long positions, %d put exposures", 
+	t.Logf("✅ AllocationData test passed - found %d long positions, %d put exposures",
 		len(allocationData.LongByTicker), len(allocationData.PutsByTicker))
 }
 
@@ -340,7 +340,7 @@ func TestTutorialChartDataStructure(t *testing.T) {
 	for _, income := range unmarshalled.IncomeBreakdown {
 		totalPercentage += income.Percentage
 		totalAmount += income.Amount
-		
+
 		// Validate required fields
 		if income.Category == "" {
 			t.Error("Income category should not be empty")
@@ -374,16 +374,14 @@ func TestTutorialChartDataStructure(t *testing.T) {
 	expectedColors := []string{"#27ae60", "#3498db", "#9966FF", "#FFCE56"}
 	for i, income := range unmarshalled.IncomeBreakdown {
 		if income.Color != expectedColors[i] {
-			t.Errorf("Expected color %s for category %s, got %s", 
+			t.Errorf("Expected color %s for category %s, got %s",
 				expectedColors[i], income.Category, income.Color)
 		}
 	}
 
-	t.Logf("✅ TutorialChartData struct validation passed - Total: $%.2f, ROI: %.1f%%", 
+	t.Logf("✅ TutorialChartData struct validation passed - Total: $%.2f, ROI: %.1f%%",
 		unmarshalled.TotalReturn, unmarshalled.AnnualizedROI)
 }
-
-
 
 // Helper function to create deterministic test data for charts
 func createDeterministicChartData(t *testing.T, db *database.DB) {
@@ -393,7 +391,7 @@ func createDeterministicChartData(t *testing.T, db *database.DB) {
 	treasuryService := models.NewTreasuryService(db.DB)
 
 	// Create symbols
-	symbols := []string{"AAPL", "TSLA", "NVDA"}
+	symbols := []string{"NASDAQ:AAPL", "NASDAQ:TSLA", "NASDAQ:NVDA"}
 	for _, symbol := range symbols {
 		if _, err := symbolService.Create(symbol); err != nil {
 			t.Fatalf("Failed to create symbol %s: %v", symbol, err)
@@ -401,39 +399,39 @@ func createDeterministicChartData(t *testing.T, db *database.DB) {
 	}
 
 	// Update symbol prices (deterministic)
-	if _, err := symbolService.Update("AAPL", 150.0, 0, nil, nil); err != nil {
+	if _, err := symbolService.Update("NASDAQ:AAPL", 150.0, 0, nil, nil); err != nil {
 		t.Fatalf("Failed to update AAPL price: %v", err)
 	}
-	if _, err := symbolService.Update("TSLA", 200.0, 0, nil, nil); err != nil {
+	if _, err := symbolService.Update("NASDAQ:TSLA", 200.0, 0, nil, nil); err != nil {
 		t.Fatalf("Failed to update TSLA price: %v", err)
 	}
-	if _, err := symbolService.Update("NVDA", 400.0, 0, nil, nil); err != nil {
+	if _, err := symbolService.Update("NASDAQ:NVDA", 400.0, 0, nil, nil); err != nil {
 		t.Fatalf("Failed to update NVDA price: %v", err)
 	}
 
 	// Create long positions (deterministic amounts)
 	baseDate := time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)
-	
+
 	// AAPL: 100 shares at $150 = $15,000 value
-	if _, err := longPositionService.Create("AAPL", baseDate, 100, 150.0); err != nil {
+	if _, err := longPositionService.Create("NASDAQ:AAPL", baseDate, 100, 150.0); err != nil {
 		t.Fatalf("Failed to create AAPL long position: %v", err)
 	}
-	
-	// TSLA: 100 shares at $200 = $20,000 value  
-	if _, err := longPositionService.Create("TSLA", baseDate, 100, 200.0); err != nil {
+
+	// TSLA: 100 shares at $200 = $20,000 value
+	if _, err := longPositionService.Create("NASDAQ:TSLA", baseDate, 100, 200.0); err != nil {
 		t.Fatalf("Failed to create TSLA long position: %v", err)
 	}
 
 	// Create open put options (deterministic exposure)
 	expirationDate := time.Date(2024, 12, 20, 0, 0, 0, 0, time.UTC)
-	
+
 	// AAPL Put: 2 contracts at $145 strike = $29,000 exposure
-	if _, err := optionService.Create("AAPL", "Put", baseDate, 145.0, expirationDate, 5.50, 2); err != nil {
+	if _, err := optionService.Create("NASDAQ:AAPL", "Put", baseDate, 145.0, expirationDate, 5.50, 2); err != nil {
 		t.Fatalf("Failed to create AAPL put: %v", err)
 	}
-	
+
 	// TSLA Put: 1 contract at $190 strike = $19,000 exposure
-	if _, err := optionService.Create("TSLA", "Put", baseDate, 190.0, expirationDate, 7.25, 1); err != nil {
+	if _, err := optionService.Create("NASDAQ:TSLA", "Put", baseDate, 190.0, expirationDate, 7.25, 1); err != nil {
 		t.Fatalf("Failed to create TSLA put: %v", err)
 	}
 
@@ -441,7 +439,7 @@ func createDeterministicChartData(t *testing.T, db *database.DB) {
 	// $50,000 treasury at 4.5% yield
 	treasuryDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	maturityDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	if _, err := treasuryService.Create("TEST-TREASURY-001", treasuryDate, maturityDate, 50000.0, 4.5, 50000.0); err != nil {
 		t.Fatalf("Failed to create treasury: %v", err)
 	}
@@ -454,10 +452,10 @@ func createDeterministicMetricsData(t *testing.T, db *database.DB) {
 	// Create metrics service
 	// Note: This assumes metrics service exists - may need to create it
 	// For now, we'll insert directly into the metrics table
-	
+
 	// Create 30 days of metrics data (deterministic values)
 	baseDate := time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC)
-	
+
 	metricsData := []struct {
 		metricType string
 		baseValue  float64
@@ -475,15 +473,15 @@ func createDeterministicMetricsData(t *testing.T, db *database.DB) {
 	// Insert deterministic metrics for 30 days
 	for day := 0; day < 30; day++ {
 		currentDate := baseDate.AddDate(0, 0, day)
-		
+
 		for _, metric := range metricsData {
 			// Create deterministic but varying values
 			value := metric.baseValue + (metric.increment * float64(day))
-			
+
 			// Add some deterministic variation (sine wave pattern)
 			variation := value * 0.05 * (0.5 + 0.5*float64(day%7)/7.0)
 			finalValue := value + variation
-			
+
 			// Insert directly into database (this assumes metrics table structure)
 			query := `INSERT INTO metrics (created, type, value) VALUES (?, ?, ?)`
 			if _, err := db.DB.Exec(query, currentDate.Format("2006-01-02 15:04:05"), metric.metricType, finalValue); err != nil {
@@ -500,9 +498,9 @@ func createTestServer(db *database.DB) http.Handler {
 	// This would create a test server with the database
 	// For now, return a basic handler - this needs to be implemented
 	// based on the actual web server structure
-	
+
 	mux := http.NewServeMux()
-	
+
 	// Add minimal handler for testing
 	mux.HandleFunc("/api/allocation-data", func(w http.ResponseWriter, r *http.Request) {
 		// Return test data
@@ -523,11 +521,11 @@ func createTestServer(db *database.DB) http.Handler {
 			TotalPutPremiums:  1275.0,
 			TotalCallPremiums: 850.0,
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(testData)
 	})
-	
+
 	mux.HandleFunc("/api/metrics/chart-data", func(w http.ResponseWriter, r *http.Request) {
 		// Return test metrics data
 		testData := map[string][]web.ChartPoint{
@@ -567,10 +565,10 @@ func createTestServer(db *database.DB) http.Handler {
 				{Date: "2024-11-03", Value: 50200.0},
 			},
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(testData)
 	})
-	
+
 	return mux
 }

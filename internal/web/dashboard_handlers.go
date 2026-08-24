@@ -104,24 +104,24 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 
 	// Build map of symbols with open call coverage for optionable calculation
 	callCoverage := make(map[string]bool)
-	
+
 	// Process options
 	for _, opt := range options {
 		if summary, exists := summaryMap[opt.Symbol]; exists {
 			if opt.Type == "Put" {
-				// Count put exposure for all open puts
-				if opt.Closed == nil {
+				// Only short puts create collateral exposure.
+				if opt.IsShort() && opt.Closed == nil {
 					summary.PutExposed += opt.Strike * float64(opt.Contracts) * 100
 				}
 				// Count premium for all puts (closed and open)
 				premium := opt.CalculateTotalProfit()
 				summary.Puts += premium
-			} else {
+			} else if opt.Type == "Call" {
 				// Count premium for all calls (closed and open)
 				premium := opt.CalculateTotalProfit()
 				summary.Calls += premium
 				// Track call coverage for open calls
-				if opt.Closed == nil {
+				if opt.IsShort() && opt.Closed == nil {
 					callCoverage[opt.Symbol] = true
 				}
 			}
@@ -198,7 +198,7 @@ func (s *Server) buildPutsByTickerChart(options []*models.Option) []ChartData {
 	colors := []string{"#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"}
 
 	for _, opt := range options {
-		if opt.Type == "Put" && opt.Closed == nil { // Only include open puts
+		if opt.Type == "Put" && opt.IsShort() && opt.Closed == nil { // Only include open short puts
 			putExposure[opt.Symbol] += opt.Strike * float64(opt.Contracts) * 100
 		}
 	}
@@ -234,7 +234,7 @@ func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition,
 
 	// Only count open put options for current exposure
 	for _, opt := range options {
-		if opt.Type == "Put" && opt.Closed == nil {
+		if opt.Type == "Put" && opt.IsShort() && opt.Closed == nil {
 			totalPuts += opt.Strike * float64(opt.Contracts) * 100
 		}
 	}
@@ -307,6 +307,9 @@ func (s *Server) premiumDataHandler(w http.ResponseWriter, r *http.Request) {
 	for _, option := range options {
 		totalPremium := option.Premium * float64(option.Contracts) * 100
 
+		if option.IsLong() {
+			totalPremium = -totalPremium
+		}
 		if option.Type == "Put" {
 			putPremium += totalPremium
 		} else if option.Type == "Call" {
@@ -367,16 +370,26 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 	var totalPuts, totalPutPremiums, totalCallPremiums float64
 	putsByTicker := make(map[string]float64)
 	callCoverage := make(map[string]bool)
-	
+
 	for _, opt := range options {
 		if opt.Closed == nil { // Only open options
+			premium := opt.Premium * float64(opt.Contracts) * 100
+			if opt.IsLong() {
+				premium = -premium
+			}
 			if opt.Type == "Put" {
+				totalPutPremiums += premium
+				if !opt.IsShort() {
+					continue
+				}
 				exposure := opt.Strike * float64(opt.Contracts) * 100
 				totalPuts += exposure
 				putsByTicker[opt.Symbol] += exposure
-				totalPutPremiums += opt.Premium * float64(opt.Contracts) * 100
 			} else if opt.Type == "Call" {
-				totalCallPremiums += opt.Premium * float64(opt.Contracts) * 100
+				totalCallPremiums += premium
+				if !opt.IsShort() {
+					continue
+				}
 				callCoverage[opt.Symbol] = true
 			}
 		}
@@ -500,18 +513,18 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 	// Build map of symbols with open call coverage
 	callCoverage := make(map[string]bool)
 	for _, opt := range options {
-		if opt.Type == "Call" && opt.Closed == nil {
+		if opt.Type == "Call" && opt.IsShort() && opt.Closed == nil {
 			callCoverage[opt.Symbol] = true
 		}
 	}
 
 	// Find long positions without call coverage
 	type OptionablePosition struct {
-		Symbol     string  `json:"symbol"`
-		Shares     int     `json:"shares"`
-		Amount     float64 `json:"amount"`
-		BuyPrice   float64 `json:"buyPrice"`
-		Opened     string  `json:"opened"`
+		Symbol       string  `json:"symbol"`
+		Shares       int     `json:"shares"`
+		Amount       float64 `json:"amount"`
+		BuyPrice     float64 `json:"buyPrice"`
+		Opened       string  `json:"opened"`
 		CurrentValue float64 `json:"currentValue,omitempty"`
 	}
 
@@ -522,13 +535,13 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 		if pos.Closed == nil { // Only open positions
 			if !callCoverage[pos.Symbol] && pos.Shares >= 100 { // No call coverage and enough shares for options
 				amount := pos.CalculateAmount()
-				
+
 				// Get current price for value calculation
 				currentPrice := pos.BuyPrice // fallback to buy price
 				if symbolData, err := s.symbolService.GetBySymbol(pos.Symbol); err == nil {
 					currentPrice = symbolData.Price
 				}
-				
+
 				optionablePositions = append(optionablePositions, OptionablePosition{
 					Symbol:       pos.Symbol,
 					Shares:       pos.Shares,
@@ -545,9 +558,9 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 	log.Printf("[OPTIONABLE API] Found %d optionable positions worth $%.2f", len(optionablePositions), totalOptionableValue)
 
 	response := map[string]interface{}{
-		"positions":   optionablePositions,
-		"totalValue":  totalOptionableValue,
-		"count":       len(optionablePositions),
+		"positions":  optionablePositions,
+		"totalValue": totalOptionableValue,
+		"count":      len(optionablePositions),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
