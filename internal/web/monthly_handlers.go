@@ -16,7 +16,7 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse query parameters for month filtering (YYYY-MM format)
 	fromMonth := r.URL.Query().Get("from")
 	toMonth := r.URL.Query().Get("to")
-	
+
 	// Set default date range to 1 year (12 months: current month back 11 months)
 	if fromMonth == "" || toMonth == "" {
 		now := time.Now()
@@ -24,7 +24,7 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 		elevenMonthsAgo := now.AddDate(0, -11, 0)
 		fromMonth = fmt.Sprintf("%04d-%02d", elevenMonthsAgo.Year(), elevenMonthsAgo.Month())
 	}
-	
+
 	symbols, err := s.symbolService.GetDistinctSymbols()
 	if err != nil {
 		symbols = []string{}
@@ -54,39 +54,44 @@ func (s *Server) monthlyHandler(w http.ResponseWriter, r *http.Request) {
 		longPositions = []*models.LongPosition{}
 	}
 
+	treasuries, err := s.treasuryService.GetAll()
+	if err != nil {
+		treasuries = []*models.Treasury{}
+	}
+
 	// Build monthly data with month filtering
-	data := s.buildMonthlyData(symbols, options, dividends, longPositions, optionsIndex, fromMonth, toMonth)
+	data := s.buildMonthlyData(symbols, options, dividends, longPositions, treasuries, optionsIndex, fromMonth, toMonth)
 
 	s.renderTemplate(w, "monthly.html", data)
 }
 
 // buildMonthlyData creates comprehensive monthly financial data based on transaction dates
-func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition, optionsIndex map[string]interface{}, fromMonth, toMonth string) MonthlyData {
+func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, dividends []*models.Dividend, longPositions []*models.LongPosition, treasuries []*models.Treasury, optionsIndex map[string]interface{}, fromMonth, toMonth string) MonthlyData {
 	// Initialize data structures - use YYYY-MM keys instead of month indexes
-	putsByYearMonth := make(map[string]float64)      // yyyy-mm -> total
-	callsByYearMonth := make(map[string]float64)     // yyyy-mm -> total
-	putsByTicker := make(map[string]float64)         // ticker -> total
-	callsByTicker := make(map[string]float64)        // ticker -> total
-	capGainsByYearMonth := make(map[string]float64)  // yyyy-mm -> total
-	dividendsByYearMonth := make(map[string]float64) // yyyy-mm -> total
-	capGainsByTicker := make(map[string]float64)     // ticker -> total
-	dividendsByTicker := make(map[string]float64)    // ticker -> total
+	putsByYearMonth := make(map[string]float64)       // yyyy-mm -> total
+	callsByYearMonth := make(map[string]float64)      // yyyy-mm -> total
+	putsByTicker := make(map[string]float64)          // ticker -> total
+	callsByTicker := make(map[string]float64)         // ticker -> total
+	capGainsByYearMonth := make(map[string]float64)   // yyyy-mm -> total
+	dividendsByYearMonth := make(map[string]float64)  // yyyy-mm -> total
+	capGainsByTicker := make(map[string]float64)      // ticker -> total
+	dividendsByTicker := make(map[string]float64)     // ticker -> total
+	treasuriesByYearMonth := make(map[string]float64) // yyyy-mm -> total
 
 	// Ticker -> YearMonth (yyyy-mm) -> Amount for table
 	tickerMonthData := make(map[string]map[string]float64)
-	
+
 	// Track all unique year-months
 	yearMonthSet := make(map[string]bool)
-	
 
 	// Process all options (both open and closed)
 	for _, option := range options {
 		// Calculate profit/loss for all options (premium realized at open)
 		totalPremium := option.CalculateTotalProfit()
-		
+
 		// Get yyyy-mm for all aggregations
 		yearMonth := fmt.Sprintf("%04d-%02d", option.Opened.Year(), option.Opened.Month())
-		
+
 		// Apply date range filter
 		if fromMonth != "" && yearMonth < fromMonth {
 			continue
@@ -94,7 +99,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		if toMonth != "" && yearMonth > toMonth {
 			continue
 		}
-		
+
 		yearMonthSet[yearMonth] = true
 
 		// Aggregate by year-month and type
@@ -120,10 +125,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 	// Process all dividends (based on received date)
 	for _, dividend := range dividends {
 		amount := dividend.Amount
-		
+
 		// Get yyyy-mm
 		yearMonth := fmt.Sprintf("%04d-%02d", dividend.Received.Year(), dividend.Received.Month())
-		
+
 		// Apply date range filter
 		if fromMonth != "" && yearMonth < fromMonth {
 			continue
@@ -131,7 +136,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		if toMonth != "" && yearMonth > toMonth {
 			continue
 		}
-		
+
 		yearMonthSet[yearMonth] = true
 
 		// Aggregate by year-month and ticker
@@ -153,10 +158,10 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		if position.Closed != nil {
 			// Calculate profit/loss for closed position
 			profit := (position.GetExitPriceValue() - position.BuyPrice) * float64(position.Shares)
-			
+
 			// Get yyyy-mm
 			yearMonth := fmt.Sprintf("%04d-%02d", position.Closed.Year(), position.Closed.Month())
-			
+
 			// Apply date range filter
 			if fromMonth != "" && yearMonth < fromMonth {
 				continue
@@ -164,7 +169,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			if toMonth != "" && yearMonth > toMonth {
 				continue
 			}
-			
+
 			yearMonthSet[yearMonth] = true
 
 			// Aggregate by year-month and ticker
@@ -179,6 +184,30 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 				newData[yearMonth] = profit
 				tickerMonthData[position.Symbol] = newData
 			}
+		}
+	}
+
+	for _, treasury := range treasuries {
+		interest := treasury.CalculateInterest()
+		if interest == 0 {
+			continue
+		}
+
+		yearMonth := fmt.Sprintf("%04d-%02d", treasury.Maturity.Year(), treasury.Maturity.Month())
+
+		if fromMonth != "" && yearMonth < fromMonth {
+			continue
+		}
+		if toMonth != "" && yearMonth > toMonth {
+			continue
+		}
+
+		yearMonthSet[yearMonth] = true
+		treasuriesByYearMonth[yearMonth] += interest
+		if data, exists := tickerMonthData["Treasuries"]; exists {
+			data[yearMonth] += interest
+		} else {
+			tickerMonthData["Treasuries"] = map[string]float64{yearMonth: interest}
 		}
 	}
 
@@ -258,6 +287,14 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		}
 	}
 
+	treasuriesMonthChart := make([]MonthlyChartData, len(yearMonths))
+	for i, ym := range yearMonths {
+		treasuriesMonthChart[i] = MonthlyChartData{
+			Month:  ym,
+			Amount: treasuriesByYearMonth[ym],
+		}
+	}
+
 	// Build ticker chart data for Dividends
 	dividendsTickerChart := []TickerChartData{}
 	for ticker, amount := range dividendsByTicker {
@@ -278,7 +315,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		fmt.Sscanf(ym, "%04d-%02d", &year, &month)
 		formattedLabels[i] = fmt.Sprintf("%d %s", year, monthLabels[month-1])
 	}
-	
+
 	// Build table data
 	tableData := []MonthlyTableRow{}
 	for ticker, monthValues := range tickerMonthData {
@@ -300,7 +337,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 	// Calculate totals by year-month for the table footer
 	totalsByYearMonth := make(map[string]float64)
 	grandTotal := 0.0
-	
+
 	// Aggregate totals from all data sources
 	for ticker, monthValues := range tickerMonthData {
 		_ = ticker // Unused, just iterating
@@ -309,11 +346,11 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 			grandTotal += amount
 		}
 	}
-	
+
 	// Build totals by month using YYYY-MM
 	totalsByMonth := make([]MonthlyTotal, len(yearMonths))
 	for i, ym := range yearMonths {
-		total := putsByYearMonth[ym] + callsByYearMonth[ym] + capGainsByYearMonth[ym] + dividendsByYearMonth[ym]
+		total := putsByYearMonth[ym] + callsByYearMonth[ym] + capGainsByYearMonth[ym] + dividendsByYearMonth[ym] + treasuriesByYearMonth[ym]
 		totalsByMonth[i] = MonthlyTotal{
 			Month:  ym,
 			Amount: total,
@@ -322,7 +359,7 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 
 	// MonthlyPremiumsBySymbol is deprecated - frontend uses OptionsIndex instead
 	monthlyPremiumsBySymbol := []MonthlyPremiumsBySymbol{}
-	
+
 	// Convert options index to JSON for template
 	indexJSON, err := json.Marshal(optionsIndex)
 	if err != nil {
@@ -348,6 +385,9 @@ func (s *Server) buildMonthlyData(symbols []string, options []*models.Option, di
 		DividendsData: MonthlyFinancialData{
 			ByMonth:  dividendsMonthChart,
 			ByTicker: dividendsTickerChart,
+		},
+		TreasuriesData: MonthlyFinancialData{
+			ByMonth: treasuriesMonthChart,
 		},
 		TableData:               tableData,
 		TableYearMonths:         yearMonths,

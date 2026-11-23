@@ -1,8 +1,8 @@
 package web
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sort"
@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 )
-
 
 // symbolHandler serves the symbol-specific analysis view
 func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
@@ -163,35 +162,38 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Printf("[SYMBOL] Total cap gains for %s: $%.2f (%d closed positions)", symbol, capGains, closedPositionsCount)
 
-	// Calculate total invested in all long positions (for Cash on Cash calculation)
-	log.Printf("[SYMBOL] Step 8: Calculating total invested for %s", symbol)
-	var totalInvested float64
-	for _, position := range longPositionsList {
-		invested := position.CalculateTotalInvested()
-		totalInvested += invested
-		status := "open"
-		if position.Closed != nil {
-			status = "closed"
-		}
-		log.Printf("[SYMBOL] Position %d for %s (%s): Invested=%.2f", position.ID, symbol, status, invested)
+	// Calculate dollar-days for annualized Cash on Cash
+	log.Printf("[SYMBOL] Step 8: Calculating dollar-days for %s", symbol)
+	var longDollarDays float64
+	for _, pos := range longPositionsList {
+		longDollarDays += pos.CalculateDollarDays()
 	}
-	log.Printf("[SYMBOL] Total invested for %s: $%.2f (%d positions)", symbol, totalInvested, len(longPositionsList))
+	var putDollarDays float64
+	for _, opt := range optionsList {
+		putDollarDays += opt.CalculatePutExposureDollarDays()
+	}
+	totalDollarDays := longDollarDays + putDollarDays
+	log.Printf("[SYMBOL] Dollar-days for %s: Long=%.2f, Put=%.2f, Total=%.2f", symbol, longDollarDays, putDollarDays, totalDollarDays)
 
 	// Calculate Total Profits - sum of Options Gains + Cap Gains + Dividends
 	totalProfits := optionsGains + capGains + dividendsTotal
 	log.Printf("[SYMBOL] Total profits for %s: $%.2f (Options: $%.2f + Cap: $%.2f + Div: $%.2f)", symbol, totalProfits, optionsGains, capGains, dividendsTotal)
 
-	// Calculate Cash on Cash - Total Profits / Total Invested (all positions)
-	var cashOnCash float64
-	if totalInvested > 0 {
-		cashOnCash = (totalProfits / totalInvested) * 100
-	}
-	log.Printf("[SYMBOL] Cash on Cash for %s: %.2f%% (Total Profits: $%.2f / Total Invested: $%.2f)", symbol, cashOnCash, totalProfits, totalInvested)
+	// Calculate annualized Cash on Cash using dollar-days
+	cashOnCash := CalculateAnnualizedCashOnCash(totalProfits, totalDollarDays)
+	log.Printf("[SYMBOL] Annualized Cash on Cash for %s: %.2f%% (Total Profits: $%.2f / Dollar-Days: $%.2f)", symbol, cashOnCash, totalProfits, totalDollarDays)
 
 	// Build monthly results for this symbol
 	log.Printf("[SYMBOL] Step 9: Building monthly results for %s", symbol)
 	monthlyResults := s.buildSymbolMonthlyResults(optionsList)
 	log.Printf("[SYMBOL] Built %d monthly results for %s", len(monthlyResults), symbol)
+
+	priceHistoryFrom := time.Now().AddDate(-1, 0, 0)
+	priceHistoryTo := time.Now()
+	priceHistory, err := s.priceHistoryService.GetBySymbol(symbol, priceHistoryFrom, priceHistoryTo)
+	if err != nil {
+		priceHistory = []*models.PriceBar{}
+	}
 
 	log.Printf("[SYMBOL] Step 10: Creating template data for %s", symbol)
 	data := SymbolData{
@@ -212,11 +214,15 @@ func (s *Server) symbolHandler(w http.ResponseWriter, r *http.Request) {
 		Dividends:         strconv.FormatFloat(dividendsTotal, 'f', 2, 64),
 		TotalProfits:      strconv.FormatFloat(totalProfits, 'f', 2, 64),
 		CashOnCash:        strconv.FormatFloat(cashOnCash, 'f', 2, 64),
+		LongDollarDays:    longDollarDays,
+		PutDollarDays:     putDollarDays,
+		TotalDollarDays:   totalDollarDays,
 		DividendsList:     dividendsList,
 		DividendsTotal:    dividendsTotal,
 		OptionsList:       optionsList,
 		LongPositionsList: longPositionsList,
 		MonthlyResults:    monthlyResults,
+		PriceHistory:      priceHistory,
 		CurrentDB:         s.getCurrentDatabaseName(),
 		ActivePage:        "symbol",
 	}
@@ -485,7 +491,7 @@ func (s *Server) symbolUpdatePriceHandler(w http.ResponseWriter, r *http.Request
 
 	// Update symbol price using Polygon service
 	err := s.polygonService.UpdateSymbolPrice(ctx, symbol)
-	
+
 	response := map[string]interface{}{
 		"success": err == nil,
 		"symbol":  symbol,
@@ -520,7 +526,7 @@ func (s *Server) symbolFetchDividendsHandler(w http.ResponseWriter, r *http.Requ
 
 	// Fetch dividend data using Polygon service
 	dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, 10)
-	
+
 	response := map[string]interface{}{
 		"success": err == nil,
 		"symbol":  symbol,

@@ -44,6 +44,12 @@ func (s *Server) buildDashboardData(symbols []string) (DashboardData, error) {
 	longPositions, _ := s.longPositionService.GetAll()
 	dividends, _ := s.dividendService.GetAll()
 	totalTreasuries, _ := s.treasuryService.GetTotalOpenValue()
+	treasuries, _ := s.treasuryService.GetAll()
+
+	var totalTreasuryInterest float64
+	for _, t := range treasuries {
+		totalTreasuryInterest += t.CalculateInterest()
+	}
 
 	// Build symbol summaries
 	symbolSummaries := s.buildSymbolSummaries(symbols, options, longPositions, dividends)
@@ -55,6 +61,7 @@ func (s *Server) buildDashboardData(symbols []string) (DashboardData, error) {
 
 	// Calculate totals
 	totals := s.calculateDashboardTotals(symbolSummaries, totalTreasuries)
+	totals.TotalTreasuryInterest = totalTreasuryInterest
 
 	log.Printf("[DASHBOARD] Building dashboard data with %d symbols: %v", len(symbols), symbols)
 	log.Printf("[DASHBOARD] Built %d symbol summaries", len(symbolSummaries))
@@ -91,36 +98,30 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 	// Process long positions
 	for _, pos := range longPositions {
 		if summary, exists := summaryMap[pos.Symbol]; exists {
-			// Only count current open positions for LongAmount
 			if pos.Closed == nil {
 				summary.LongAmount += pos.CalculateAmount()
 			}
-			// Only count realized gains from closed positions
 			if pos.ExitPrice != nil && pos.Closed != nil {
 				summary.CapGains += pos.CalculateProfitLoss(*pos.ExitPrice)
 			}
+			summary.DollarDays += pos.CalculateDollarDays()
 		}
 	}
 
 	// Build map of symbols with open call coverage for optionable calculation
 	callCoverage := make(map[string]bool)
-	
+
 	// Process options
 	for _, opt := range options {
 		if summary, exists := summaryMap[opt.Symbol]; exists {
 			if opt.Type == "Put" {
-				// Count put exposure for all open puts
 				if opt.Closed == nil {
 					summary.PutExposed += opt.Strike * float64(opt.Contracts) * 100
 				}
-				// Count premium for all puts (closed and open)
-				premium := opt.CalculateTotalProfit()
-				summary.Puts += premium
+				summary.Puts += opt.CalculateTotalProfit()
+				summary.DollarDays += opt.CalculatePutExposureDollarDays()
 			} else {
-				// Count premium for all calls (closed and open)
-				premium := opt.CalculateTotalProfit()
-				summary.Calls += premium
-				// Track call coverage for open calls
+				summary.Calls += opt.CalculateTotalProfit()
 				if opt.Closed == nil {
 					callCoverage[opt.Symbol] = true
 				}
@@ -146,13 +147,11 @@ func (s *Server) buildSymbolSummaries(symbols []string, options []*models.Option
 		}
 	}
 
-	// Calculate net and cash on cash, filter out symbols with no trade data
+	// Calculate net and annualized cash on cash, filter out symbols with no trade data
 	var summaries []SymbolSummary
 	for _, summary := range summaryMap {
 		summary.Net = summary.CapGains + summary.Puts + summary.Calls + summary.Dividends
-		if summary.LongAmount > 0 {
-			summary.CashOnCash = (summary.Net / summary.LongAmount) * 100
-		}
+		summary.CashOnCash = CalculateAnnualizedCashOnCash(summary.Net, summary.DollarDays)
 
 		// Only include symbols that have some trade activity
 		if summary.LongAmount > 0 || summary.PutExposed > 0 || summary.Puts != 0 ||
@@ -247,9 +246,8 @@ func (s *Server) buildTotalAllocationChart(longPositions []*models.LongPosition,
 }
 
 func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, totalTreasuries float64) DashboardTotals {
-	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalOptionable float64
+	var totalLong, totalPuts, totalPutPremiums, totalCallPremiums, totalCapGains, totalDividends, totalOptionable, totalDollarDays float64
 
-	// Sum from symbol summaries
 	for _, summary := range symbolSummaries {
 		totalLong += summary.LongAmount
 		totalPuts += summary.PutExposed
@@ -258,13 +256,11 @@ func (s *Server) calculateDashboardTotals(symbolSummaries []SymbolSummary, total
 		totalCapGains += summary.CapGains
 		totalDividends += summary.Dividends
 		totalOptionable += summary.Optionable
+		totalDollarDays += summary.DollarDays
 	}
 
 	totalNet := totalPutPremiums + totalCallPremiums + totalCapGains + totalDividends
-	overallCashOnCash := 0.0
-	if totalLong > 0 {
-		overallCashOnCash = (totalNet / totalLong) * 100
-	}
+	overallCashOnCash := CalculateAnnualizedCashOnCash(totalNet, totalDollarDays)
 
 	// Calculate Put ROI: sum premium of all open Puts divided by Put exposure
 	putROI := 0.0
@@ -367,7 +363,7 @@ func (s *Server) allocationDataHandler(w http.ResponseWriter, r *http.Request) {
 	var totalPuts, totalPutPremiums, totalCallPremiums float64
 	putsByTicker := make(map[string]float64)
 	callCoverage := make(map[string]bool)
-	
+
 	for _, opt := range options {
 		if opt.Closed == nil { // Only open options
 			if opt.Type == "Put" {
@@ -507,11 +503,11 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 
 	// Find long positions without call coverage
 	type OptionablePosition struct {
-		Symbol     string  `json:"symbol"`
-		Shares     int     `json:"shares"`
-		Amount     float64 `json:"amount"`
-		BuyPrice   float64 `json:"buyPrice"`
-		Opened     string  `json:"opened"`
+		Symbol       string  `json:"symbol"`
+		Shares       int     `json:"shares"`
+		Amount       float64 `json:"amount"`
+		BuyPrice     float64 `json:"buyPrice"`
+		Opened       string  `json:"opened"`
 		CurrentValue float64 `json:"currentValue,omitempty"`
 	}
 
@@ -522,13 +518,13 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 		if pos.Closed == nil { // Only open positions
 			if !callCoverage[pos.Symbol] && pos.Shares >= 100 { // No call coverage and enough shares for options
 				amount := pos.CalculateAmount()
-				
+
 				// Get current price for value calculation
 				currentPrice := pos.BuyPrice // fallback to buy price
 				if symbolData, err := s.symbolService.GetBySymbol(pos.Symbol); err == nil {
 					currentPrice = symbolData.Price
 				}
-				
+
 				optionablePositions = append(optionablePositions, OptionablePosition{
 					Symbol:       pos.Symbol,
 					Shares:       pos.Shares,
@@ -545,9 +541,9 @@ func (s *Server) optionablePositionsHandler(w http.ResponseWriter, r *http.Reque
 	log.Printf("[OPTIONABLE API] Found %d optionable positions worth $%.2f", len(optionablePositions), totalOptionableValue)
 
 	response := map[string]interface{}{
-		"positions":   optionablePositions,
-		"totalValue":  totalOptionableValue,
-		"count":       len(optionablePositions),
+		"positions":  optionablePositions,
+		"totalValue": totalOptionableValue,
+		"count":      len(optionablePositions),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -7,41 +7,9 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        /* Dashboard-specific layout overrides */
-        .dashboard-page .main-content {
-            overflow-y: hidden !important; /* Prevent double scrolling */
-        }
-        
-        .dashboard-page .content-section:last-child {
-            flex: 1 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: 0 !important;
-        }
-        
-        .dashboard-page .content-section:last-child .section-title {
-            flex-shrink: 0 !important;
-        }
-        
-        .dashboard-page .table-container-scrollable {
-            flex: 1 !important;
-            min-height: 0 !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow-y: auto !important;
-            overflow-x: auto !important;
-            border: 1px solid #404040 !important;
-            background-color: #2d2d2d !important;
-        }
-        
-        .dashboard-page .table-container-scrollable table {
-            min-width: 1000px;
-            background-color: transparent !important;
-        }
-    </style>
 </head>
 <body class="dashboard-page">
     <div class="app-container">
@@ -49,47 +17,55 @@
         {{template "_navigation.html" .}}
         
         <!-- Main Content -->
-        <div class="main-content" style="display: flex; flex-direction: column; height: calc(100vh - 40px);">
+        <div class="main-content" style="display: flex; flex-direction: column;">
             
-            <!-- Dashboard Totals Panel -->
+            <!-- Row 1: Cumulative Income + Overall Allocation + Long/Put Pies -->
             <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
-                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; text-align: center; font-size: 20px;">
-                    <span style="color: #a0a0a0;">Nominal Total:</span> <span id="nominalTotal" style="color: #27ae60;">$0</span>
-                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Options: <span id="openOptions" style="color: #27ae60;">$0</span> / <span id="openOptionsPercent" style="color: #27ae60;">0.0%</span> of Nominal</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Long:</span> <span id="totalLong" style="color: #27ae60;">$0</span>
-                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Calls: <span id="callPremiums" style="color: #27ae60;">$0</span> / <span id="longROI" style="color: #27ae60;">0.0%</span> of Long</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
-                    <span style="color: #888; font-size: 14px;">&nbsp;&nbsp;&nbsp;&nbsp;Open Puts: <span id="putPremiums" style="color: #27ae60;">$0</span> / <span id="putROI" style="color: #27ae60;">0.0%</span> of Exposure / <span id="putsOfTreasuries" style="color: #27ae60;">0.0%</span> of Treasuries</span>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    <span style="color: #a0a0a0;">Treasuries:</span> <span id="totalTreasuries" style="color: #27ae60;">$0</span>
-                </div>
-            </div>
-            
-            <!-- Charts Container -->
-            <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
-                <div class="charts-section">
-                    <!-- Long Stock by Symbol -->
-                    <div class="chart-container">
-                        <div class="chart-title">Long Value</div>
-                        <canvas id="longByTickerChart" class="chart-canvas"></canvas>
+                <div style="display: flex; gap: 15px; height: 280px;">
+                    <div class="chart-container" style="flex: 1; height: 280px; min-height: 280px; max-height: 280px;">
+                        <div class="chart-title">Cumulative Income</div>
+                        <canvas id="cumulativeIncomeChart" class="chart-canvas"></canvas>
                     </div>
-                    
-                    <!-- Put Exposure by Symbol -->
-                    <div class="chart-container">
-                        <div class="chart-title">Put Exposure</div>
-                        <canvas id="putsByTickerChart" class="chart-canvas"></canvas>
-                    </div>
-                    
-                    <!-- Total Allocation -->
-                    <div class="chart-container">
+                    <div class="chart-container" style="flex: 1; height: 280px; min-height: 280px; max-height: 280px; display: flex; flex-direction: column;">
                         <div class="chart-title">Overall Allocation</div>
-                        <canvas id="totalAllocationChart" class="chart-canvas"></canvas>
+                        <div style="display: flex; flex: 1; min-height: 0; align-items: center;">
+                            <div id="allocationStats" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--font-size-md); padding: 0 8px;"></div>
+                            <div style="flex: 1; position: relative; height: 100%; min-width: 0;"><canvas id="totalAllocationChart"></canvas></div>
+                            <div id="allocationLegend" style="flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--font-size-md); padding: 0 8px;"></div>
+                        </div>
+                    </div>
+                    <div class="chart-container" style="flex: 1; height: 280px; min-height: 280px; max-height: 280px; display: flex; flex-direction: column;">
+                        <div style="display: flex; gap: 0; flex: 1; min-height: 0; align-items: stretch;">
+                            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+                                <div class="chart-title">Long Value</div>
+                                <div style="position: relative; flex: 1; min-height: 0;"><canvas id="longByTickerChart"></canvas></div>
+                            </div>
+                            <div id="sharedLegend" style="display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 4px 12px; font-size: var(--font-size-md); padding: 0 8px;"></div>
+                            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+                                <div class="chart-title">Put Exposure</div>
+                                <div style="position: relative; flex: 1; min-height: 0;"><canvas id="putsByTickerChart"></canvas></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Row 3: Leverage + Total Value -->
+            <div class="content-section" style="margin-bottom: 20px; flex-shrink: 0;">
+                <div class="secondary-charts">
+                    <div class="chart-container gauge-panel">
+                        <div class="chart-title">Current Leverage</div>
+                        <canvas id="leverageGauge"></canvas>
+                    </div>
+                    <div class="chart-container" style="flex: 1.5;">
+                        <div class="chart-title" style="color: #FF9500;">Total Value</div>
+                        <div style="position: relative; height: 180px;">
+                            <canvas id="totalValueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Watchlist Summary Table -->
             <div class="content-section">
                 <div class="section-title">Summary</div>
@@ -210,6 +186,15 @@
         // Use shared pie chart configuration
         const chartOptions = PIE_CHART_OPTIONS;
 
+        const legendlessPieOptions = {
+            ...chartOptions,
+            layout: { padding: { top: 10, bottom: 10, left: 10, right: 10 } },
+            plugins: {
+                ...chartOptions.plugins,
+                legend: { display: false }
+            }
+        };
+
         // Sort data by size (descending) for pie chart display
         const longByTickerSorted = [...longByTickerData].sort((a, b) => b.value - a.value);
         const putsByTickerSorted = [...putsByTickerData].sort((a, b) => b.value - a.value);
@@ -242,7 +227,7 @@
                 }]
             },
             plugins: [ChartDataLabels],
-            options: chartOptions
+            options: legendlessPieOptions
         });
 
         // Puts by Ticker Chart
@@ -258,8 +243,17 @@
                 }]
             },
             plugins: [ChartDataLabels],
-            options: chartOptions
+            options: legendlessPieOptions
         });
+
+        // Populate shared legend between Long Value and Put Exposure
+        const sharedLegendEl = document.getElementById('sharedLegend');
+        if (sharedLegendEl) {
+            sharedLegendEl.innerHTML = sortedSymbols.map(symbol => {
+                const color = getSymbolColor(symbol, sortedSymbols);
+                return `<span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>${symbol}</span>`;
+            }).join('');
+        }
 
         // Total Allocation Chart - will be created after data is loaded
         let totalAllocationChart;
@@ -356,8 +350,27 @@
                     }]
                 },
                 plugins: [ChartDataLabels],
-                options: chartOptions
+                options: legendlessPieOptions
             });
+
+            const allocationLegendEl = document.getElementById('allocationLegend');
+            if (allocationLegendEl) {
+                allocationLegendEl.innerHTML = totalAllocationSorted.map(item => {
+                    return `<span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:50%;background:${item.color};display:inline-block;flex-shrink:0;"></span>${item.label}</span>`;
+                }).join('');
+            }
+            const allocationStatsEl = document.getElementById('allocationStats');
+            if (allocationStatsEl) {
+                allocationStatsEl.innerHTML = [
+                    `<span style="white-space:nowrap;">Nominal: <span id="nominalTotal" style="color:var(--accent-green);">$0</span></span>`,
+                    `<span style="white-space:nowrap;">Long: <span id="totalLong">$0</span></span>`,
+                    `<span style="white-space:nowrap;">Puts: <span id="totalPuts">$0</span></span>`,
+                    `<span style="white-space:nowrap;">Treasuries: <span id="totalTreasuries">$0</span></span>`,
+                    `<span style="white-space:nowrap;color:var(--text-subtle);">Options: <span id="openOptions">$0</span> / <span id="openOptionsPercent">0.0%</span></span>`,
+                    `<span style="white-space:nowrap;color:var(--text-subtle);">Calls: <span id="callPremiums">$0</span> / <span id="longROI">0.0%</span></span>`,
+                    `<span style="white-space:nowrap;color:var(--text-subtle);">Puts: <span id="putPremiums">$0</span> / <span id="putROI">0.0%</span> / <span id="putsOfTreasuries">0.0%</span></span>`
+                ].join('');
+            }
         }
 
         // Fetch allocation data and create chart
@@ -385,13 +398,270 @@
                 updateDashboardTotals(zeroData);
             });
 
-        // Symbol Modal functionality is handled by shared module
+        // Cumulative Income donut chart
+        (function() {
+            const totalPuts = {{.Totals.TotalPutPremiums}};
+            const totalCalls = {{.Totals.TotalCallPremiums}};
+            const totalCapGains = {{.Totals.TotalCapGains}};
+            const totalDividends = {{.Totals.TotalDividends}};
+            const totalTreasuries = {{.Totals.TotalTreasuryInterest}};
 
-        // Apply table formatting when page loads (using imported utility)
+            const centerTextPlugin = {
+                id: 'centerText',
+                afterDatasetsDraw: function(chart) {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const centerX = (chartArea.left + chartArea.right) / 2;
+                    const centerY = (chartArea.top + chartArea.bottom) / 2;
+                    const total = chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#a0a0a0';
+                    ctx.fillText('Total', centerX, centerY - 15);
+                    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText('$' + Math.round(total).toLocaleString(), centerX, centerY + 15);
+                    ctx.restore();
+                }
+            };
+
+            new Chart(document.getElementById('cumulativeIncomeChart'), {
+                type: 'doughnut',
+                plugins: [ChartDataLabels, centerTextPlugin],
+                data: {
+                    labels: ['Puts', 'Calls', 'Capital Gains', 'Dividends', 'Treasuries'],
+                    datasets: [{
+                        data: [totalPuts, totalCalls, totalCapGains, totalDividends, totalTreasuries],
+                        backgroundColor: [
+                            'rgba(31, 119, 180, 0.8)',
+                            'rgba(255, 127, 14, 0.8)',
+                            'rgba(39, 174, 96, 0.8)',
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(155, 89, 182, 0.8)'
+                        ],
+                        borderColor: ['#1f77b4', '#ff7f0e', '#27ae60', '#FFD700', '#9b59b6'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    layout: { padding: { left: 10, right: 10, top: 10, bottom: 10 } },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'right',
+                            align: 'center',
+                            labels: {
+                                color: '#e0e0e0',
+                                font: { size: 16 },
+                                padding: 10,
+                                usePointStyle: true,
+                                boxWidth: 14,
+                                boxHeight: 14,
+                                generateLabels: function(chart) {
+                                    const data = chart.data;
+                                    if (data.labels.length && data.datasets.length) {
+                                        return data.labels.map((label, i) => {
+                                            const value = data.datasets[0].data[i];
+                                            return {
+                                                text: label + ': $' + Math.round(value).toLocaleString(),
+                                                fillStyle: data.datasets[0].backgroundColor[i],
+                                                hidden: false,
+                                                index: i,
+                                                strokeStyle: data.datasets[0].borderColor[i],
+                                                lineWidth: 2,
+                                                fontColor: '#e0e0e0'
+                                            };
+                                        });
+                                    }
+                                    return [];
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return label + ': $' + value.toLocaleString() + ' (' + percentage + '%)';
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: true,
+                            color: '#ffffff',
+                            font: { size: 14, weight: 'bold' },
+                            formatter: function(value, context) {
+                                const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                if (total === 0 || value === 0) return '';
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                if (percentage < 5) return '';
+                                return percentage + '%';
+                            },
+                            anchor: 'center',
+                            align: 'center'
+                        }
+                    }
+                }
+            });
+        })();
+
+        // Current Leverage gauge
+        (function() {
+            const currentLeverage = (function() {
+                const puts = {{.Totals.TotalPuts}};
+                const treasuries = {{.Totals.TotalTreasuries}};
+                return treasuries > 0 ? puts / treasuries : 0;
+            })();
+
+            const ranges = [
+                { limit: 0.5, color: '#27ae60' },
+                { limit: 1.0, color: '#ffeb3b' },
+                { limit: 1.5, color: '#ff9800' },
+                { limit: 2.0, color: '#e74c3c' }
+            ];
+
+            const gaugeChart = new Chart(document.getElementById('leverageGauge'), {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0.5, 0.5, 0.5, 0.5],
+                        backgroundColor: ranges.map(r => r.color),
+                        borderWidth: 2,
+                        borderColor: '#1a1a1a',
+                        circumference: 180,
+                        rotation: 270
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false },
+                        datalabels: { display: false }
+                    },
+                    animation: {
+                        onComplete: function() { drawNeedle(this); }
+                    }
+                },
+                plugins: [{
+                    id: 'gaugeNeedle',
+                    afterDatasetDraw: function(chart) { drawNeedle(chart); }
+                }]
+            });
+
+            function drawNeedle(chart) {
+                const ctx = chart.ctx;
+                const chartArea = chart.chartArea;
+                const centerX = (chartArea.left + chartArea.right) / 2;
+                const centerY = chartArea.bottom;
+                const needleValue = Math.min(Math.max(currentLeverage, 0), 2);
+                const angle = (needleValue / 2) * Math.PI - Math.PI / 2;
+                const radius = (chartArea.bottom - chartArea.top);
+                const needleLength = radius * 0.70;
+                const needleWidth = 6;
+                const hubRadius = 10;
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle);
+                ctx.beginPath();
+                ctx.moveTo(-needleWidth / 2, 0);
+                ctx.lineTo(0, -needleLength);
+                ctx.lineTo(needleWidth / 2, 0);
+                ctx.closePath();
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fill();
+                ctx.strokeStyle = '#808080';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, hubRadius, 0, Math.PI * 2);
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fill();
+                ctx.strokeStyle = '#808080';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#e0e0e0';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(currentLeverage.toFixed(2) + 'x', centerX, centerY - radius * 0.3);
+            }
+        })();
+
+        // Total Value line chart
+        fetch('/api/metrics/chart-data')
+            .then(response => response.json())
+            .then(data => {
+                const chartData = data.total_value || [];
+                const validData = chartData.filter(p => p && p.date && typeof p.value === 'number' && !isNaN(p.value));
+                if (validData.length === 0) {
+                    const container = document.getElementById('totalValueChart').parentElement;
+                    container.innerHTML = '<div class="js-no-data">No data — generate a snapshot on the Metrics page</div>';
+                    return;
+                }
+                validData.sort((a, b) => new Date(a.date) - new Date(b.date));
+                new Chart(document.getElementById('totalValueChart'), {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Total Value',
+                            data: validData.map(p => ({ x: p.date, y: p.value })),
+                            borderColor: '#FF9500',
+                            backgroundColor: '#FF950020',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 1,
+                            pointHoverRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            datalabels: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { parser: 'yyyy-MM-dd', displayFormats: { day: 'MMM d' } },
+                                ticks: { color: '#999', maxTicksLimit: 8 },
+                                grid: { color: '#404040' }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#999',
+                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                },
+                                grid: { color: '#404040' }
+                            }
+                        },
+                        interaction: { intersect: false, mode: 'index' }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error loading Total Value chart:', err);
+                const container = document.getElementById('totalValueChart').parentElement;
+                container.innerHTML = '<div class="js-no-data">No data — generate a snapshot on the Metrics page</div>';
+            });
+
         document.addEventListener('DOMContentLoaded', applyWatchlistTableColoring);
         applyWatchlistTableColoring();
-
-        console.log('Static dashboard loaded with matching spreadsheet data');
     </script>
     <script src="/static/js/navigation.js"></script>
     <script src="/static/js/symbol-modal.js"></script>

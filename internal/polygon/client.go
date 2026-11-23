@@ -29,51 +29,51 @@ func NewClient(apiKey string) *Client {
 
 // StockQuote represents a stock quote response from Polygon.io
 type StockQuote struct {
-	Status string `json:"status"`
+	Status  string `json:"status"`
 	Results struct {
-		Symbol           string  `json:"T"`
-		Price            float64 `json:"c"`
-		High             float64 `json:"h"`
-		Low              float64 `json:"l"`
-		Open             float64 `json:"o"`
-		Volume           float64   `json:"v"`
-		PreviousClose    float64 `json:"pc"`
-		Change           float64 `json:"change,omitempty"`
-		ChangePercent    float64 `json:"changep,omitempty"`
-		MarketStatus     string  `json:"market_status,omitempty"`
-		Timestamp        int64   `json:"t"`
+		Symbol        string  `json:"T"`
+		Price         float64 `json:"c"`
+		High          float64 `json:"h"`
+		Low           float64 `json:"l"`
+		Open          float64 `json:"o"`
+		Volume        float64 `json:"v"`
+		PreviousClose float64 `json:"pc"`
+		Change        float64 `json:"change,omitempty"`
+		ChangePercent float64 `json:"changep,omitempty"`
+		MarketStatus  string  `json:"market_status,omitempty"`
+		Timestamp     int64   `json:"t"`
 	} `json:"results"`
 	RequestID string `json:"request_id"`
 }
 
 // TickerDetails represents detailed ticker information
 type TickerDetails struct {
-	Status string `json:"status"`
+	Status  string `json:"status"`
 	Results struct {
-		Symbol              string  `json:"ticker"`
-		Name                string  `json:"name"`
-		Market              string  `json:"market"`
-		Locale              string  `json:"locale"`
-		PrimaryExchange     string  `json:"primary_exchange"`
-		Type                string  `json:"type"`
-		Active              bool    `json:"active"`
-		CurrencyName        string  `json:"currency_name"`
-		CIK                 string  `json:"cik"`
-		CompositeFigi       string  `json:"composite_figi"`
-		ShareClassFigi      string  `json:"share_class_figi"`
-		MarketCap           float64 `json:"market_cap"`
-		PhoneNumber         string  `json:"phone_number"`
-		Address             Address `json:"address"`
-		Description         string  `json:"description"`
-		SicCode             string  `json:"sic_code"`
-		SicDescription      string  `json:"sic_description"`
-		TickerRoot          string  `json:"ticker_root"`
-		HomepageURL         string  `json:"homepage_url"`
-		TotalEmployees      int     `json:"total_employees"`
-		ListDate            string  `json:"list_date"`
-		Branding            Branding `json:"branding"`
-		ShareClassSharesOutstanding int64 `json:"share_class_shares_outstanding"`
-		WeightedSharesOutstanding   int64 `json:"weighted_shares_outstanding"`
+		Symbol                      string   `json:"ticker"`
+		Name                        string   `json:"name"`
+		Market                      string   `json:"market"`
+		Locale                      string   `json:"locale"`
+		PrimaryExchange             string   `json:"primary_exchange"`
+		Type                        string   `json:"type"`
+		Active                      bool     `json:"active"`
+		CurrencyName                string   `json:"currency_name"`
+		CIK                         string   `json:"cik"`
+		CompositeFigi               string   `json:"composite_figi"`
+		ShareClassFigi              string   `json:"share_class_figi"`
+		MarketCap                   float64  `json:"market_cap"`
+		PhoneNumber                 string   `json:"phone_number"`
+		Address                     Address  `json:"address"`
+		Description                 string   `json:"description"`
+		SicCode                     string   `json:"sic_code"`
+		SicDescription              string   `json:"sic_description"`
+		TickerRoot                  string   `json:"ticker_root"`
+		HomepageURL                 string   `json:"homepage_url"`
+		TotalEmployees              int      `json:"total_employees"`
+		ListDate                    string   `json:"list_date"`
+		Branding                    Branding `json:"branding"`
+		ShareClassSharesOutstanding int64    `json:"share_class_shares_outstanding"`
+		WeightedSharesOutstanding   int64    `json:"weighted_shares_outstanding"`
 	} `json:"results"`
 	RequestID string `json:"request_id"`
 }
@@ -86,22 +86,22 @@ type Address struct {
 }
 
 type Branding struct {
-	LogoURL    string `json:"logo_url"`
-	IconURL    string `json:"icon_url"`
+	LogoURL string `json:"logo_url"`
+	IconURL string `json:"icon_url"`
 }
 
 type OptionSnapshot struct {
 	Status  string `json:"status"`
 	Results struct {
-		BreakEvenPrice   float64 `json:"break_even_price"`
-		Day              DayData `json:"day"`
-		Details          OptionDetails `json:"details"`
-		Greeks           Greeks `json:"greeks"`
-		ImpliedVolatility float64 `json:"implied_volatility"`
-		LastQuote        Quote `json:"last_quote"`
-		LastTrade        Trade `json:"last_trade"`
-		OpenInterest     float64 `json:"open_interest"`
-		UnderlyingAsset  UnderlyingAsset `json:"underlying_asset"`
+		BreakEvenPrice    float64         `json:"break_even_price"`
+		Day               DayData         `json:"day"`
+		Details           OptionDetails   `json:"details"`
+		Greeks            Greeks          `json:"greeks"`
+		ImpliedVolatility float64         `json:"implied_volatility"`
+		LastQuote         Quote           `json:"last_quote"`
+		LastTrade         Trade           `json:"last_trade"`
+		OpenInterest      float64         `json:"open_interest"`
+		UnderlyingAsset   UnderlyingAsset `json:"underlying_asset"`
 	} `json:"results"`
 	RequestID string `json:"request_id"`
 }
@@ -119,12 +119,12 @@ type DayData struct {
 }
 
 type OptionDetails struct {
-	ContractType   string  `json:"contract_type"`
-	ExerciseStyle  string  `json:"exercise_style"`
-	ExpirationDate string  `json:"expiration_date"`
+	ContractType      string  `json:"contract_type"`
+	ExerciseStyle     string  `json:"exercise_style"`
+	ExpirationDate    string  `json:"expiration_date"`
 	SharesPerContract float64 `json:"shares_per_contract"`
-	StrikePrice    float64 `json:"strike_price"`
-	Ticker         string  `json:"ticker"`
+	StrikePrice       float64 `json:"strike_price"`
+	Ticker            string  `json:"ticker"`
 }
 
 type Greeks struct {
@@ -135,21 +135,21 @@ type Greeks struct {
 }
 
 type Quote struct {
-	Ask            float64 `json:"ask"`
-	AskSize        float64 `json:"ask_size"`
-	Bid            float64 `json:"bid"`
-	BidSize        float64 `json:"bid_size"`
-	LastUpdated    int64   `json:"last_updated"`
-	Midpoint       float64 `json:"midpoint"`
-	Timeframe      string  `json:"timeframe"`
+	Ask         float64 `json:"ask"`
+	AskSize     float64 `json:"ask_size"`
+	Bid         float64 `json:"bid"`
+	BidSize     float64 `json:"bid_size"`
+	LastUpdated int64   `json:"last_updated"`
+	Midpoint    float64 `json:"midpoint"`
+	Timeframe   string  `json:"timeframe"`
 }
 
 type Trade struct {
-	Conditions      []int   `json:"conditions"`
-	Exchange        int     `json:"exchange"`
-	Price           float64 `json:"price"`
-	SipTimestamp    int64   `json:"sip_timestamp"`
-	Size            float64 `json:"size"`
+	Conditions   []int   `json:"conditions"`
+	Exchange     int     `json:"exchange"`
+	Price        float64 `json:"price"`
+	SipTimestamp int64   `json:"sip_timestamp"`
+	Size         float64 `json:"size"`
 }
 
 type UnderlyingAsset struct {
@@ -162,7 +162,7 @@ type UnderlyingAsset struct {
 
 // DividendData represents dividend information
 type DividendData struct {
-	Status string `json:"status"`
+	Status  string `json:"status"`
 	Results []struct {
 		CashAmount      float64 `json:"cash_amount"`
 		DeclarationDate string  `json:"declaration_date"`
@@ -248,17 +248,17 @@ func (c *Client) GetPreviousClose(ctx context.Context, symbol string) (*StockQuo
 	}
 
 	var result struct {
-		Status string `json:"status"`
+		Status  string `json:"status"`
 		Results []struct {
-			Symbol        string  `json:"T"`
-			Volume        float64   `json:"v"`
+			Symbol         string  `json:"T"`
+			Volume         float64 `json:"v"`
 			VolumeWeighted float64 `json:"vw"`
-			Open          float64 `json:"o"`
-			Close         float64 `json:"c"`
-			High          float64 `json:"h"`
-			Low           float64 `json:"l"`
-			Timestamp     int64   `json:"t"`
-			Transactions  int     `json:"n"`
+			Open           float64 `json:"o"`
+			Close          float64 `json:"c"`
+			High           float64 `json:"h"`
+			Low            float64 `json:"l"`
+			Timestamp      int64   `json:"t"`
+			Transactions   int     `json:"n"`
 		} `json:"results"`
 		RequestID string `json:"request_id"`
 	}
@@ -273,7 +273,7 @@ func (c *Client) GetPreviousClose(ctx context.Context, symbol string) (*StockQuo
 
 	// Convert to StockQuote format
 	quote := &StockQuote{
-		Status: result.Status,
+		Status:    result.Status,
 		RequestID: result.RequestID,
 	}
 	quote.Results.Symbol = result.Results[0].Symbol
@@ -392,7 +392,7 @@ func (c *Client) IsValidAPIKey(ctx context.Context) error {
 	if resp.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("invalid or expired Polygon.io API key")
 	}
-	
+
 	if resp.StatusCode == http.StatusForbidden {
 		return fmt.Errorf("API key does not have permission to access Polygon.io endpoints")
 	}
@@ -409,8 +409,8 @@ func (c *Client) GetOptionSnapshot(ctx context.Context, underlyingAsset, optionC
 		return nil, fmt.Errorf("polygon API key not configured")
 	}
 
-	endpoint := fmt.Sprintf("/v3/snapshot/options/%s/%s", 
-		url.PathEscape(underlyingAsset), 
+	endpoint := fmt.Sprintf("/v3/snapshot/options/%s/%s",
+		url.PathEscape(underlyingAsset),
 		url.PathEscape(optionContract))
 	url := fmt.Sprintf("%s%s?apikey=%s", c.baseURL, endpoint, c.apiKey)
 
@@ -444,4 +444,178 @@ func (c *Client) GetOptionSnapshot(ctx context.Context, underlyingAsset, optionC
 	}
 
 	return &snapshot, nil
+}
+
+type AggregatesResponse struct {
+	Status       string         `json:"status"`
+	Ticker       string         `json:"ticker"`
+	QueryCount   int            `json:"queryCount"`
+	ResultsCount int            `json:"resultsCount"`
+	Adjusted     bool           `json:"adjusted"`
+	Results      []AggregateBar `json:"results"`
+	RequestID    string         `json:"request_id"`
+	NextURL      string         `json:"next_url,omitempty"`
+}
+
+type AggregateBar struct {
+	Open         float64 `json:"o"`
+	High         float64 `json:"h"`
+	Low          float64 `json:"l"`
+	Close        float64 `json:"c"`
+	Volume       float64 `json:"v"`
+	VWAP         float64 `json:"vw"`
+	Timestamp    int64   `json:"t"`
+	Transactions int     `json:"n"`
+}
+
+type OptionsContractsResponse struct {
+	Status    string            `json:"status"`
+	Results   []OptionsContract `json:"results"`
+	RequestID string            `json:"request_id"`
+	NextURL   string            `json:"next_url,omitempty"`
+}
+
+type OptionsContract struct {
+	Ticker            string  `json:"ticker"`
+	UnderlyingTicker  string  `json:"underlying_ticker"`
+	ContractType      string  `json:"contract_type"`
+	ExpirationDate    string  `json:"expiration_date"`
+	StrikePrice       float64 `json:"strike_price"`
+	SharesPerContract int     `json:"shares_per_contract"`
+	PrimaryExchange   string  `json:"primary_exchange"`
+}
+
+type SplitsResponse struct {
+	Status    string  `json:"status"`
+	Results   []Split `json:"results"`
+	RequestID string  `json:"request_id"`
+}
+
+type Split struct {
+	ExecutionDate string  `json:"execution_date"`
+	SplitFrom     float64 `json:"split_from"`
+	SplitTo       float64 `json:"split_to"`
+	Ticker        string  `json:"ticker"`
+}
+
+func (c *Client) GetAggregates(ctx context.Context, ticker, timespan, from, to string, limit int) (*AggregatesResponse, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("polygon API key not configured")
+	}
+
+	if limit <= 0 {
+		limit = 5000
+	}
+
+	endpoint := fmt.Sprintf("/v2/aggs/ticker/%s/range/1/%s/%s/%s",
+		url.PathEscape(ticker), url.PathEscape(timespan), url.PathEscape(from), url.PathEscape(to))
+	reqURL := fmt.Sprintf("%s%s?adjusted=true&sort=asc&limit=%d&apikey=%s", c.baseURL, endpoint, limit, c.apiKey)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("unauthorized: invalid or missing Polygon API key (status 401)")
+		} else if resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("forbidden: API key may not have access to this endpoint (status 403)")
+		}
+		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	}
+
+	var aggs AggregatesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&aggs); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &aggs, nil
+}
+
+func (c *Client) GetOptionAggregates(ctx context.Context, optionTicker, timespan, from, to string, limit int) (*AggregatesResponse, error) {
+	return c.GetAggregates(ctx, optionTicker, timespan, from, to, limit)
+}
+
+func (c *Client) GetIndexAggregates(ctx context.Context, indexTicker, timespan, from, to string, limit int) (*AggregatesResponse, error) {
+	return c.GetAggregates(ctx, indexTicker, timespan, from, to, limit)
+}
+
+func (c *Client) GetOptionsContracts(ctx context.Context, underlyingTicker string, params map[string]string) (*OptionsContractsResponse, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("polygon API key not configured")
+	}
+
+	endpoint := "/v3/reference/options/contracts"
+	qp := url.Values{}
+	qp.Set("underlying_ticker", underlyingTicker)
+	qp.Set("apikey", c.apiKey)
+	for k, v := range params {
+		qp.Set(k, v)
+	}
+
+	reqURL := fmt.Sprintf("%s%s?%s", c.baseURL, endpoint, qp.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	}
+
+	var contracts OptionsContractsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&contracts); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &contracts, nil
+}
+
+func (c *Client) GetStockSplits(ctx context.Context, ticker string) (*SplitsResponse, error) {
+	if c.apiKey == "" {
+		return nil, fmt.Errorf("polygon API key not configured")
+	}
+
+	endpoint := "/v3/reference/splits"
+	qp := url.Values{}
+	qp.Set("ticker", ticker)
+	qp.Set("apikey", c.apiKey)
+
+	reqURL := fmt.Sprintf("%s%s?%s", c.baseURL, endpoint, qp.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status %d", resp.StatusCode)
+	}
+
+	var splits SplitsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&splits); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &splits, nil
 }

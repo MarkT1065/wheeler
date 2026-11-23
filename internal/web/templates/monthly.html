@@ -12,67 +12,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .daterangepicker {
-            background: #2d2d2d;
-            border: 1px solid #575757;
-        }
-        .daterangepicker .calendar-table {
-            background: #2d2d2d;
-            border: 1px solid #575757;
-        }
-        .daterangepicker .calendar-table .table-condensed {
-            display: none;
-        }
-        .daterangepicker .month-picker {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            padding: 20px;
-        }
-        .daterangepicker .month-picker .month-cell {
-            padding: 12px;
-            text-align: center;
-            cursor: pointer;
-            background: #1a1a1a;
-            border: 1px solid #575757;
-            border-radius: 4px;
-            color: #e0e0e0;
-        }
-        .daterangepicker .month-picker .month-cell:hover {
-            background-color: #404040;
-        }
-        .daterangepicker .month-picker .month-cell.active {
-            background-color: #27ae60 !important;
-        }
-        .daterangepicker td, .daterangepicker th {
-            color: #e0e0e0;
-        }
-        .daterangepicker td.available:hover {
-            background-color: #404040;
-        }
-        .daterangepicker td.active {
-            background-color: #27ae60 !important;
-        }
-        .daterangepicker .ranges li:hover {
-            background-color: #404040;
-        }
-        .daterangepicker .ranges li.active {
-            background-color: #27ae60;
-        }
-        .daterangepicker select {
-            background: #1a1a1a;
-            color: #e0e0e0;
-            border: 1px solid #575757;
-        }
-        .daterangepicker .drp-calendar {
-            max-width: 300px;
-        }
-        .daterangepicker .calendar-table thead,
-        .daterangepicker .calendar-table tbody {
-            display: none;
-        }
-    </style>
 </head>
 <body class="monthly-page">
     <div class="app-container">
@@ -82,48 +21,23 @@
         <!-- Main Content -->
         <div class="main-content">
             
-            <!-- Aggregated Totals Panel -->
-            <div class="content-section" style="margin-bottom: 20px;">
-                <div style="background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040; display: flex; align-items: center; justify-content: space-between;">
-                    <!-- Month Range Picker (Left) -->
-                    <div style="display: flex; align-items: center; gap: 10px; font-size: 14px;">
-                        <input type="text" id="monthRange" readonly value="" style="padding: 8px 12px; background: #1a1a1a; border: 1px solid #575757; border-radius: 4px; color: #e0e0e0; font-size: 14px; cursor: pointer; width: 200px;">
-                    </div>
-                    
-                    <!-- Totals (Center) -->
-                    <div style="text-align: center; font-size: 20px;">
-                        <span style="color: #a0a0a0;">Total:</span> <span id="grandTotal" style="color: #27ae60;">$0</span>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <span style="color: #a0a0a0;">Puts:</span> <span id="totalPuts" style="color: #27ae60;">$0</span>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <span style="color: #a0a0a0;">Calls:</span> <span id="totalCalls" style="color: #27ae60;">$0</span>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <span style="color: #a0a0a0;">Capital Gains:</span> <span id="totalCapGains" style="color: #27ae60;">$0</span>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                        <span style="color: #a0a0a0;">Dividends:</span> <span id="totalDividends" style="color: #27ae60;">$0</span>
-                    </div>
-                    
-                    <!-- Placeholder for balance (Right) -->
-                    <div style="width: 200px;"></div>
-                </div>
-            </div>
-            
             <!-- Gains Chart with Monthly Bars and Cumulative Line -->
             <div class="content-section" style="margin-bottom: 30px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div class="section-title">Gains Over Time</div>
-                </div>
-                <div style="display: flex; gap: 20px; align-items: stretch;">
-                    <!-- Cumulative Income Pie Chart (25% width) -->
-                    <div style="flex: 0 0 25%; background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040;">
-                        <h3 style="color: #e0e0e0; margin: 0 0 10px 0; font-size: 16px; text-align: center;">Cumulative Income</h3>
-                        <div style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                <div style="display: flex; gap: 20px; align-items: stretch; overflow: hidden;">
+                    <!-- Cumulative Income Pie Chart -->
+                    <div class="chart-panel" style="flex: 1 1 25%; min-width: 0;">
+                        <h3 class="chart-panel-title" style="text-align: center;">Cumulative Income</h3>
+                        <div class="chart-panel-canvas" style="height: 300px;">
                             <canvas id="cumulativeIncomePieChart"></canvas>
                         </div>
                     </div>
                     
-                    <!-- Gains Over Time Bar Chart (75% width) -->
-                    <div style="flex: 0 0 75%; background: #2d2d2d; padding: 15px; border-radius: 8px; border: 1px solid #404040;">
+                    <!-- Gains Over Time Bar Chart -->
+                    <div class="chart-panel" style="flex: 3 1 75%; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: var(--spacing-sm);">
+                            <h3 class="chart-panel-title" style="margin-bottom: 0;">Gains Over Time</h3>
+                            <input type="text" id="monthRange" readonly value="" style="padding: 6px 10px; background: #1a1a1a; border: 1px solid #575757; border-radius: 4px; color: #e0e0e0; font-size: 13px; cursor: pointer; width: 180px;">
+                        </div>
                         <div style="height: 300px;">
                             <canvas id="cumulativeGainsChart"></canvas>
                         </div>
@@ -142,13 +56,11 @@
                             <div class="section-title">Puts</div>
                             <div class="charts-row">
                                 <div class="chart-column">
-                                    <h4>By Month</h4>
                                     <div class="chart-container-small">
                                         <canvas id="putsMonthChart"></canvas>
                                     </div>
                                 </div>
                                 <div class="chart-column">
-                                    <h4>By Ticker</h4>
                                     <div class="chart-container-small">
                                         <canvas id="putsTickerChart"></canvas>
                                     </div>
@@ -161,13 +73,11 @@
                             <div class="section-title">Calls</div>
                             <div class="charts-row">
                                 <div class="chart-column">
-                                    <h4>By Month</h4>
                                     <div class="chart-container-small">
                                         <canvas id="callsMonthChart"></canvas>
                                     </div>
                                 </div>
                                 <div class="chart-column">
-                                    <h4>By Ticker</h4>
                                     <div class="chart-container-small">
                                         <canvas id="callsTickerChart"></canvas>
                                     </div>
@@ -182,13 +92,11 @@
                             <div class="section-title">Capital Gains</div>
                             <div class="charts-row">
                                 <div class="chart-column">
-                                    <h4>By Month</h4>
                                     <div class="chart-container-small">
                                         <canvas id="capGainsMonthChart"></canvas>
                                     </div>
                                 </div>
                                 <div class="chart-column">
-                                    <h4>By Ticker</h4>
                                     <div class="chart-container-small">
                                         <canvas id="capGainsTickerChart"></canvas>
                                     </div>
@@ -201,13 +109,11 @@
                             <div class="section-title">Dividends</div>
                             <div class="charts-row">
                                 <div class="chart-column">
-                                    <h4>By Month</h4>
                                     <div class="chart-container-small">
                                         <canvas id="dividendsMonthChart"></canvas>
                                     </div>
                                 </div>
                                 <div class="chart-column">
-                                    <h4>By Ticker</h4>
                                     <div class="chart-container-small">
                                         <canvas id="dividendsTickerChart"></canvas>
                                     </div>
@@ -1045,25 +951,18 @@
             }
         });
 
+        const treasuriesMonthMap = new Map([
+            {{range $index, $data := .TreasuriesData.ByMonth}}{{if $index}}, {{end}}["{{$data.Month}}", {{$data.Amount}}]{{end}}
+        ]);
+        const treasuriesMonthData = serverMonthLabels.map(ym => treasuriesMonthMap.get(ym) || 0);
+
         // Gains Over Time chart with Monthly bars and Cumulative line overlay
 
         // Update the totals panel with year-to-date values (using imported formatCurrency)
-        function updateTotalsPanelValues(putsTotal, callsTotal, capGainsTotal, dividendsTotal) {
-            const grandTotalElement = document.getElementById('grandTotal');
-            const totalPutsElement = document.getElementById('totalPuts');
-            const totalCallsElement = document.getElementById('totalCalls');
-            const totalCapGainsElement = document.getElementById('totalCapGains');
-            const totalDividendsElement = document.getElementById('totalDividends');
-            
-            // Calculate grand total
-            const grandTotalValue = putsTotal + callsTotal + capGainsTotal + dividendsTotal;
-            
-            // Update each total using imported formatCurrency
-            formatCurrency(grandTotalValue, grandTotalElement);
-            formatCurrency(putsTotal, totalPutsElement);
-            formatCurrency(callsTotal, totalCallsElement);
-            formatCurrency(capGainsTotal, totalCapGainsElement);
-            formatCurrency(dividendsTotal, totalDividendsElement);
+        let cachedTotals = { puts: 0, calls: 0, capGains: 0, dividends: 0, treasuries: 0 };
+
+        function updateTotalsPanelValues(putsTotal, callsTotal, capGainsTotal, dividendsTotal, treasuriesTotal) {
+            cachedTotals = { puts: putsTotal, calls: callsTotal, capGains: capGainsTotal, dividends: dividendsTotal, treasuries: treasuriesTotal };
         }
 
         // Function to create the gains chart with monthly bars and cumulative line
@@ -1078,32 +977,38 @@
             const callsMonthlyData = callsMonthData;
             const capGainsMonthlyData = capGainsMonthData;
             const dividendsMonthlyData = dividendsMonthData;
+
+            const treasuriesMonthlyData = treasuriesMonthData;
             
             // Calculate cumulative data for each category
             let putsCumulativeData = [];
             let callsCumulativeData = [];
             let capGainsCumulativeData = [];
             let dividendsCumulativeData = [];
+            let treasuriesCumulativeData = [];
             
             let putsRunningTotal = 0;
             let callsRunningTotal = 0;
             let capGainsRunningTotal = 0;
             let dividendsRunningTotal = 0;
+            let treasuriesRunningTotal = 0;
             
             for (let i = 0; i < monthLabels.length; i++) {
                 putsRunningTotal += putsMonthlyData[i] || 0;
                 callsRunningTotal += callsMonthlyData[i] || 0;
                 capGainsRunningTotal += capGainsMonthlyData[i] || 0;
                 dividendsRunningTotal += dividendsMonthlyData[i] || 0;
+                treasuriesRunningTotal += treasuriesMonthlyData[i] || 0;
                 
                 putsCumulativeData.push(putsRunningTotal);
                 callsCumulativeData.push(callsRunningTotal);
                 capGainsCumulativeData.push(capGainsRunningTotal);
                 dividendsCumulativeData.push(dividendsRunningTotal);
+                treasuriesCumulativeData.push(treasuriesRunningTotal);
             }
             
             // Update totals panel with year-to-date values
-            updateTotalsPanelValues(putsRunningTotal, callsRunningTotal, capGainsRunningTotal, dividendsRunningTotal);
+            updateTotalsPanelValues(putsRunningTotal, callsRunningTotal, capGainsRunningTotal, dividendsRunningTotal, treasuriesRunningTotal);
             
             // Calculate total cumulative for the line
             let totalCumulativeData = [];
@@ -1112,7 +1017,8 @@
                     putsCumulativeData[i] + 
                     callsCumulativeData[i] + 
                     capGainsCumulativeData[i] + 
-                    dividendsCumulativeData[i]
+                    dividendsCumulativeData[i] +
+                    treasuriesCumulativeData[i]
                 );
             }
             
@@ -1155,6 +1061,16 @@
                     data: dividendsMonthlyData,
                     backgroundColor: 'rgba(255, 215, 0, 0.8)',
                     borderColor: '#FFD700',
+                    borderWidth: 1,
+                    stack: 'stack0',
+                    yAxisID: 'y'
+                },
+                {
+                    type: 'bar',
+                    label: 'Treasuries',
+                    data: treasuriesMonthlyData,
+                    backgroundColor: 'rgba(155, 89, 182, 0.8)',
+                    borderColor: '#9b59b6',
                     borderWidth: 1,
                     stack: 'stack0',
                     yAxisID: 'y'
@@ -1204,6 +1120,7 @@
                             display: true,
                             position: 'left',
                             beginAtZero: true,
+                            grace: '15%',
                             title: {
                                 display: true,
                                 text: 'Monthly Gains ($)',
@@ -1310,10 +1227,11 @@
             if (!ctx) return;
             
             // Get cumulative totals from the page (already calculated)
-            const totalPuts = parseFloat(document.getElementById('totalPuts').textContent.replace(/[$,]/g, '')) || 0;
-            const totalCalls = parseFloat(document.getElementById('totalCalls').textContent.replace(/[$,]/g, '')) || 0;
-            const totalCapGains = parseFloat(document.getElementById('totalCapGains').textContent.replace(/[$,]/g, '')) || 0;
-            const totalDividends = parseFloat(document.getElementById('totalDividends').textContent.replace(/[$,]/g, '')) || 0;
+            const totalPuts = cachedTotals.puts;
+            const totalCalls = cachedTotals.calls;
+            const totalCapGains = cachedTotals.capGains;
+            const totalDividends = cachedTotals.dividends;
+            const totalTreasuries = cachedTotals.treasuries;
             
             // Plugin to draw total in center of donut
             const centerTextPlugin = {
@@ -1349,20 +1267,22 @@
                 type: 'doughnut',
                 plugins: [centerTextPlugin],
                 data: {
-                    labels: ['Puts', 'Calls', 'Capital Gains', 'Dividends'],
+                    labels: ['Puts', 'Calls', 'Capital Gains', 'Dividends', 'Treasuries'],
                     datasets: [{
-                        data: [totalPuts, totalCalls, totalCapGains, totalDividends],
+                        data: [totalPuts, totalCalls, totalCapGains, totalDividends, totalTreasuries],
                         backgroundColor: [
                             'rgba(31, 119, 180, 0.8)',
                             'rgba(255, 127, 14, 0.8)',
                             'rgba(39, 174, 96, 0.8)',
-                            'rgba(255, 215, 0, 0.8)'
+                            'rgba(255, 215, 0, 0.8)',
+                            'rgba(155, 89, 182, 0.8)'
                         ],
                         borderColor: [
                             '#1f77b4',
                             '#ff7f0e',
                             '#27ae60',
-                            '#FFD700'
+                            '#FFD700',
+                            '#9b59b6'
                         ],
                         borderWidth: 2
                     }]
@@ -1388,7 +1308,7 @@
                             labels: {
                                 color: '#e0e0e0',
                                 font: { size: 13 },
-                                padding: 15,
+                                padding: 12,
                                 usePointStyle: true,
                                 boxWidth: 16,
                                 boxHeight: 16,
@@ -1428,7 +1348,7 @@
                             display: true,
                             color: '#ffffff',
                             font: {
-                                size: 11,
+                                size: 15,
                                 weight: 'bold'
                             },
                             formatter: function(value, context) {
@@ -1446,8 +1366,6 @@
             });
         }
         
-        // Initialize cumulative income pie chart after totals are updated
-        // Need to wait for totals to be calculated first
         setTimeout(createCumulativeIncomePieChart, 100);
 
         
@@ -1745,72 +1663,36 @@
                                     
                                     // Build HTML table content
                                     let html = `
-                                        <div style="
-                                            background: rgba(20, 20, 20, 0.95);
-                                            border: 2px solid #007acc;
-                                            border-radius: 8px;
-                                            padding: 16px;
-                                            font-family: monospace;
-                                            color: #ffffff;
-                                            width: 600px;
-                                            max-width: 90vw;
-                                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                                        ">
-                                            <div style="
-                                                font-size: 16px;
-                                                font-weight: bold;
-                                                text-align: center;
-                                                margin-bottom: 16px;
-                                                padding-bottom: 8px;
-                                                border-bottom: 1px solid #007acc;
-                                                color: #007acc;
-                                            ">
+                                        <div class="chart-tooltip">
+                                            <div class="chart-tooltip-title">
                                                 ${monthLabel} Monthly Premiums Summary
                                             </div>
                                             
-                                            <!-- Summary Totals Table -->
-                                            <table style="
-                                                width: 100%;
-                                                margin-bottom: 16px;
-                                                border-collapse: collapse;
-                                                background: rgba(0, 122, 204, 0.1);
-                                                border-radius: 4px;
-                                            ">
+                                            <table class="chart-tooltip-summary">
                                                 <tr>
-                                                    <td style="padding: 8px 12px; font-weight: bold; width: 25%;">TOTAL MONTH:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${grandTotal < 0 ? '#e74c3c' : '#27ae60'};">${grandTotal < 0 ? '-' : ''}$${Math.round(Math.abs(grandTotal)).toLocaleString()}</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; width: 25%;">CLOSED:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${closedTotal < 0 ? '#e74c3c' : '#ffffff'};">${closedTotal < 0 ? '-' : ''}$${Math.round(Math.abs(closedTotal)).toLocaleString()}</td>
+                                                    <td class="label-col">TOTAL MONTH:</td>
+                                                    <td style="color: ${grandTotal < 0 ? '#e74c3c' : '#27ae60'};">${grandTotal < 0 ? '-' : ''}$${Math.round(Math.abs(grandTotal)).toLocaleString()}</td>
+                                                    <td class="label-col">CLOSED:</td>
+                                                    <td style="color: ${closedTotal < 0 ? '#e74c3c' : '#ffffff'};">${closedTotal < 0 ? '-' : ''}$${Math.round(Math.abs(closedTotal)).toLocaleString()}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td style="padding: 8px 12px; font-weight: bold;">SYMBOLS:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: #ffffff;">${symbolKeys.length}</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold;">OPEN:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: ${openTotal < 0 ? '#e74c3c' : '#ffffff'};">${openTotal < 0 ? '-' : ''}$${Math.round(Math.abs(openTotal)).toLocaleString()}</td>
+                                                    <td>SYMBOLS:</td>
+                                                    <td>${symbolKeys.length}</td>
+                                                    <td>OPEN:</td>
+                                                    <td style="color: ${openTotal < 0 ? '#e74c3c' : '#ffffff'};">${openTotal < 0 ? '-' : ''}$${Math.round(Math.abs(openTotal)).toLocaleString()}</td>
                                                 </tr>
                                             </table>
                                             
-                                            <!-- Detailed Breakdown Table -->
-                                            <div style="
-                                                font-size: 14px;
-                                                font-weight: bold;
-                                                margin-bottom: 8px;
-                                                color: #007acc;
-                                            ">BREAKDOWN BY SYMBOL</div>
+                                            <div class="chart-tooltip-section">BREAKDOWN BY SYMBOL</div>
                                             
-                                            <table style="
-                                                width: 100%;
-                                                border-collapse: collapse;
-                                                font-size: 12px;
-                                                background: rgba(255, 255, 255, 0.05);
-                                            ">
+                                            <table class="chart-tooltip-detail">
                                                 <thead>
-                                                    <tr style="background: rgba(0, 122, 204, 0.3);">
-                                                        <th style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #404040;">SYMBOL</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">TOTAL</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">CLOSED</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">OPEN</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">% OF MONTH</th>
+                                                    <tr>
+                                                        <th>SYMBOL</th>
+                                                        <th class="text-right">TOTAL</th>
+                                                        <th class="text-right">CLOSED</th>
+                                                        <th class="text-right">OPEN</th>
+                                                        <th class="text-right">% OF MONTH</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>`;
@@ -1818,7 +1700,6 @@
                                     symbolKeys.forEach((symbol, index) => {
                                         const data = symbolSummary[symbol];
                                         const percentage = grandTotal !== 0 ? ((Math.abs(data.total) / Math.abs(grandTotal)) * 100).toFixed(1) : '0.0';
-                                        const rowBg = index % 2 === 0 ? 'rgba(255, 255, 255, 0.02)' : 'transparent';
                                         
                                         // Color coding for positive/negative values
                                         const totalColor = data.total < 0 ? '#e74c3c' : '#27ae60';
@@ -1832,12 +1713,12 @@
                                         };
                                         
                                         html += `
-                                            <tr style="background: ${rowBg};">
-                                                <td style="padding: 4px 8px; font-weight: bold;">${symbol}</td>
-                                                <td style="padding: 4px 8px; text-align: right; font-weight: bold; color: ${totalColor};">${formatValue(data.total)}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: ${closedColor};">${formatValue(data.closed)}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: ${openColor};">${formatValue(data.open)}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: #ffa500;">${percentage}%</td>
+                                            <tr class="${index % 2 === 0 ? 'alt-row' : ''}">
+                                                <td class="cell-bold">${symbol}</td>
+                                                <td class="text-right cell-bold" style="color: ${totalColor};">${formatValue(data.total)}</td>
+                                                <td class="text-right" style="color: ${closedColor};">${formatValue(data.closed)}</td>
+                                                <td class="text-right" style="color: ${openColor};">${formatValue(data.open)}</td>
+                                                <td class="text-right cell-accent">${percentage}%</td>
                                             </tr>`;
                                     });
                                     
@@ -1978,9 +1859,9 @@
             allUniqueSymbols.forEach(symbol => {
                 const color = getSymbolColor(symbol, allUniqueSymbols);
                 html += `
-                    <div class="legend-item" data-symbol="${symbol}" style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">
-                        <div style="width: 18px; height: 18px; background-color: ${color}; border: 1px solid #ccc; border-radius: 3px; flex-shrink: 0;"></div>
-                        <span style="color: #e0e0e0; font-size: 14px; font-weight: 500;">${symbol}</span>
+                    <div class="legend-item" data-symbol="${symbol}">
+                        <div class="legend-swatch" style="background-color: ${color};"></div>
+                        <span class="legend-label">${symbol}</span>
                     </div>
                 `;
             });

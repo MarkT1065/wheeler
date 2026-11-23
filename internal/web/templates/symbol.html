@@ -10,193 +10,96 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/styles.css?v=2">
-    <style>
-        /* Option 1: Underline/Border Accent Tabs */
-        .tab-btn {
-            padding: 12px 24px;
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: #a0a0a0;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        .tab-btn:hover {
-            color: #e0e0e0;
-            border-bottom-color: #575757;
-        }
-        .tab-btn.active {
-            color: #27ae60;
-            border-bottom-color: #27ae60;
-        }
-        .tab-content {
-            display: none;
-            height: calc(100vh - 350px);
-            overflow-y: auto;
-        }
-        .tab-content.active {
-            display: flex;
-            flex-direction: column;
-        }
-        .resizable-options-section {
-            display: flex;
-            flex-direction: column;
-            height: calc(100vh - 550px);
-            /*flex: 1;*/
-            min-height: 0;
-        }
-        .table-container-scrollable,
-        .table-container {
-            flex: 1;
-            overflow-y: auto;
-            min-height: 0;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/styles.css?v=3">
 </head>
 <body class="symbol-page">
     <div class="app-container">
         <!-- Sidebar -->
         {{template "_navigation.html" .}}
-        
+
         <!-- Main Content -->
         <div class="main-content">
-            
-            <!-- Stock Header Info -->
-            <div class="stock-header">
-                <div class="stock-info" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                    <div>
-                        <div class="stock-title">{{.Symbol}} - {{.CompanyName}}</div>
-                    </div>
-                    
-                    {{$longValue := 0.0}}
-                    {{range .LongPositionsList}}
-                        {{if not .Closed}}
-                            {{$longValue = add $longValue (mul .BuyPrice .Shares)}}
-                        {{end}}
-                    {{end}}
-                    {{$putExposed := 0.0}}
-                    {{range .OptionsList}}
-                        {{if and (eq .Type "Put") (not .Closed)}}
-                            {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
-                        {{end}}
-                    {{end}}
-                    
-                    <!-- Summary Items -->
-                    <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Price</div>
-                            <div id="current-price" style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Price}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Div</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrencyWithDecimals .Dividend}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Yield</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .Yield}}%</div>
-                        </div>
-                        {{if .ExDividendDate}}
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Ex-Div</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{.ExDividendDate.Format "01/02"}}</div>
-                        </div>
-                        {{end}}
-                        {{if .HasPERatio}}
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 85px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">P/E</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{printf "%.2f" .PERatioValue}}</div>
-                        </div>
-                        {{end}}
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 110px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Options Gains</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .OptionsGains}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Cap Gains</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .CapGains}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 95px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Dividends</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .Dividends}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Total Profits</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{formatCurrencyWithDecimals .TotalProfits}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Cash on Cash</div>
-                            <div style="font-size: 20px; color: #4ade80; font-weight: 700;">{{.CashOnCash}}%</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Long Value</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrency $longValue}}</div>
-                        </div>
-                        <div style="display: flex; flex-direction: column; align-items: center; min-width: 105px;">
-                            <div style="font-size: 16px; color: #a0a0a0;">Put Exposed</div>
-                            <div style="font-size: 20px; color: #e0e0e0; font-weight: 700;">{{formatCurrency $putExposed}}</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Action Buttons -->
-                    <div class="row-actions">
-                        <button class="actions-toggle">
-                            <i class="fas fa-ellipsis-v"></i>
-                        </button>
-                        <div class="actions-menu">
-                            <button id="editSymbolBtn">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <button id="deleteSymbolBtn" class="delete-action">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
+
+            {{$longValue := 0.0}}
+            {{range .LongPositionsList}}
+                {{if not .Closed}}
+                    {{$longValue = add $longValue (mul .BuyPrice .Shares)}}
+                {{end}}
+            {{end}}
+            {{$putExposed := 0.0}}
+            {{range .OptionsList}}
+                {{if and (eq .Type "Put") (not .Closed)}}
+                    {{$putExposed = add $putExposed (mul (mul .Strike .Contracts) 100)}}
+                {{end}}
+            {{end}}
+
             <!-- Symbol Summary Panel -->
             <div class="content-section" style="margin-bottom: 20px;">
-                <!-- Income Charts Grid -->
                 <div style="display: flex; gap: 15px;">
-                    <!-- Stacked Bar Chart -->
-                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
-                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Income Over Time</h3>
-                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
-                            <canvas id="symbolStackedChart"></canvas>
+                    <div class="chart-panel" style="flex: 1;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <h3 class="chart-panel-title" style="display: flex; align-items: center; gap: 8px;">
+                                {{.Symbol}} - {{.CompanyName}}
+                                <div class="row-actions" style="display: inline-flex;">
+                                    <button class="actions-toggle" style="padding: 2px 6px; font-size: 12px;">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <div class="actions-menu">
+                                        <button id="editSymbolBtn">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button id="deleteSymbolBtn" class="delete-action">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </h3>
+                            <div style="display: flex; gap: 14px; font-size: 13px; color: var(--text-muted);">
+                                <span>Price: <span id="current-price" style="color: var(--text-primary);">{{formatCurrencyWithDecimals .Price}}</span></span>
+                                <span>Div: <span style="color: var(--text-primary);">{{formatCurrencyWithDecimals .Dividend}}</span></span>
+                                <span>Yield: <span style="color: var(--text-primary);">{{printf "%.2f" .Yield}}%</span></span>
+                                {{if .ExDividendDate}}<span>Ex-Div: <span style="color: var(--text-primary);">{{.ExDividendDate.Format "01/02"}}</span></span>{{end}}
+                                {{if .HasPERatio}}<span>P/E: <span style="color: var(--text-primary);">{{printf "%.2f" .PERatioValue}}</span></span>{{end}}
+                                <span title="Annualized: {{formatCurrencyWithDecimals .TotalProfits}} profit ÷ {{formatCurrency .TotalDollarDays}} dollar-days × 365&#10;Long $-days: {{formatCurrency .LongDollarDays}}&#10;Put $-days: {{formatCurrency .PutDollarDays}}">CoC: <span style="color: var(--accent-green);">{{.CashOnCash}}%</span></span>
+                            </div>
+                        </div>
+                        <div class="chart-panel-canvas">
+                            <canvas id="symbolPriceHistoryChart"></canvas>
                         </div>
                     </div>
-                    
-                    <!-- Pie Chart (15% bigger) -->
-                    <div style="flex: 0.95; background: #282828; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
-                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Income by Type</h3>
-                        <div style="height: 270px; display: flex; align-items: center; justify-content: center; padding: 15px;">
-                            <div style="width: 100%; height: 100%; position: relative;">
+                    <div class="chart-panel" style="flex: 1;">
+                        <h3 class="chart-panel-title">Income</h3>
+                        <div style="display: flex; gap: 0; height: calc(100% - 35px);">
+                            <div style="flex: 1; min-width: 0;">
                                 <canvas id="symbolPieChart"></canvas>
+                            </div>
+                            <div id="incomeChartLegend" style="display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 8px;"></div>
+                            <div style="flex: 1; min-width: 0;">
+                                <canvas id="symbolStackedChart"></canvas>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Options by Expiration Scatter Chart -->
-                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
-                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Options by Expiration</h3>
-                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
-                            <canvas id="symbolExpirationChart"></canvas>
+                    <div class="chart-panel" style="flex: 1;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <h3 class="chart-panel-title">Positions</h3>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 11px; color: var(--text-muted);">Long: <span style="color: var(--text-primary);">{{formatCurrency $longValue}}</span></span>
+                                <span style="font-size: 11px; color: var(--text-muted);">Put Exposed: <span style="color: var(--text-primary);">{{formatCurrency $putExposed}}</span></span>
+                                <div id="positionsChartLegend" style="display: flex; gap: 12px;"></div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <!-- Put Exposure Bar Chart -->
-                    <div style="flex: 1; background: #2d2d2d; padding: 12px; border-radius: 8px; border: 1px solid #404040;">
-                        <h3 style="color: #e0e0e0; margin-bottom: 8px; font-size: 15px;">Put Exposure</h3>
-                        <div style="height: 270px; display: flex; align-items: center; justify-content: center;">
-                            <canvas id="symbolPutExposureChart"></canvas>
+                        <div style="display: flex; gap: 10px; height: calc(100% - 35px);">
+                            <div style="flex: 1; min-width: 0;">
+                                <canvas id="symbolExpirationChart"></canvas>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <canvas id="symbolPutExposureChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Tabbed Trading Panel -->
             <div class="content-section resizable-options-section">
                 <!-- Tab Navigation -->
@@ -217,12 +120,12 @@
                         Add
                     </button>
                 </div>
-                
+
                 <!-- Hidden Add Buttons -->
                 <button id="addOptionBtn" style="display: none;"></button>
                 <button id="addLongPositionBtn" style="display: none;"></button>
                 <button id="addDividendBtn" style="display: none;"></button>
-                
+
                 <!-- Options Tab Content -->
                 <div class="tab-content active" id="options-tab">
                 <div class="table-container-scrollable">
@@ -267,7 +170,7 @@
                                         {{if not .Closed}}
                                             <span class="{{if le .CalculateDaysRemaining 0}}dte-expired{{else if le .CalculateDaysRemaining 3}}dte-critical{{else if le .CalculateDaysRemaining 6}}dte-warning{{else if le .CalculateDaysRemaining 9}}dte-caution{{else if le .CalculateDaysRemaining 15}}dte-neutral{{else if le .CalculateDaysRemaining 21}}dte-safe{{else}}dte-healthy{{end}}">{{.CalculateDaysRemaining}} days</span>
                                         {{else}}
-                                            - 
+                                            -
                                         {{end}}
                                     </td>
                                     <td class="numeric-cell">{{.CalculateDTE}}</td>
@@ -315,7 +218,7 @@
                                             <div class="actions-menu">
                                                 <button class="edit-option-btn"
                                                         data-id="{{.ID}}"
-                                                        data-symbol="{{.Symbol | html}}" 
+                                                        data-symbol="{{.Symbol | html}}"
                                                         data-type="{{.Type}}"
                                                         data-opened="{{.Opened.Format "2006-01-02"}}"
                                                         data-strike="{{.Strike}}"
@@ -329,7 +232,7 @@
                                                 </button>
                                                 <button class="delete-action delete-option-btn"
                                                         data-id="{{.ID}}"
-                                                        data-symbol="{{.Symbol | html}}" 
+                                                        data-symbol="{{.Symbol | html}}"
                                                         data-type="{{.Type}}"
                                                         data-opened="{{.Opened.Format "2006-01-02"}}"
                                                         data-strike="{{.Strike}}"
@@ -345,7 +248,7 @@
                                 {{end}}
                             {{else}}
                                 <tr>
-                                    <td colspan="18" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                    <td colspan="18" class="empty-state">
                                         No options trades recorded for {{.Symbol}}
                                     </td>
                                 </tr>
@@ -354,7 +257,7 @@
                     </table>
                 </div>
                 </div>
-                
+
                 <!-- Stock Positions Tab Content -->
                 <div class="tab-content" id="positions-tab">
                     <div class="table-container">
@@ -413,7 +316,7 @@
                                     {{end}}
                                 {{else}}
                                     <tr>
-                                        <td colspan="11" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                        <td colspan="11" class="empty-state">
                                             No stock positions recorded for {{.Symbol}}
                                         </td>
                                     </tr>
@@ -422,7 +325,7 @@
                         </table>
                     </div>
                 </div>
-                
+
                 <!-- Dividends Tab Content -->
                 <div class="tab-content" id="dividends-tab">
                     <div class="table-container">
@@ -446,16 +349,16 @@
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
                                                 <div class="actions-menu">
-                                                    <button class="edit-dividend-btn" 
+                                                    <button class="edit-dividend-btn"
                                                             data-id="{{.ID}}"
-                                                            data-symbol="{{.Symbol | html}}" 
+                                                            data-symbol="{{.Symbol | html}}"
                                                             data-received="{{.Received.Format "2006-01-02"}}"
                                                             data-amount="{{.Amount}}">
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                     <button class="delete-action delete-dividend-btn"
                                                             data-id="{{.ID}}"
-                                                            data-symbol="{{.Symbol | html}}" 
+                                                            data-symbol="{{.Symbol | html}}"
                                                             data-received="{{.Received.Format "2006-01-02"}}"
                                                             data-amount="{{.Amount}}">
                                                         <i class="fas fa-trash"></i> Delete
@@ -467,7 +370,7 @@
                                     {{end}}
                                 {{else}}
                                     <tr>
-                                        <td colspan="3" style="text-align: center; color: #a0a0a0; padding: 20px;">
+                                        <td colspan="3" class="empty-state">
                                             No dividends recorded for {{.Symbol}}
                                         </td>
                                     </tr>
@@ -649,42 +552,42 @@
 
     <script>
         console.log('Symbol view loaded for: {{.Symbol}}');
-        
+
         // Modal helper functions
         function showConfirmModal(title, message, onConfirm) {
             $('#confirmModalTitle').text(title);
             $('#confirmModalMessage').html(message);
             $('#confirmModal').show();
-            
+
             // Remove any existing event handlers
             $('#confirmModalConfirm').off('click');
-            
+
             // Add new event handler
             $('#confirmModalConfirm').on('click', function() {
                 $('#confirmModal').hide();
                 if (onConfirm) onConfirm();
             });
         }
-        
+
         // Modal dismiss handlers
         $(document).ready(function() {
             $('[data-dismiss="modal"]').on('click', function() {
                 $(this).closest('.modal').hide();
             });
-            
+
             $('.modal').on('click', function(e) {
                 if (e.target === this) {
                     $(this).hide();
                 }
             });
         });
-        
+
         // Tab switching functionality
         let currentTab = 'options';
-        
+
         function switchTab(tabName) {
             currentTab = tabName;
-            
+
             // Update tab buttons
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
@@ -692,13 +595,13 @@
                     btn.classList.add('active');
                 }
             });
-            
+
             // Update tab content
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             document.getElementById(tabName + '-tab').classList.add('active');
-            
+
             // Update Add button functionality
             const addBtn = document.getElementById('addBtn');
             addBtn.onclick = function() {
@@ -711,12 +614,12 @@
                 }
             };
         }
-        
+
         // Check if template rendering breaks here
         console.log('About to enter DOMContentLoaded...');
-        
+
         console.log('Before DOMContentLoaded setup');
-        
+
         // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize tab switching
@@ -725,20 +628,20 @@
                     switchTab(this.dataset.tab);
                 });
             });
-            
+
             // Set initial tab
             switchTab('options');
             console.log('INSIDE DOMContentLoaded - this should appear!');
             console.log('DOM is ready, initializing JavaScript...');
-            
+
             // Get symbol safely from page title or data attribute
             const currentSymbol = document.title.split(' - ')[0];
             console.log('Current symbol:', currentSymbol);
-            
+
             // Symbol Modal functionality (custom implementation for this page)
             // Mark that custom modal implementation is present
             window.symbolModalInitialized = true;
-            
+
             const modal = document.getElementById('symbolModal');
         const editSymbolBtn = document.getElementById('editSymbolBtn');
         const newSymbolBtn = document.getElementById('newSymbolBtn');
@@ -746,7 +649,7 @@
         const cancelModal = document.getElementById('cancelModal');
         const symbolForm = document.getElementById('symbolForm');
         const modalTitle = document.getElementById('modalTitle');
-        
+
         // Open modal for editing current symbol
         console.log('About to set up editSymbolBtn listener...');
         editSymbolBtn.addEventListener('click', function() {
@@ -759,12 +662,12 @@
             });
         });
         console.log('EditSymbolBtn setup completed');
-        
+
         // Open modal for new symbol
         newSymbolBtn.addEventListener('click', function() {
             openModal(false);
         });
-        
+
 
         // Delete symbol button
         const deleteSymbolBtn = document.getElementById('deleteSymbolBtn');
@@ -777,21 +680,21 @@
                 }
             );
         });
-        
+
         // Close modal
         closeModal.addEventListener('click', closeModalFunc);
         cancelModal.addEventListener('click', closeModalFunc);
-        
+
         // Close modal when clicking outside
         window.addEventListener('click', function(event) {
             if (event.target === modal) {
                 closeModalFunc();
             }
         });
-        
+
         function openModal(editMode = false, symbolData = null) {
             modalTitle.textContent = editMode ? 'Edit Symbol' : 'New Symbol';
-            
+
             if (editMode && symbolData) {
                 document.getElementById('symbolInput').value = symbolData.symbol;
                 document.getElementById('priceInput').value = symbolData.price || '';
@@ -803,19 +706,19 @@
                 symbolForm.reset();
                 document.getElementById('symbolInput').disabled = false;
             }
-            
+
             modal.style.display = 'block';
         }
-        
+
         function closeModalFunc() {
             modal.style.display = 'none';
             symbolForm.reset();
         }
-        
+
         // Handle form submission
         symbolForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const exDivDateValue = document.getElementById('exDividendDateInput').value;
             const symbolData = {
                 symbol: document.getElementById('symbolInput').value.toUpperCase(),
@@ -824,9 +727,9 @@
                 ex_dividend_date: exDivDateValue || null,
                 pe_ratio: parseFloat(document.getElementById('peRatioInput').value) || null
             };
-            
+
             const url = `/api/symbols/${symbolData.symbol}`;
-            
+
             fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -846,7 +749,7 @@
             .then(data => {
                 console.log('Symbol saved successfully:', data);
                 closeModalFunc();
-                
+
                 // Check if we're creating a new symbol or editing current one
                 if (data.symbol === currentSymbol) {
                     // Editing current symbol - update display
@@ -864,7 +767,7 @@
                 alert('Failed to save symbol. Please try again.');
             });
         });
-        
+
         // Dividend Modal functionality
         const dividendModal = document.getElementById('dividendModal');
         const addDividendBtn = document.getElementById('addDividendBtn');
@@ -872,15 +775,15 @@
         const cancelDividendModal = document.getElementById('cancelDividendModal');
         const dividendForm = document.getElementById('dividendForm');
         const dividendModalTitle = document.getElementById('dividendModalTitle');
-        
+
         let isEditingDividend = false;
         let originalDividendData = null;
-        
+
         // Add dividend button
         addDividendBtn.addEventListener('click', function() {
             openDividendModal(false);
         });
-        
+
         // Edit dividend buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.edit-dividend-btn')) {
@@ -893,7 +796,7 @@
                 openDividendModal(true, dividendData);
             }
         });
-        
+
         // Delete dividend buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.delete-dividend-btn')) {
@@ -907,24 +810,24 @@
                 );
             }
         });
-        
+
         // Close dividend modal
         closeDividendModal.addEventListener('click', closeDividendModalFunc);
         cancelDividendModal.addEventListener('click', closeDividendModalFunc);
-        
+
         // Close dividend modal when clicking outside
         window.addEventListener('click', function(event) {
             if (event.target === dividendModal) {
                 closeDividendModalFunc();
             }
         });
-        
+
         function openDividendModal(editMode = false, dividendData = null) {
             isEditingDividend = editMode;
             dividendModalTitle.textContent = editMode ? 'Edit Dividend' : 'Add Dividend';
-            
+
             document.getElementById('dividendSymbolInput').value = currentSymbol;
-            
+
             if (editMode && dividendData) {
                 originalDividendData = dividendData;
                 document.getElementById('dividendReceivedInput').value = dividendData.received;
@@ -934,34 +837,34 @@
                 document.getElementById('dividendSymbolInput').value = currentSymbol;
                 originalDividendData = null;
             }
-            
+
             dividendModal.style.display = 'block';
         }
-        
+
         function closeDividendModalFunc() {
             dividendModal.style.display = 'none';
             dividendForm.reset();
             isEditingDividend = false;
             originalDividendData = null;
         }
-        
+
         // Handle dividend form submission
         dividendForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const dividendData = {
                 symbol: document.getElementById('dividendSymbolInput').value,
                 received: document.getElementById('dividendReceivedInput').value,
                 amount: parseFloat(document.getElementById('dividendAmountInput').value)
             };
-            
+
             if (isEditingDividend) {
                 updateDividend(originalDividendData, dividendData);
             } else {
                 createDividend(dividendData);
             }
         });
-        
+
         function createDividend(dividendData) {
             fetch('/api/dividends', {
                 method: 'POST',
@@ -984,7 +887,7 @@
                 alert('Failed to create dividend. Please try again.');
             });
         }
-        
+
         function updateDividend(originalData, newData) {
             // For update, we need to delete the old one and create a new one
             // since dividends use compound primary key (symbol + received + amount)
@@ -1008,7 +911,7 @@
                 alert('Failed to update dividend. Please try again.');
             });
         }
-        
+
         function deleteDividend(id, symbol, received, amount) {
             const deleteData = {
                 id: parseInt(id),
@@ -1017,7 +920,7 @@
                 amount: parseFloat(amount)
             };
             console.log('Deleting dividend with data:', deleteData);
-            
+
             fetch('/api/dividends', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
@@ -1041,33 +944,33 @@
         function applyDynamicColors() {
             // Handle summary values
             const summaryValues = document.querySelectorAll('.summary-value');
-            
+
             summaryValues.forEach(valueElement => {
                 const text = valueElement.textContent.trim();
-                
+
                 // Extract numeric value from text (remove $, %, commas)
                 let numericValue = parseFloat(text.replace(/[$,%]/g, '').replace(/,/g, ''));
-                
+
                 // Skip if we can't parse a number
                 if (isNaN(numericValue)) {
                     return;
                 }
-                
+
                 // Remove existing color classes
                 valueElement.classList.remove('positive', 'negative');
-                
+
                 // Apply conservative coloring: only losses are red, profits are neutral
                 if (numericValue < 0) {
                     valueElement.classList.add('negative');
                 }
                 // Note: Removed positive class application - profits stay neutral
             });
-            
+
             // Handle Options table profit/loss coloring
             const optionsTableRows = document.querySelectorAll('.table-container-scrollable tbody tr');
             optionsTableRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                
+
                 // Percent of Profit column (index 12, 0-based)
                 if (cells[12]) {
                     const percentText = cells[12].textContent.trim();
@@ -1081,7 +984,7 @@
                         }
                     }
                 }
-                
+
                 // Total Profit column (index 15, 0-based)
                 if (cells[15]) {
                     const totalText = cells[15].textContent.trim();
@@ -1096,12 +999,12 @@
                     }
                 }
             });
-            
+
             // Handle Stock Positions table profit/loss coloring
             const stockPositionsRows = document.querySelectorAll('.section-row .content-section:first-child table tbody tr');
             stockPositionsRows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                
+
                 // Profit/Loss column (index 6, 0-based)
                 if (cells[6]) {
                     const profitText = cells[6].textContent.trim();
@@ -1115,7 +1018,7 @@
                         }
                     }
                 }
-                
+
                 // ROI column (index 7, 0-based)
                 if (cells[7]) {
                     const roiText = cells[7].textContent.trim();
@@ -1139,34 +1042,34 @@
         const cancelLongPositionModal = document.getElementById('cancelLongPositionModal');
         const longPositionForm = document.getElementById('longPositionForm');
         const longPositionModalTitle = document.getElementById('longPositionModalTitle');
-        
+
         let isEditingLongPosition = false;
         let originalLongPositionData = null;
-        
+
         // Open long position modal for new position
         addLongPositionBtn.addEventListener('click', function() {
             console.log('Add Long Position button clicked');
             openLongPositionModal(false);
         });
-        
+
         // Close long position modal
         closeLongPositionModal.addEventListener('click', closeLongPositionModalFunc);
         cancelLongPositionModal.addEventListener('click', closeLongPositionModalFunc);
-        
+
         // Close long position modal when clicking outside
         window.addEventListener('click', function(event) {
             if (event.target === longPositionModal) {
                 closeLongPositionModalFunc();
             }
         });
-        
+
         function openLongPositionModal(editMode = false, positionData = null) {
             console.log('openLongPositionModal called with editMode:', editMode, 'positionData:', positionData);
             isEditingLongPosition = editMode;
             longPositionModalTitle.textContent = editMode ? 'Edit Long Position' : 'Add Long Position';
-            
+
             document.getElementById('longPositionSymbolInput').value = currentSymbol;
-            
+
             if (editMode && positionData) {
                 originalLongPositionData = positionData;
                 document.getElementById('longPositionOpenedInput').value = positionData.opened;
@@ -1182,22 +1085,22 @@
                 document.getElementById('longPositionOpenedInput').value = today;
                 originalLongPositionData = null;
             }
-            
+
             longPositionModal.style.display = 'block';
             console.log('Modal should now be visible');
         }
-        
+
         function closeLongPositionModalFunc() {
             longPositionModal.style.display = 'none';
             longPositionForm.reset();
             isEditingLongPosition = false;
             originalLongPositionData = null;
         }
-        
+
         // Handle long position form submission
         longPositionForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const positionData = {
                 symbol: document.getElementById('longPositionSymbolInput').value,
                 opened: document.getElementById('longPositionOpenedInput').value,
@@ -1206,19 +1109,19 @@
                 closed: document.getElementById('longPositionClosedInput').value || null,
                 exit_price: document.getElementById('longPositionExitPriceInput').value ? parseFloat(document.getElementById('longPositionExitPriceInput').value) : null
             };
-            
+
             // Include ID for edit operations
             if (isEditingLongPosition && originalLongPositionData) {
                 positionData.id = originalLongPositionData.id;
             }
-            
+
             if (isEditingLongPosition) {
                 updateLongPosition(originalLongPositionData, positionData);
             } else {
                 createLongPosition(positionData);
             }
         });
-        
+
         function createLongPosition(positionData) {
             fetch('/api/long-positions', {
                 method: 'POST',
@@ -1241,7 +1144,7 @@
                 alert('Failed to create long position. Please try again.');
             });
         }
-        
+
         function updateLongPosition(originalData, newData) {
             fetch('/api/long-positions', {
                 method: 'PUT',
@@ -1264,7 +1167,7 @@
                 alert('Failed to update long position. Please try again.');
             });
         }
-        
+
         function deleteLongPosition(positionData) {
             fetch('/api/long-positions', {
                 method: 'DELETE',
@@ -1286,7 +1189,7 @@
                 alert('Failed to delete long position. Please try again.');
             });
         }
-        
+
         // Edit long position buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.edit-long-position-btn')) {
@@ -1294,7 +1197,7 @@
                 const btn = event.target.closest('.edit-long-position-btn');
                 const row = btn.closest('tr');
                 const cells = row.querySelectorAll('td');
-                
+
                 const positionData = {
                     id: parseInt(btn.dataset.id),
                     symbol: currentSymbol,
@@ -1304,21 +1207,21 @@
                     buy_price: parseFloat(cells[4].textContent.replace('$', '')),
                     exit_price: cells[5].textContent.trim() === '-' ? null : parseFloat(cells[5].textContent.replace('$', ''))
                 };
-                
+
                 // Convert date format from MM/DD/YYYY to YYYY-MM-DD for input fields
                 const convertDateFormat = (dateStr) => {
                     if (!dateStr || dateStr === '-') return '';
                     const [month, day, year] = dateStr.split('/');
                     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
                 };
-                
+
                 positionData.opened = convertDateFormat(positionData.opened);
                 positionData.closed = convertDateFormat(positionData.closed);
-                
+
                 openLongPositionModal(true, positionData);
             }
         });
-        
+
         // Delete long position buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.delete-long-position-btn')) {
@@ -1343,15 +1246,15 @@
         const cancelOptionModal = document.getElementById('cancelOptionModal');
         const optionForm = document.getElementById('optionForm');
         const optionModalTitle = document.getElementById('optionModalTitle');
-        
+
         let isEditingOption = false;
         let originalOptionData = null;
-        
+
         // Add option button
         addOptionBtn.addEventListener('click', function() {
             openOptionModal(false);
         });
-        
+
         // Edit option buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.edit-option-btn')) {
@@ -1372,7 +1275,7 @@
                 openOptionModal(true, optionData);
             }
         });
-        
+
         // Delete option buttons
         document.addEventListener('click', function(event) {
             if (event.target.closest('.delete-option-btn')) {
@@ -1395,24 +1298,24 @@
                 );
             }
         });
-        
+
         // Close option modal
         closeOptionModal.addEventListener('click', closeOptionModalFunc);
         cancelOptionModal.addEventListener('click', closeOptionModalFunc);
-        
+
         // Close option modal when clicking outside
         window.addEventListener('click', function(event) {
             if (event.target === optionModal) {
                 closeOptionModalFunc();
             }
         });
-        
+
         function openOptionModal(editMode = false, optionData = null) {
             isEditingOption = editMode;
             optionModalTitle.textContent = editMode ? 'Edit Option' : 'Add Option';
-            
+
             document.getElementById('optionSymbolInput').value = currentSymbol;
-            
+
             if (editMode && optionData) {
                 originalOptionData = optionData;
                 document.getElementById('optionTypeInput').value = optionData.type;
@@ -1433,21 +1336,21 @@
                 document.getElementById('optionCommissionInput').value = '0.65';
                 originalOptionData = null;
             }
-            
+
             optionModal.style.display = 'block';
         }
-        
+
         function closeOptionModalFunc() {
             optionModal.style.display = 'none';
             optionForm.reset();
             isEditingOption = false;
             originalOptionData = null;
         }
-        
+
         // Handle option form submission
         optionForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const optionData = {
                 symbol: document.getElementById('optionSymbolInput').value,
                 type: document.getElementById('optionTypeInput').value,
@@ -1460,14 +1363,14 @@
                 exit_price: parseFloat(document.getElementById('optionExitPriceInput').value) || null,
                 commission: parseFloat(document.getElementById('optionCommissionInput').value) || 0.0
             };
-            
+
             if (isEditingOption) {
                 updateOption(originalOptionData, optionData);
             } else {
                 createOption(optionData);
             }
         });
-        
+
         function createOption(optionData) {
             fetch('/api/options', {
                 method: 'POST',
@@ -1490,7 +1393,7 @@
                 alert('Failed to create option. Please try again.');
             });
         }
-        
+
         function updateOption(originalData, newData) {
             // Use PUT request with ID-based update system
             fetch('/api/options', {
@@ -1523,7 +1426,7 @@
                 alert('Failed to update option. Please try again.');
             });
         }
-        
+
         function deleteOption(optionData) {
             fetch('/api/options', {
                 method: 'DELETE',
@@ -1547,11 +1450,11 @@
         function updateSymbolPrice(symbol) {
             const updateBtn = document.getElementById('updatePriceBtn');
             const originalText = updateBtn.innerHTML;
-            
+
             // Disable button and show loading state
             updateBtn.disabled = true;
             updateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-            
+
             fetch(`/api/symbols/${symbol}/update-price`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -1580,11 +1483,11 @@
         function fetchSymbolDividends(symbol) {
             const fetchBtn = document.getElementById('fetchDividendsBtn');
             const originalText = fetchBtn.innerHTML;
-            
+
             // Disable button and show loading state
             fetchBtn.disabled = true;
             fetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
-            
+
             fetch(`/api/symbols/${symbol}/fetch-dividends`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
@@ -1594,14 +1497,14 @@
                 if (data.success) {
                     console.log('Dividends fetched successfully for', symbol);
                     const message = `Found ${data.count} dividend records for ${symbol}`;
-                    
+
                     // Show dividend information in a more user-friendly way
                     if (data.dividends && data.dividends.length > 0) {
                         let dividendInfo = `<strong>Recent dividends for ${symbol}:</strong><br><br>`;
                         data.dividends.slice(0, 5).forEach(div => {
                             dividendInfo += `• $${div.cash_amount.toFixed(2)} - Ex-Date: ${div.ex_dividend_date}<br>`;
                         });
-                        
+
                         showConfirmModal(
                             'Dividend Data Retrieved',
                             dividendInfo,
@@ -1652,25 +1555,25 @@
 
         // Apply colors when page loads
         applyDynamicColors();
-        
+
         // Test if we reach the end of JavaScript execution
         console.log('JavaScript fully loaded and executed');
-        
+
         // Test if buttons exist and can be found
         const testAddBtn = document.getElementById('addLongPositionBtn');
         console.log('Add Long Position button found:', testAddBtn);
         if (testAddBtn) {
             console.log('Add button click listener attached');
         }
-        
+
         // Test if edit buttons exist
         const editBtns = document.querySelectorAll('.edit-long-position-btn');
         console.log('Edit buttons found:', editBtns.length);
-        
-        // Test if delete buttons exist  
+
+        // Test if delete buttons exist
         const deleteBtns = document.querySelectorAll('.delete-long-position-btn');
         console.log('Delete buttons found:', deleteBtns.length);
-        
+
         // Check for edit_option query parameter to auto-open option edit modal
         const urlParams = new URLSearchParams(window.location.search);
         const editOptionId = urlParams.get('edit_option');
@@ -1681,16 +1584,16 @@
                 openOptionModalForEdit(editOptionId);
             }, 500);
         }
-        
+
         // Function to open option modal for editing by option ID
         function openOptionModalForEdit(optionId) {
             console.log('Looking for option with ID:', optionId);
-            
+
             // Find the edit button for this option ID
             const editBtn = document.querySelector(`[data-id="${optionId}"].edit-option-btn`);
             if (editBtn) {
                 console.log('Found edit button, extracting option data');
-                
+
                 const optionData = {
                     id: parseInt(editBtn.dataset.id),
                     symbol: editBtn.dataset.symbol,
@@ -1704,10 +1607,10 @@
                     exit_price: editBtn.dataset.exitPrice ? parseFloat(editBtn.dataset.exitPrice) : null,
                     commission: parseFloat(editBtn.dataset.commission) || 0.0
                 };
-                
+
                 console.log('Opening option modal with data:', optionData);
                 openOptionModal(true, optionData);
-                
+
                 // Clean up URL by removing the query parameter
                 const newUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, newUrl);
@@ -1718,11 +1621,11 @@
                 fetchOptionAndOpenModal(optionId);
             }
         }
-        
+
         // Helper function to format date strings for input fields
         function formatDateForInput(dateString) {
             if (!dateString) return null;
-            
+
             try {
                 // Parse the ISO date string and format it for input fields (YYYY-MM-DD)
                 const date = new Date(dateString);
@@ -1732,11 +1635,11 @@
                 return dateString; // Return original if parsing fails
             }
         }
-        
+
         // Function to fetch option data via API and open modal
         function fetchOptionAndOpenModal(optionId) {
             console.log('Fetching option data via API for ID:', optionId);
-            
+
             fetch(`/api/options/${optionId}`)
                 .then(response => {
                     if (!response.ok) {
@@ -1746,7 +1649,7 @@
                 })
                 .then(optionData => {
                     console.log('Fetched option data:', optionData);
-                    
+
                     // Format the API response to match the format expected by openOptionModal
                     const formattedOptionData = {
                         id: optionData.id,
@@ -1761,10 +1664,10 @@
                         exit_price: optionData.exit_price || null,
                         commission: optionData.commission || 0.0
                     };
-                    
+
                     console.log('Formatted option data:', formattedOptionData);
                     openOptionModal(true, formattedOptionData);
-                    
+
                     // Clean up URL by removing the query parameter
                     const newUrl = window.location.origin + window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
@@ -1772,13 +1675,13 @@
                 .catch(error => {
                     console.error('Failed to fetch option data:', error);
                     alert('Could not load the option for editing. The option may have been deleted or you may not have permission to view it.');
-                    
+
                     // Clean up URL even if there was an error
                     const newUrl = window.location.origin + window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
                 });
         }
-        
+
         }); // End of DOMContentLoaded
     </script>
     <script>
@@ -1790,7 +1693,7 @@
             const monthlyCapGains = {};
             const monthlyDividends = {};
             const monthlyTotal = {};
-            
+
             // Process options data
             {{range .OptionsList}}
                 {
@@ -1804,7 +1707,7 @@
                     monthlyTotal[optionMonth] = (monthlyTotal[optionMonth] || 0) + optionProfit;
                 }
             {{end}}
-            
+
             // Process long positions for cap gains
             {{range .LongPositionsList}}
                 {{if .Closed}}
@@ -1818,7 +1721,7 @@
                     {{end}}
                 {{end}}
             {{end}}
-            
+
             // Process dividends
             {{range .DividendsList}}
                 {
@@ -1827,20 +1730,20 @@
                     monthlyTotal[dividendMonth] = (monthlyTotal[dividendMonth] || 0) + {{.Amount}};
                 }
             {{end}}
-            
+
             // Generate last 12 months
             const months = [];
             for (let i = 11; i >= 0; i--) {
                 months.push(moment().subtract(i, 'months').format('YYYY-MM'));
             }
             const labels = months.map(m => moment(m + '-01').format('MMM YYYY'));
-            
+
             // Prepare data for stacked bar chart
             const putsData = months.map(m => monthlyPuts[m] || 0);
             const callsData = months.map(m => monthlyCalls[m] || 0);
             const capGainsData = months.map(m => monthlyCapGains[m] || 0);
             const dividendsData = months.map(m => monthlyDividends[m] || 0);
-            
+
             // Calculate cumulative data for line chart
             const cumulativeData = [];
             let runningTotal = 0;
@@ -1848,16 +1751,16 @@
                 runningTotal += (putsData[i] + callsData[i] + capGainsData[i] + dividendsData[i]);
                 cumulativeData.push(runningTotal);
             }
-            
+
             // Calculate totals for pie chart
             const totalPuts = putsData.reduce((sum, val) => sum + val, 0);
             const totalCalls = callsData.reduce((sum, val) => sum + val, 0);
             const totalCapGains = capGainsData.reduce((sum, val) => sum + val, 0);
             const totalDividends = dividendsData.reduce((sum, val) => sum + val, 0);
-            
+
             // Create stacked bar chart
             const stackedCtx = document.getElementById('symbolStackedChart').getContext('2d');
-            new Chart(stackedCtx, {
+            const barChart = new Chart(stackedCtx, {
                 type: 'bar',
                 data: {
                     labels: labels,
@@ -1929,14 +1832,7 @@
                     },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 },
-                                padding: 10,
-                                usePointStyle: true
-                            }
+                            display: false
                         },
                         tooltip: {
                             callbacks: {
@@ -1988,10 +1884,10 @@
                     }
                 }
             });
-            
+
             // Create donut chart for total income by type
             const pieCtx = document.getElementById('symbolPieChart').getContext('2d');
-            
+
             // Plugin to draw text in center of donut
             const centerTextPlugin = {
                 id: 'centerText',
@@ -2000,28 +1896,28 @@
                     const chartArea = chart.chartArea;
                     const centerX = (chartArea.left + chartArea.right) / 2;
                     const centerY = (chartArea.top + chartArea.bottom) / 2;
-                    
+
                     const total = chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
-                    
+
                     ctx.save();
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    
+
                     // Draw "Total" label
                     ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     ctx.fillStyle = '#a0a0a0';
                     ctx.fillText('Total', centerX, centerY - 12);
-                    
+
                     // Draw total value
                     ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                     ctx.fillStyle = '#e0e0e0';
                     ctx.fillText('$' + total.toLocaleString(), centerX, centerY + 12);
-                    
+
                     ctx.restore();
                 }
             };
-            
-            new Chart(pieCtx, {
+
+            const pieChart = new Chart(pieCtx, {
                 plugins: [ChartDataLabels, centerTextPlugin],
                 type: 'doughnut',
                 data: {
@@ -2048,25 +1944,15 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            left: 10,
-                            right: 10,
-                            top: 10,
-                            bottom: 10
+                            left: 5,
+                            right: 5,
+                            top: 5,
+                            bottom: 5
                         }
                     },
                     plugins: {
                         legend: {
-                            display: true,
-                            position: 'right',
-                            align: 'center',
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 12 },
-                                padding: 12,
-                                usePointStyle: true,
-                                boxWidth: 12,
-                                boxHeight: 12
-                            }
+                            display: false
                         },
                         tooltip: {
                             callbacks: {
@@ -2083,7 +1969,7 @@
                             display: true,
                             color: '#ffffff',
                             font: {
-                                size: 12,
+                                size: 11,
                                 weight: 'bold'
                             },
                             formatter: function(value, context) {
@@ -2099,10 +1985,55 @@
                     }
                 }
             });
-            
+
+            // Build shared legend for both income charts
+            const legendItems = [
+                { label: 'Cumulative', color: '#FFD700', barIndex: 0, pieIndex: -1, isLine: true },
+                { label: 'Puts', color: '#3498db', barIndex: 1, pieIndex: 0 },
+                { label: 'Calls', color: '#e67e22', barIndex: 2, pieIndex: 1 },
+                { label: 'Capital Gains', color: '#2ecc71', barIndex: 3, pieIndex: 2 },
+                { label: 'Dividends', color: '#f1c40f', barIndex: 4, pieIndex: 3 }
+            ];
+
+            const legendContainer = document.getElementById('incomeChartLegend');
+            legendItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'legend-item';
+                const swatch = document.createElement('span');
+                swatch.className = 'legend-swatch';
+                swatch.style.backgroundColor = item.color;
+                swatch.style.width = '10px';
+                swatch.style.height = '10px';
+                if (item.isLine) {
+                    swatch.style.borderRadius = '50%';
+                }
+                const label = document.createElement('span');
+                label.className = 'legend-label';
+                label.style.fontSize = '11px';
+                label.textContent = item.label;
+                el.appendChild(swatch);
+                el.appendChild(label);
+
+                el.addEventListener('click', function() {
+                    const barMeta = barChart.getDatasetMeta(item.barIndex);
+                    const isHidden = !barMeta.hidden;
+                    barMeta.hidden = isHidden;
+                    if (item.pieIndex >= 0) {
+                        const pieMeta = pieChart.getDatasetMeta(0);
+                        pieMeta.data[item.pieIndex].hidden = isHidden;
+                    }
+                    el.style.opacity = isHidden ? '0.4' : '1';
+                    barChart.update();
+                    pieChart.update();
+                });
+
+                legendContainer.appendChild(el);
+            });
+
             // Create Options by Expiration scatter chart for this symbol
-            const symbolExpirationScatterData = [];
-            
+            const putScatterData = [];
+            const callScatterData = [];
+
             {{range .OptionsList}}
                 {
                     const expirationDate = new Date('{{.Expiration.Format "2006-01-02"}}');
@@ -2113,17 +2044,16 @@
                     const isClosed = {{if .Closed}}true{{else}}false{{end}};
                     const nominalValue = strike * contracts * 100;
                     const riskScaledValue = type === 'Put' ? nominalValue * 1.5 : nominalValue;
-                    
-                    // Scale radius from nominal value
+
                     const minNominal = 1000;
                     const maxNominal = 50000;
                     const minRadius = 4;
                     const maxRadius = 20;
-                    const scaledRadius = Math.max(minRadius, Math.min(maxRadius, 
+                    const scaledRadius = Math.max(minRadius, Math.min(maxRadius,
                         minRadius + (riskScaledValue - minNominal) * (maxRadius - minRadius) / (maxNominal - minNominal)
                     ));
-                    
-                    symbolExpirationScatterData.push({
+
+                    const point = {
                         x: expirationDate,
                         y: totalProfit,
                         r: scaledRadius,
@@ -2132,83 +2062,71 @@
                         strike: strike,
                         contracts: contracts,
                         nominalValue: nominalValue,
-                        riskScaledValue: riskScaledValue,
                         isClosed: isClosed
-                    });
+                    };
+
+                    if (type === 'Put') {
+                        putScatterData.push(point);
+                    } else {
+                        callScatterData.push(point);
+                    }
                 }
             {{end}}
-            
-            // Only create chart if we have data
-            if (symbolExpirationScatterData.length === 0) {
+
+            let expirationChart = null;
+            if (putScatterData.length === 0 && callScatterData.length === 0) {
                 const canvas = document.getElementById('symbolExpirationChart');
                 const parent = canvas.parentElement;
-                parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No options</div>';
+                parent.innerHTML = '<div class="js-empty-state">No options</div>';
             } else {
-            
-            // Create scatter chart
+
+            function bubbleColor(data) {
+                return function(ctx) {
+                    const point = data[ctx.dataIndex];
+                    if (!point) return '#3498db';
+                    const base = point.type === 'Put'
+                        ? (point.y < 0 ? '#8b4789' : '#3498db')
+                        : (point.y < 0 ? '#8b6347' : '#27ae60');
+                    return point.isClosed ? base + '80' : base;
+                };
+            }
             const scatterCtx = document.getElementById('symbolExpirationChart').getContext('2d');
-            new Chart(scatterCtx, {
+            expirationChart = new Chart(scatterCtx, {
                 type: 'bubble',
                 data: {
-                    datasets: [{
-                        label: 'Options',
-                        data: symbolExpirationScatterData,
-                        backgroundColor: function(ctx) {
-                            const point = symbolExpirationScatterData[ctx.dataIndex];
-                            if (!point) return '#3498db';
-                            
-                            let color;
-                            if (point.y < 0) {
-                                // Negative profit - blend with red
-                                color = point.type === 'Put' ? '#8b4789' : '#8b6347';
-                            } else {
-                                // Positive profit - normal colors
-                                color = point.type === 'Put' ? '#3498db' : '#27ae60';
-                            }
-                            
-                            return point.isClosed ? color + '80' : color;
+                    datasets: [
+                        {
+                            label: 'Puts',
+                            data: putScatterData,
+                            backgroundColor: bubbleColor(putScatterData),
+                            borderColor: bubbleColor(putScatterData),
+                            borderWidth: function(ctx) { const p = putScatterData[ctx.dataIndex]; return p && p.isClosed ? 1 : 2; }
                         },
-                        borderColor: function(ctx) {
-                            const point = symbolExpirationScatterData[ctx.dataIndex];
-                            if (!point) return '#3498db';
-                            
-                            if (point.y < 0) {
-                                // Negative profit - blend with red
-                                return point.type === 'Put' ? '#8b4789' : '#8b6347';
-                            } else {
-                                // Positive profit - normal colors
-                                return point.type === 'Put' ? '#3498db' : '#27ae60';
-                            }
-                        },
-                        borderWidth: function(ctx) {
-                            const point = symbolExpirationScatterData[ctx.dataIndex];
-                            return point && point.isClosed ? 1 : 2;
-                        },
-                        pointRadius: function(ctx) {
-                            const point = symbolExpirationScatterData[ctx.dataIndex];
-                            return point ? point.r : 8;
-                        },
-                        pointHoverRadius: function(ctx) {
-                            const point = symbolExpirationScatterData[ctx.dataIndex];
-                            return point ? point.r + 4 : 12;
+                        {
+                            label: 'Calls',
+                            data: callScatterData,
+                            backgroundColor: bubbleColor(callScatterData),
+                            borderColor: bubbleColor(callScatterData),
+                            borderWidth: function(ctx) { const p = callScatterData[ctx.dataIndex]; return p && p.isClosed ? 1 : 2; }
                         }
-                    }]
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 title: function(context) {
-                                    const point = symbolExpirationScatterData[context[0].dataIndex];
+                                    const dsIndex = context[0].datasetIndex;
+                                    const data = dsIndex === 0 ? putScatterData : callScatterData;
+                                    const point = data[context[0].dataIndex];
                                     return point.symbol + ' ' + point.type + ' $' + point.strike;
                                 },
                                 label: function(context) {
-                                    const point = symbolExpirationScatterData[context.dataIndex];
+                                    const data = context.datasetIndex === 0 ? putScatterData : callScatterData;
+                                    const point = data[context.dataIndex];
                                     return [
                                         'Status: ' + (point.isClosed ? 'Closed' : 'Open'),
                                         'Contracts: ' + point.contracts,
@@ -2222,43 +2140,28 @@
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
-                                unit: 'day',
-                                displayFormats: {
-                                    day: 'MM/dd'
-                                }
-                            },
-                            ticks: { 
-                                color: '#a0a0a0',
-                                autoSkip: false,
-                                maxRotation: 45,
-                                minRotation: 45
-                            },
+                            time: { unit: 'day', displayFormats: { day: 'MM/dd' } },
+                            ticks: { color: '#a0a0a0', autoSkip: true, maxRotation: 45, minRotation: 45 },
                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         },
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                color: '#a0a0a0',
-                                callback: function(value) {
-                                    return '$' + value.toLocaleString();
-                                }
-                            },
+                            ticks: { color: '#a0a0a0', callback: function(value) { return '$' + value.toLocaleString(); } },
                             grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         }
                     }
                 }
             });
             } // End of scatter chart conditional
-            
+
             // Create Put Exposure Over Time chart - historical + 365 day forward view
             // Build a timeline of put exposure: each day shows total exposure from all active puts on that day
-            
+
             // Collect all put option data with opened and expiration dates
             const putOptions = [];
             let latestExpiration = null;
             let earliestOpened = null;
-            
+
             {{range .OptionsList}}
                 {{if eq .Type "Put"}}
                     {
@@ -2270,7 +2173,7 @@
                         const commission = parseFloat('{{.Commission}}') || 0;
                         const exitPrice = {{if .ExitPrice}}{{.GetExitPriceValue}} * {{.Contracts}} * 100{{else}}0{{end}};
                         const profit = premium - commission - exitPrice;
-                        
+
                         console.log('Put option:', {
                             opened: '{{.Opened.Format "2006-01-02"}}',
                             expiration: '{{.Expiration.Format "2006-01-02"}}',
@@ -2279,7 +2182,7 @@
                             exitPrice: exitPrice,
                             profit: profit
                         });
-                        
+
                         putOptions.push({
                             opened: opened,
                             expiration: expiration,
@@ -2289,12 +2192,12 @@
                             commission: commission,
                             profit: profit
                         });
-                        
+
                         // Track latest expiration from all puts (open or closed)
                         if (!latestExpiration || expiration > latestExpiration) {
                             latestExpiration = expiration;
                         }
-                        
+
                         // Track earliest opened date from all puts
                         if (!earliestOpened || opened < earliestOpened) {
                             earliestOpened = opened;
@@ -2302,10 +2205,10 @@
                     }
                 {{end}}
             {{end}}
-            
+
             // Determine date range: from earliest opened to latest expiration (or 365 days if no puts)
             let startDate, endDate;
-            
+
             if (latestExpiration && earliestOpened) {
                 // Show from earliest opened to latest expiration
                 startDate = new Date(earliestOpened);
@@ -2318,16 +2221,16 @@
                 startDate = new Date(today);
                 startDate.setDate(startDate.getDate() - 365);
             }
-            
+
             // Collect long position data for the same date range
             const longPositions = [];
-            
+
             {{range .LongPositionsList}}
                 {
                     const opened = new Date('{{.Opened.Format "2006-01-02"}}');
                     const closed = {{if .Closed}}new Date('{{.Closed.Format "2006-01-02"}}'){{else}}null{{end}};
                     const value = {{.BuyPrice}} * {{.Shares}};
-                    
+
                     longPositions.push({
                         opened: opened,
                         closed: closed,
@@ -2335,74 +2238,91 @@
                     });
                 }
             {{end}}
-            
-            // Calculate exposure and long value for each day
+
+            // Calculate exposure and long value for each day and track if any open positions exist
             const exposureByDate = {};
             const longValueByDate = {};
+            const hasOpenPutByDate = {};
+            const hasOpenLongByDate = {};
             let currentDate = new Date(startDate);
-            
+
             console.log('Total put options:', putOptions.length);
             console.log('Total long positions:', longPositions.length);
             console.log('Date range:', startDate, 'to', endDate);
-            
+
             while (currentDate <= endDate) {
                 const dateStr = currentDate.toISOString().split('T')[0];
                 let dailyExposure = 0;
                 let dailyLongValue = 0;
-                
+                let hasOpenPut = false;
+                let hasOpenLong = false;
+
                 // Sum up exposure from all puts that are active on this date
                 putOptions.forEach(put => {
                     const isActive = currentDate >= put.opened && currentDate <= put.expiration &&
                                    (!put.closed || currentDate < put.closed);
                     if (isActive) {
                         dailyExposure += put.exposure;
+                        // Check if this put is still open (not closed)
+                        if (!put.closed) {
+                            hasOpenPut = true;
+                        }
                     }
                 });
-                
+
                 // Sum up long value from all positions that are active on this date
                 longPositions.forEach(position => {
                     const isActive = currentDate >= position.opened &&
                                    (!position.closed || currentDate < position.closed);
                     if (isActive) {
                         dailyLongValue += position.value;
+                        // Check if this position is still open (not closed)
+                        if (!position.closed) {
+                            hasOpenLong = true;
+                        }
                     }
                 });
-                
+
                 exposureByDate[dateStr] = dailyExposure;
                 longValueByDate[dateStr] = dailyLongValue;
+                hasOpenPutByDate[dateStr] = hasOpenPut;
+                hasOpenLongByDate[dateStr] = hasOpenLong;
                 currentDate.setDate(currentDate.getDate() + 1);
             }
-            
+
             console.log('Sample data points:');
             console.log('Exposure:', Object.entries(exposureByDate).slice(0, 5));
             console.log('Long Value:', Object.entries(longValueByDate).slice(0, 5));
-            
+
             // Sample weekly data points for cleaner chart (every 7 days)
             const weeklyLabels = [];
             const weeklyExposureData = [];
             const weeklyLongValueData = [];
+            const weeklyHasOpenPut = [];
+            const weeklyHasOpenLong = [];
             currentDate = new Date(startDate);
-            
+
             while (currentDate <= endDate) {
                 const dateStr = currentDate.toISOString().split('T')[0];
                 weeklyLabels.push(dateStr);
                 weeklyExposureData.push(exposureByDate[dateStr] || 0);
                 weeklyLongValueData.push(longValueByDate[dateStr] || 0);
+                weeklyHasOpenPut.push(hasOpenPutByDate[dateStr] || false);
+                weeklyHasOpenLong.push(hasOpenLongByDate[dateStr] || false);
                 currentDate.setDate(currentDate.getDate() + 7);
             }
-            
-            // Only create chart if we have puts or long positions
+
+            let exposureChart = null;
             if (putOptions.length === 0 && longPositions.length === 0) {
                 const canvas = document.getElementById('symbolPutExposureChart');
                 if (canvas) {
                     const parent = canvas.parentElement;
-                    parent.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #a0a0a0; font-size: 14px;">No data</div>';
+                    parent.innerHTML = '<div class="js-empty-state">No data</div>';
                 }
             } else {
-            
-            // Create combination chart: bars for put exposure vs long value
+
             const putExposureCtx = document.getElementById('symbolPutExposureChart').getContext('2d');
-            
+
             // Plugin to draw vertical line at today
             const todayLinePlugin = {
                 id: 'todayLine',
@@ -2411,11 +2331,11 @@
                         const ctx = chart.ctx;
                         const xAxis = chart.scales.x;
                         const yAxis = chart.scales.y;
-                        
+
                         const x = xAxis.getPixelForValue(todayIndex);
                         const topY = yAxis.top;
                         const bottomY = yAxis.bottom;
-                        
+
                         ctx.save();
                         ctx.beginPath();
                         ctx.moveTo(x, topY);
@@ -2427,8 +2347,8 @@
                     }
                 }
             };
-            
-            new Chart(putExposureCtx, {
+
+            exposureChart = new Chart(putExposureCtx, {
                 type: 'bar',
                 plugins: [ChartDataLabels],
                 data: {
@@ -2440,15 +2360,33 @@
                         {
                             label: 'Put Exposure',
                             data: weeklyExposureData,
-                            backgroundColor: 'rgba(52, 152, 219, 0.8)',
-                            borderColor: '#3498db',
+                            backgroundColor: function(context) {
+                                const index = context.dataIndex;
+                                const hasOpen = weeklyHasOpenPut[index];
+                                // Opaque for open positions, translucent for closed only
+                                return hasOpen ? 'rgba(52, 152, 219, 1)' : 'rgba(52, 152, 219, 0.3)';
+                            },
+                            borderColor: function(context) {
+                                const index = context.dataIndex;
+                                const hasOpen = weeklyHasOpenPut[index];
+                                return hasOpen ? 'rgba(52, 152, 219, 1)' : 'rgba(52, 152, 219, 0.3)';
+                            },
                             borderWidth: 1
                         },
                         {
                             label: 'Long Value',
                             data: weeklyLongValueData,
-                            backgroundColor: 'rgba(39, 174, 96, 0.8)',
-                            borderColor: '#27ae60',
+                            backgroundColor: function(context) {
+                                const index = context.dataIndex;
+                                const hasOpen = weeklyHasOpenLong[index];
+                                // Opaque for open positions, translucent for closed only
+                                return hasOpen ? 'rgba(39, 174, 96, 1)' : 'rgba(39, 174, 96, 0.3)';
+                            },
+                            borderColor: function(context) {
+                                const index = context.dataIndex;
+                                const hasOpen = weeklyHasOpenLong[index];
+                                return hasOpen ? 'rgba(39, 174, 96, 1)' : 'rgba(39, 174, 96, 0.3)';
+                            },
                             borderWidth: 1
                         }
                     ]
@@ -2461,16 +2399,7 @@
                         intersect: false
                     },
                     plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: {
-                                color: '#e0e0e0',
-                                font: { size: 11 },
-                                padding: 8,
-                                usePointStyle: true
-                            }
-                        },
+                        legend: { display: false },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -2524,7 +2453,249 @@
                 }
             });
             } // End of put exposure chart conditional
-        
+
+            // Build shared legend for Positions panel (Puts, Calls/Long)
+            const posLegendItems = [
+                { label: 'Puts', color: '#3498db', scatterIdx: 0, exposureIdx: 0 },
+                { label: 'Calls / Long', color: '#27ae60', scatterIdx: 1, exposureIdx: 1 }
+            ];
+
+            const posLegendContainer = document.getElementById('positionsChartLegend');
+            posLegendItems.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'legend-item';
+                const swatch = document.createElement('span');
+                swatch.className = 'legend-swatch';
+                swatch.style.backgroundColor = item.color;
+                swatch.style.width = '10px';
+                swatch.style.height = '10px';
+                const label = document.createElement('span');
+                label.className = 'legend-label';
+                label.style.fontSize = '11px';
+                label.textContent = item.label;
+                el.appendChild(swatch);
+                el.appendChild(label);
+
+                el.addEventListener('click', function() {
+                    let isHidden = false;
+                    if (expirationChart) {
+                        const meta = expirationChart.getDatasetMeta(item.scatterIdx);
+                        meta.hidden = !meta.hidden;
+                        isHidden = meta.hidden;
+                        expirationChart.update();
+                    }
+                    if (exposureChart) {
+                        const meta = exposureChart.getDatasetMeta(item.exposureIdx);
+                        meta.hidden = isHidden;
+                        exposureChart.update();
+                    }
+                    el.style.opacity = isHidden ? '0.4' : '1';
+                });
+
+                posLegendContainer.appendChild(el);
+            });
+
+            // Create Price History chart with trade markers
+            const priceHistoryData = [];
+            const priceByDate = {};
+            {{range .PriceHistory}}
+                priceHistoryData.push({
+                    date: '{{.BarDate.Format "2006-01-02"}}',
+                    close: {{.Close}}
+                });
+                priceByDate['{{.BarDate.Format "2006-01-02"}}'] = {{.Close}};
+            {{end}}
+
+            function findNearestPrice(dateStr) {
+                if (priceByDate[dateStr]) return priceByDate[dateStr];
+                const target = new Date(dateStr).getTime();
+                let closest = null;
+                let minDiff = Infinity;
+                for (const [d, p] of Object.entries(priceByDate)) {
+                    const diff = Math.abs(new Date(d).getTime() - target);
+                    if (diff < minDiff) { minDiff = diff; closest = p; }
+                }
+                return closest;
+            }
+
+            const optionSoldPoints = [];
+            const optionClosedPoints = [];
+            const stockBoughtPoints = [];
+            const stockSoldPoints = [];
+
+            {{range .OptionsList}}
+                {
+                    const openDate = '{{.Opened.Format "2006-01-02"}}';
+                    const openPrice = findNearestPrice(openDate);
+                    if (openPrice !== null) {
+                        optionSoldPoints.push({
+                            x: openDate, y: openPrice,
+                            label: '{{.Type}} ${{printf "%.0f" .Strike}} sold',
+                            detail: '{{.Contracts}} contract(s), ${{printf "%.2f" .Premium}} premium'
+                        });
+                    }
+                    {{if .Closed}}
+                    const closeDate = '{{.Closed.Format "2006-01-02"}}';
+                    const closePrice = findNearestPrice(closeDate);
+                    if (closePrice !== null) {
+                        optionClosedPoints.push({
+                            x: closeDate, y: closePrice,
+                            label: '{{.Type}} ${{printf "%.0f" .Strike}} closed',
+                            detail: '{{.Contracts}} contract(s)'
+                        });
+                    }
+                    {{end}}
+                }
+            {{end}}
+
+            {{range .LongPositionsList}}
+                {
+                    const buyDate = '{{.Opened.Format "2006-01-02"}}';
+                    const buyPrice = findNearestPrice(buyDate);
+                    if (buyPrice !== null) {
+                        stockBoughtPoints.push({
+                            x: buyDate, y: buyPrice,
+                            label: 'Bought {{.Shares}} shares',
+                            detail: '@ ${{printf "%.2f" .BuyPrice}}'
+                        });
+                    }
+                    {{if .Closed}}
+                    const sellDate = '{{.Closed.Format "2006-01-02"}}';
+                    const sellPrice = findNearestPrice(sellDate);
+                    if (sellPrice !== null) {
+                        stockSoldPoints.push({
+                            x: sellDate, y: sellPrice,
+                            label: 'Sold {{.Shares}} shares',
+                            detail: '@ ${{if .ExitPrice}}{{printf "%.2f" (.GetExitPriceValue)}}{{else}}—{{end}}'
+                        });
+                    }
+                    {{end}}
+                }
+            {{end}}
+
+            if (priceHistoryData.length === 0) {
+                const canvas = document.getElementById('symbolPriceHistoryChart');
+                if (canvas) {
+                    const parent = canvas.parentElement;
+                    parent.innerHTML = '<div class="js-empty-state">No price data</div>';
+                }
+            } else {
+                const histCtx = document.getElementById('symbolPriceHistoryChart').getContext('2d');
+                new Chart(histCtx, {
+                    type: 'line',
+                    data: {
+                        labels: priceHistoryData.map(d => d.date),
+                        datasets: [
+                            {
+                                label: 'Close',
+                                data: priceHistoryData.map(d => d.close),
+                                borderColor: '#4fc3f7',
+                                backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                                borderWidth: 1.5,
+                                fill: true,
+                                tension: 0.1,
+                                pointRadius: 0,
+                                pointHitRadius: 6,
+                                order: 5
+                            },
+                            {
+                                label: 'Option Sold',
+                                data: optionSoldPoints,
+                                type: 'scatter',
+                                pointRadius: 6,
+                                pointHoverRadius: 9,
+                                pointStyle: 'triangle',
+                                backgroundColor: '#e67e22',
+                                borderColor: '#e67e22',
+                                borderWidth: 2,
+                                order: 1
+                            },
+                            {
+                                label: 'Option Closed',
+                                data: optionClosedPoints,
+                                type: 'scatter',
+                                pointRadius: 6,
+                                pointHoverRadius: 9,
+                                pointStyle: 'rectRot',
+                                backgroundColor: '#f39c12',
+                                borderColor: '#f39c12',
+                                borderWidth: 2,
+                                order: 2
+                            },
+                            {
+                                label: 'Stock Bought',
+                                data: stockBoughtPoints,
+                                type: 'scatter',
+                                pointRadius: 7,
+                                pointHoverRadius: 10,
+                                pointStyle: 'triangle',
+                                rotation: 0,
+                                backgroundColor: '#2ecc71',
+                                borderColor: '#2ecc71',
+                                borderWidth: 2,
+                                order: 3
+                            },
+                            {
+                                label: 'Stock Sold',
+                                data: stockSoldPoints,
+                                type: 'scatter',
+                                pointRadius: 7,
+                                pointHoverRadius: 10,
+                                pointStyle: 'triangle',
+                                rotation: 180,
+                                backgroundColor: '#e74c3c',
+                                borderColor: '#e74c3c',
+                                borderWidth: 2,
+                                order: 4
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#e0e0e0',
+                                    font: { size: 10 },
+                                    padding: 8,
+                                    usePointStyle: true,
+                                    pointStyleWidth: 10
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const raw = context.raw;
+                                        if (raw && raw.label) {
+                                            return [raw.label, raw.detail];
+                                        }
+                                        return '$' + context.parsed.y.toFixed(2);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: { unit: 'month', displayFormats: { month: 'MMM yyyy' } },
+                                ticks: { color: '#a0a0a0', maxRotation: 45, minRotation: 45 },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                ticks: {
+                                    color: '#a0a0a0',
+                                    callback: function(value) { return '$' + value.toLocaleString(); }
+                                },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+
         });
     </script>
     <script src="/static/js/navigation.js"></script>
