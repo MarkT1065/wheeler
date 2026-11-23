@@ -2,45 +2,23 @@ package polygon
 
 import (
 	"context"
-	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
-	"stonks/internal/database"
-	"stonks/internal/models"
 	"strings"
 	"testing"
 	"time"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 // TestLivePolygonIntegration tests against the real Polygon.io API
-// This test only runs if a valid API key is configured in the Wheeler database
+// This test only runs when POLYGON_API_KEY is explicitly set in the test environment.
+// It never reads credentials or data from the production Wheeler database.
 func TestLivePolygonIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping live integration test in short mode")
 	}
 
-	// Read the current database path
-	currentDBPath, err := getCurrentDatabasePath()
-	if err != nil {
-		t.Skipf("Could not determine current database: %v", err)
-	}
-
-	// Connect to the Wheeler database
-	dbWrapper, err := database.NewDB(currentDBPath)
-	if err != nil {
-		t.Skipf("Could not connect to Wheeler database: %v", err)
-	}
-	defer dbWrapper.DB.Close()
-
-	// Get the API key from settings
-	settingService := models.NewSettingService(dbWrapper.DB)
-	apiKey := settingService.GetValue("POLYGON_API_KEY")
-
+	apiKey := os.Getenv("POLYGON_API_KEY")
 	if apiKey == "" {
-		t.Skip("No Polygon API key configured in Wheeler database - skipping live integration test")
+		t.Skip("POLYGON_API_KEY is not set - skipping live integration test")
 	}
 
 	// Mask API key for logging
@@ -48,14 +26,6 @@ func TestLivePolygonIntegration(t *testing.T) {
 	t.Logf("Running live integration tests with API key: %s", maskedKey)
 
 	client := NewClient(apiKey)
-	symbolService := models.NewSymbolService(dbWrapper.DB)
-	optionService := models.NewOptionService(dbWrapper.DB)
-	longPositionService := models.NewLongPositionService(dbWrapper.DB)
-	dividendService := models.NewDividendService(dbWrapper.DB)
-	priceHistoryService := models.NewPriceHistoryService(dbWrapper.DB)
-	optionHistoryService := models.NewOptionHistoryService(dbWrapper.DB)
-	indexHistoryService := models.NewIndexHistoryService(dbWrapper.DB)
-	service := NewService(symbolService, optionService, longPositionService, dividendService, settingService, priceHistoryService, optionHistoryService, indexHistoryService)
 
 	// Run tests with generous timeout for API calls
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -67,15 +37,6 @@ func TestLivePolygonIntegration(t *testing.T) {
 			t.Errorf("API key validation failed: %v", err)
 		} else {
 			t.Logf("✅ API key is valid")
-		}
-	})
-
-	t.Run("TestServiceConnection", func(t *testing.T) {
-		err := service.TestConnection(ctx)
-		if err != nil {
-			t.Errorf("Service connection test failed: %v", err)
-		} else {
-			t.Logf("✅ Service connection successful")
 		}
 	})
 
@@ -215,88 +176,6 @@ func TestLivePolygonIntegration(t *testing.T) {
 		t.Logf("✅ BRK.A (special character) price: $%.2f", quote.Results.Price)
 	})
 
-	//t.Run("TestServiceSymbolPriceUpdate", func(t *testing.T) {
-	//	// Ensure TSLA symbol exists in database
-	//	_, err := symbolService.Create("TSLA")
-	//	if err != nil && !strings.Contains(err.Error(), "UNIQUE constraint failed") {
-	//		t.Errorf("Failed to create test symbol: %v", err)
-	//		return
-	//	}
-	//
-	//	// Test service-level price update
-	//	err = service.UpdateSymbolPrice(ctx, "TSLA")
-	//	if err != nil {
-	//		t.Errorf("Service price update failed: %v", err)
-	//		return
-	//	}
-	//
-	//	// Verify the price was updated in the database
-	//	symbol, err := symbolService.GetBySymbol("TSLA")
-	//	if err != nil {
-	//		t.Errorf("Failed to retrieve updated symbol: %v", err)
-	//		return
-	//	}
-	//
-	//	if symbol.Price <= 0 {
-	//		t.Errorf("Expected positive updated price, got %f", symbol.Price)
-	//	}
-	//
-	//	t.Logf("✅ TSLA price updated in database: $%.2f", symbol.Price)
-	//})
-
-	t.Run("TestServiceFetchSymbolDetails", func(t *testing.T) {
-		info, err := service.FetchSymbolDetails(ctx, "NVDA")
-		if err != nil {
-			t.Errorf("Service fetch symbol details failed: %v", err)
-			return
-		}
-
-		if info == nil {
-			t.Error("Expected symbol info but got nil")
-			return
-		}
-
-		if info.Symbol != "NVDA" {
-			t.Errorf("Expected symbol NVDA, got %s", info.Symbol)
-		}
-
-		if info.Name == "" {
-			t.Error("Expected non-empty company name")
-		}
-
-		if info.CurrentPrice <= 0 {
-			t.Errorf("Expected positive current price, got %f", info.CurrentPrice)
-		}
-
-		t.Logf("✅ NVDA details: %s, Current Price: $%.2f, Market Cap: $%.2f", info.Name, info.CurrentPrice, info.MarketCap)
-	})
-
-	t.Run("TestServiceFetchDividendHistory", func(t *testing.T) {
-		dividends, err := service.FetchDividendHistory(ctx, "JNJ", 3)
-		if err != nil {
-			t.Errorf("Service fetch dividend history failed: %v", err)
-			return
-		}
-
-		if dividends == nil {
-			t.Error("Expected dividends but got nil")
-			return
-		}
-
-		if len(dividends) > 0 {
-			firstDiv := dividends[0]
-			if firstDiv.Symbol != "JNJ" {
-				t.Errorf("Expected symbol JNJ, got %s", firstDiv.Symbol)
-			}
-			if firstDiv.CashAmount <= 0 {
-				t.Errorf("Expected positive cash amount, got %f", firstDiv.CashAmount)
-			}
-			t.Logf("✅ JNJ recent dividend: $%.3f (Ex-Date: %s, Pay Date: %s)", firstDiv.CashAmount, firstDiv.ExDividendDate, firstDiv.PayDate)
-		} else {
-			t.Log("✅ JNJ dividend history query successful (no results)")
-		}
-	})
-
 	t.Run("TestGetOptionSnapshot", func(t *testing.T) {
 		underlyingAsset := "AAPL"
 		optionContract := "O:AAPL250117C00150000"
@@ -331,37 +210,6 @@ func TestLivePolygonIntegration(t *testing.T) {
 
 	// Rate limiting test - Polygon free tier has 5 requests per minute
 	t.Log("⏱️  Respecting API rate limits (free tier: 5 requests/minute)")
-}
-
-// getCurrentDatabasePath reads the current database path from ./data/currentdb
-func getCurrentDatabasePath() (string, error) {
-	currentDBFile := "../../data/currentdb"
-
-	// Check if the currentdb file exists
-	if _, err := os.Stat(currentDBFile); os.IsNotExist(err) {
-		return "", fmt.Errorf("currentdb file not found at %s", currentDBFile)
-	}
-
-	// Read the database filename
-	content, err := ioutil.ReadFile(currentDBFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read currentdb file: %w", err)
-	}
-
-	dbName := strings.TrimSpace(string(content))
-	if dbName == "" {
-		return "", fmt.Errorf("currentdb file is empty")
-	}
-
-	// Construct the full path to the database
-	dbPath := filepath.Join("../../data", dbName)
-
-	// Verify the database file exists
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("database file not found at %s", dbPath)
-	}
-
-	return dbPath, nil
 }
 
 // maskAPIKey masks an API key for safe logging

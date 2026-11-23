@@ -21,10 +21,23 @@ type DB struct {
 	*sql.DB
 }
 
+const (
+	ProductionDatabaseName      = "wheeler.db"
+	IntegrationTestDatabaseName = "integration_test.db"
+)
+
+func ProductionDatabasePath() string {
+	return filepath.Join(".", "data", ProductionDatabaseName)
+}
+
+func IntegrationTestDatabasePath() string {
+	return filepath.Join(".", "data", IntegrationTestDatabaseName)
+}
+
 func NewDB(dataSourceName string) (*DB, error) {
 	// Add SQLite connection parameters for better reliability
 	connStr := dataSourceName + "?_busy_timeout=10000&_journal_mode=WAL&_foreign_keys=on"
-	
+
 	db, err := sql.Open("sqlite3", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -78,9 +91,9 @@ func (db *DB) runMigrations() error {
 
 		// Check if migration already applied
 		var count int
-		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = ?", 
+		err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations WHERE version = ?",
 			strings.TrimSuffix(file.Name(), ".sql")).Scan(&count)
-		
+
 		// If schema_migrations table doesn't exist yet, we'll apply all migrations
 		if err == nil && count > 0 {
 			continue // Migration already applied
@@ -112,14 +125,14 @@ func GetCurrentDatabase() (string, error) {
 	}
 
 	currentDBPath := "./data/currentdb"
-	
+
 	// Check if currentdb file exists
 	if _, err := os.Stat(currentDBPath); os.IsNotExist(err) {
 		// Create default currentdb file with wheeler.db
-		if err := os.WriteFile(currentDBPath, []byte("wheeler.db"), 0644); err != nil {
+		if err := os.WriteFile(currentDBPath, []byte(ProductionDatabaseName), 0644); err != nil {
 			return "", fmt.Errorf("failed to create currentdb file: %w", err)
 		}
-		return "wheeler.db", nil
+		return ProductionDatabaseName, nil
 	}
 
 	// Read the current database name
@@ -130,7 +143,7 @@ func GetCurrentDatabase() (string, error) {
 
 	dbName := strings.TrimSpace(string(data))
 	if dbName == "" {
-		dbName = "wheeler.db"
+		dbName = ProductionDatabaseName
 	}
 
 	return dbName, nil
@@ -157,7 +170,7 @@ func GetCurrentDatabasePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	return filepath.Join("./data", dbName), nil
 }
 
@@ -174,7 +187,7 @@ func CreateNewDatabase(name string) error {
 	}
 
 	dbPath := filepath.Join("./data", name)
-	
+
 	// Check if database already exists
 	if _, err := os.Stat(dbPath); err == nil {
 		return fmt.Errorf("database %s already exists", name)
@@ -192,7 +205,7 @@ func CreateNewDatabase(name string) error {
 // ListDatabases returns a list of all .db files in the data directory
 func ListDatabases() ([]string, error) {
 	dataDir := "./data"
-	
+
 	// Ensure data directory exists
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
