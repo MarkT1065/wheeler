@@ -23,6 +23,14 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to change to project root: %v", err)
 	}
 
+	productionDB, err := database.GetCurrentDatabase()
+	if err != nil {
+		log.Fatalf("Failed to read production database pointer: %v", err)
+	}
+	if productionDB != database.ProductionDatabaseName {
+		log.Fatalf("Production database must be %s, got %s", database.ProductionDatabaseName, productionDB)
+	}
+
 	// Setup test database
 	if err := setupTestDatabase(); err != nil {
 		log.Fatalf("Failed to setup test database: %v", err)
@@ -39,6 +47,15 @@ func TestMain(m *testing.M) {
 	// Run all tests
 	exitCode := m.Run()
 
+	currentDB, err := database.GetCurrentDatabase()
+	if err != nil {
+		log.Printf("Failed to verify production database pointer: %v", err)
+		exitCode = 1
+	} else if currentDB != productionDB {
+		log.Printf("Integration tests changed production database pointer from %s to %s", productionDB, currentDB)
+		exitCode = 1
+	}
+
 	// Cleanup
 	stopTestServer()
 
@@ -48,24 +65,23 @@ func TestMain(m *testing.M) {
 
 func setupTestDatabase() error {
 	testDBPath := getTestDBPath()
-	
+
 	// Remove existing test database if it exists
 	if err := os.Remove(testDBPath); err != nil && !os.IsNotExist(err) {
 		log.Printf("Note: Could not delete existing test database: %v", err)
 	}
-	
+
 	// Create fresh test database
 	if err := database.CreateNewDatabase(testDBName); err != nil {
 		return err
 	}
-	
-	// Set it as current
-	return database.SetCurrentDatabase(testDBName)
+
+	return nil
 }
 
 func startTestServer() error {
 	// Create web server
-	server, err := web.NewServer()
+	server, err := web.NewServerWithDatabase(database.IntegrationTestDatabasePath())
 	if err != nil {
 		return err
 	}
