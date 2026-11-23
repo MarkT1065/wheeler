@@ -22,6 +22,7 @@ import (
 
 type Server struct {
 	db                   *sql.DB
+	dbName               string
 	optionService        *models.OptionService
 	symbolService        *models.SymbolService
 	treasuryService      *models.TreasuryService
@@ -38,13 +39,11 @@ type Server struct {
 }
 
 func NewServer() (*Server, error) {
-	log.Printf("[SERVER] Initializing Wheeler web server")
+	return NewServerWithDatabase(database.ProductionDatabasePath())
+}
 
-	dbPath, err := database.GetCurrentDatabasePath()
-	if err != nil {
-		log.Printf("[SERVER] ERROR: Failed to get current database path: %v", err)
-		return nil, fmt.Errorf("failed to get current database path: %w", err)
-	}
+func NewServerWithDatabase(dbPath string) (*Server, error) {
+	log.Printf("[SERVER] Initializing Wheeler web server")
 	log.Printf("[SERVER] Connecting to database: %s", dbPath)
 	dbWrapper, err := database.NewDB(dbPath)
 	if err != nil {
@@ -276,6 +275,7 @@ func NewServer() (*Server, error) {
 
 	server := &Server{
 		db:                   dbWrapper.DB,
+		dbName:               filepath.Base(dbPath),
 		optionService:        optionService,
 		symbolService:        symbolService,
 		treasuryService:      models.NewTreasuryService(dbWrapper.DB),
@@ -560,12 +560,10 @@ func (s *Server) renderTemplate(w http.ResponseWriter, templateName string, data
 
 // getCurrentDatabaseName returns the current database name for template rendering
 func (s *Server) getCurrentDatabaseName() string {
-	dbName, err := database.GetCurrentDatabase()
-	if err != nil {
-		log.Printf("[SERVER] Error getting current database name: %v", err)
-		return "wheeler.db"
+	if s.dbName == "" {
+		return database.ProductionDatabaseName
 	}
-	return dbName
+	return s.dbName
 }
 
 // getAllSymbolsList returns a list of all distinct symbols for navigation

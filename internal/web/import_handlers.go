@@ -1011,9 +1011,9 @@ func (s *Server) processTreasuryRecord(csvRecord CSVTreasuryRecord, rowNum int) 
 	existingTreasury, err := s.treasuryService.GetByCUSPID(csvRecord.CUSPID)
 	if err == nil && existingTreasury != nil {
 		// Treasury already exists, check if it's the same one
-		if existingTreasury.Purchased.Equal(purchasedDate) && 
-		   existingTreasury.Maturity.Equal(maturityDate) && 
-		   existingTreasury.Amount == amount {
+		if existingTreasury.Purchased.Equal(purchasedDate) &&
+			existingTreasury.Maturity.Equal(maturityDate) &&
+			existingTreasury.Amount == amount {
 			return existingTreasury, false, nil // Already exists, skip
 		}
 	}
@@ -1145,7 +1145,7 @@ func (s *Server) handleCreateBackup(w http.ResponseWriter, r *http.Request) {
 
 	// Construct full path to database file in data directory
 	sourceFilePath := filepath.Join("./data", dbFileName)
-	
+
 	// Check if source file exists
 	if _, err := os.Stat(sourceFilePath); os.IsNotExist(err) {
 		log.Printf("[BACKUP] Source file does not exist: %s", sourceFilePath)
@@ -1314,6 +1314,11 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"success": false, "error": "Database name is required"}`, http.StatusBadRequest)
 		return
 	}
+	if dbName == database.IntegrationTestDatabaseName {
+		log.Printf("[SET_DATABASE] Refusing to select integration test database in production")
+		http.Error(w, `{"success": false, "error": "Integration test database cannot be selected in production"}`, http.StatusForbidden)
+		return
+	}
 
 	// Validate that the database exists
 	dbPath := filepath.Join("./data", dbName)
@@ -1348,6 +1353,7 @@ func (s *Server) handleSetCurrentDatabase(w http.ResponseWriter, r *http.Request
 	// Update server's database connection and reinitialize all services
 	log.Printf("[SET_DATABASE] Reinitializing services with new database connection")
 	s.db = dbWrapper.DB
+	s.dbName = dbName
 	s.optionService = models.NewOptionService(dbWrapper.DB)
 	s.symbolService = models.NewSymbolService(dbWrapper.DB)
 	s.treasuryService = models.NewTreasuryService(dbWrapper.DB)
@@ -1619,15 +1625,15 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 	lines := strings.Split(sqlContent, "\n")
 	var statements []string
 	var currentStatement strings.Builder
-	
+
 	for _, line := range lines {
 		trimmedLine := strings.TrimSpace(line)
-		
+
 		// Skip empty lines and comment lines
 		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "--") {
 			continue
 		}
-		
+
 		// Remove inline comments (everything after -- on the same line)
 		if commentPos := strings.Index(trimmedLine, "--"); commentPos != -1 {
 			trimmedLine = strings.TrimSpace(trimmedLine[:commentPos])
@@ -1635,13 +1641,13 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 				continue // Skip if line becomes empty after removing comment
 			}
 		}
-		
+
 		// Add line to current statement
 		if currentStatement.Len() > 0 {
 			currentStatement.WriteString(" ")
 		}
 		currentStatement.WriteString(trimmedLine)
-		
+
 		// If line ends with semicolon, we have a complete statement
 		if strings.HasSuffix(trimmedLine, ";") {
 			statement := strings.TrimSpace(currentStatement.String())
@@ -1654,7 +1660,7 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 			currentStatement.Reset()
 		}
 	}
-	
+
 	// Handle any remaining statement that doesn't end with semicolon
 	if currentStatement.Len() > 0 {
 		statement := strings.TrimSpace(currentStatement.String())
@@ -1662,6 +1668,6 @@ func (s *Server) parseSQLStatements(sqlContent string) []string {
 			statements = append(statements, statement)
 		}
 	}
-	
+
 	return statements
 }
