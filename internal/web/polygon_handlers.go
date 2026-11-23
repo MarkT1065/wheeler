@@ -3,7 +3,6 @@ package web
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -24,7 +23,7 @@ func (s *Server) polygonTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Test the connection
 	err := s.polygonService.TestConnection(ctx)
-	
+
 	response := map[string]interface{}{
 		"success": err == nil,
 	}
@@ -43,100 +42,6 @@ func (s *Server) polygonTestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// polygonUpdatePricesHandler triggers price updates for symbols
-func (s *Server) polygonUpdatePricesHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	log.Printf("[POLYGON API] Starting price update request")
-
-	// Parse request body to get specific symbols (optional)
-	var request struct {
-		Symbols []string `json:"symbols,omitempty"`
-		All     bool     `json:"all,omitempty"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		// If decoding fails, default to updating all symbols
-		request.All = true
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	var updated, failed int
-	var errors []string
-
-	if request.All || len(request.Symbols) == 0 {
-		// Update all symbols (prioritized: active positions first)
-		symbols, err := s.symbolService.GetPrioritizedSymbols()
-		if err != nil {
-			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
-			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("[POLYGON API] Updating prices for %d symbols (prioritized order)", len(symbols))
-
-		for _, symbol := range symbols {
-			if err := s.polygonService.UpdateSymbolPrice(ctx, symbol); err != nil {
-				log.Printf("[POLYGON API] Failed to update %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-				failed++
-			} else {
-				updated++
-			}
-
-			// Rate limiting for free tier (5 requests per minute)
-			time.Sleep(12 * time.Second)
-		}
-	} else {
-		// Update specific symbols
-		log.Printf("[POLYGON API] Updating prices for specific symbols: %v", request.Symbols)
-
-		for _, symbol := range request.Symbols {
-			if err := s.polygonService.UpdateSymbolPrice(ctx, symbol); err != nil {
-				log.Printf("[POLYGON API] Failed to update %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-				failed++
-			} else {
-				updated++
-			}
-
-			// Rate limiting
-			if len(request.Symbols) > 1 {
-				time.Sleep(12 * time.Second)
-			}
-		}
-	}
-
-	response := map[string]interface{}{
-		"success": updated > 0,
-		"updated": updated,
-		"failed":  failed,
-	}
-
-	if len(errors) > 0 {
-		response["errors"] = errors
-	}
-
-	if updated > 0 {
-		response["message"] = "Price update completed"
-	} else {
-		response["message"] = "No prices were updated"
-	}
-
-	log.Printf("[POLYGON API] Price update completed: %d updated, %d failed", updated, failed)
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding update response: %v", err)
-	}
-}
-
-// polygonSymbolInfoHandler gets detailed symbol information from Polygon
 func (s *Server) polygonSymbolInfoHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -194,7 +99,6 @@ func (s *Server) polygonSymbolInfoHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// polygonStatusHandler returns the status of the Polygon integration  
 func (s *Server) polygonStatusHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -203,7 +107,6 @@ func (s *Server) polygonStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	status := s.polygonService.GetAPIKeyStatus()
 
-	// Test connection if API key is configured
 	if status.Configured {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -222,116 +125,16 @@ func (s *Server) polygonStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// polygonFetchDividendsHandler fetches dividend data for all symbols
-func (s *Server) polygonFetchDividendsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func (s *Server) polygonWorkerStatusHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	log.Printf("[POLYGON API] Starting bulk dividend fetch request")
-
-	// Parse request body to get specific symbols (optional)
-	var request struct {
-		Symbols []string `json:"symbols,omitempty"`
-		All     bool     `json:"all,omitempty"`
-		Limit   int      `json:"limit,omitempty"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		// If decoding fails, default to fetching all symbols
-		request.All = true
-	}
-
-	if request.Limit == 0 {
-		request.Limit = 10 // Default to 10 recent dividends
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	var processed int
-	var results []map[string]interface{}
-	var errors []string
-
-	if request.All || len(request.Symbols) == 0 {
-		// Fetch dividends for all symbols (prioritized: active positions first)
-		symbols, err := s.symbolService.GetPrioritizedSymbols()
-		if err != nil {
-			log.Printf("[POLYGON API] Error getting prioritized symbols: %v", err)
-			http.Error(w, "Failed to get symbols", http.StatusInternalServerError)
-			return
-		}
-
-		log.Printf("[POLYGON API] Fetching dividends for %d symbols (prioritized order)", len(symbols))
-
-		for _, symbol := range symbols {
-			dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, request.Limit)
-			processed++
-			
-			if err != nil {
-				log.Printf("[POLYGON API] Failed to fetch dividends for %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-			} else {
-				results = append(results, map[string]interface{}{
-					"symbol":    symbol,
-					"dividends": dividends,
-					"count":     len(dividends),
-				})
-			}
-
-			// Rate limiting for free tier (5 requests per minute)
-			time.Sleep(12 * time.Second)
-		}
-	} else {
-		// Fetch dividends for specific symbols
-		log.Printf("[POLYGON API] Fetching dividends for specific symbols: %v", request.Symbols)
-
-		for _, symbol := range request.Symbols {
-			dividends, err := s.polygonService.FetchDividendHistory(ctx, symbol, request.Limit)
-			processed++
-			
-			if err != nil {
-				log.Printf("[POLYGON API] Failed to fetch dividends for %s: %v", symbol, err)
-				errors = append(errors, symbol+": "+err.Error())
-			} else {
-				results = append(results, map[string]interface{}{
-					"symbol":    symbol,
-					"dividends": dividends,
-					"count":     len(dividends),
-				})
-			}
-
-			// Rate limiting
-			if len(request.Symbols) > 1 {
-				time.Sleep(12 * time.Second)
-			}
-		}
-	}
-
-	response := map[string]interface{}{
-		"success":   true,
-		"processed": processed,
-		"results":   results,
-	}
-
-	if len(errors) > 0 {
-		response["errors"] = errors
-	}
-
-	totalDividends := 0
-	for _, result := range results {
-		if count, ok := result["count"].(int); ok {
-			totalDividends += count
-		}
-	}
-	
-	response["message"] = fmt.Sprintf("Dividend fetch completed: %d symbols processed, %d total dividends found", processed, totalDividends)
-
-	log.Printf("[POLYGON API] Dividend fetch completed: %d symbols processed, %d total dividends found", processed, totalDividends)
+	status := s.polygonService.GetWorkerStatus()
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("[POLYGON API] Error encoding dividend fetch response: %v", err)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		log.Printf("[POLYGON API] Error encoding worker status response: %v", err)
 	}
 }

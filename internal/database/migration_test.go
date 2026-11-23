@@ -47,6 +47,9 @@ func TestMigrationSystem(t *testing.T) {
 			"treasuries",
 			"settings",
 			"metrics",
+			"price_history",
+			"option_history",
+			"index_history",
 		}
 
 		for _, table := range expectedTables {
@@ -76,6 +79,14 @@ func TestMigrationSystem(t *testing.T) {
 			"idx_metrics_type",
 			"idx_options_unique",
 			"idx_dividends_unique",
+			"idx_price_history_symbol_date",
+			"idx_price_history_bar_date",
+			"idx_option_history_ticker_date",
+			"idx_option_history_underlying",
+			"idx_option_history_bar_date",
+			"idx_option_history_expiration",
+			"idx_index_history_ticker_date",
+			"idx_index_history_bar_date",
 		}
 
 		for _, index := range expectedIndexes {
@@ -114,8 +125,8 @@ func TestMigrationSystem(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to query schema_migrations: %v", err)
 		}
-		if count != 1 {
-			t.Errorf("Expected only 1 migration record after re-running migrations, got %d", count)
+		if count != 2 {
+			t.Errorf("Expected 2 migration records after re-running migrations, got %d", count)
 		}
 	})
 }

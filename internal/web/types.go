@@ -6,6 +6,24 @@ import (
 	"time"
 )
 
+func CalculateAnnualizedCashOnCash(totalProfits float64, totalDollarDays float64) float64 {
+	if totalDollarDays <= 0 {
+		return 0
+	}
+	return (totalProfits / totalDollarDays) * 365 * 100
+}
+
+func AccumulateDollarDays(longPositions []*models.LongPosition, options []*models.Option) float64 {
+	var totalDollarDays float64
+	for _, pos := range longPositions {
+		totalDollarDays += pos.CalculateDollarDays()
+	}
+	for _, opt := range options {
+		totalDollarDays += opt.CalculatePutExposureDollarDays()
+	}
+	return totalDollarDays
+}
+
 // Data transfer objects and request/response types for web handlers
 
 type PremiumData struct {
@@ -80,7 +98,7 @@ type CSVTreasuryRecord struct {
 // DashboardData holds data for the dashboard template
 type DashboardData struct {
 	Symbols         []string        `json:"symbols"`
-	AllSymbols      []string        `json:"allSymbols"`     // For navigation compatibility
+	AllSymbols      []string        `json:"allSymbols"` // For navigation compatibility
 	SymbolSummaries []SymbolSummary `json:"symbolSummaries"`
 	LongByTicker    []ChartData     `json:"longByTicker"`
 	PutsByTicker    []ChartData     `json:"putsByTicker"`
@@ -101,6 +119,7 @@ type SymbolSummary struct {
 	Dividends    float64 `json:"dividends"`
 	Net          float64 `json:"net"`
 	CashOnCash   float64 `json:"cashOnCash"`
+	DollarDays   float64 `json:"dollarDays"`
 	Optionable   float64 `json:"optionable"`
 }
 
@@ -111,42 +130,44 @@ type ChartData struct {
 }
 
 type DashboardTotals struct {
-	TotalLong         float64 `json:"totalLong"`
-	TotalPuts         float64 `json:"totalPuts"`
-	TotalTreasuries   float64 `json:"totalTreasuries"`
-	TotalPutPremiums  float64 `json:"totalPutPremiums"`
-	TotalCallPremiums float64 `json:"totalCallPremiums"`
-	TotalCapGains     float64 `json:"totalCapGains"`
-	TotalDividends    float64 `json:"totalDividends"`
-	TotalNet          float64 `json:"totalNet"`
-	OverallCashOnCash float64 `json:"overallCashOnCash"`
-	PutROI            float64 `json:"putROI"`
-	LongROI           float64 `json:"longROI"`
-	GrandTotal        float64 `json:"grandTotal"`
-	TotalOptionable   float64 `json:"totalOptionable"`
+	TotalLong             float64 `json:"totalLong"`
+	TotalPuts             float64 `json:"totalPuts"`
+	TotalTreasuries       float64 `json:"totalTreasuries"`
+	TotalPutPremiums      float64 `json:"totalPutPremiums"`
+	TotalCallPremiums     float64 `json:"totalCallPremiums"`
+	TotalCapGains         float64 `json:"totalCapGains"`
+	TotalDividends        float64 `json:"totalDividends"`
+	TotalNet              float64 `json:"totalNet"`
+	OverallCashOnCash     float64 `json:"overallCashOnCash"`
+	PutROI                float64 `json:"putROI"`
+	LongROI               float64 `json:"longROI"`
+	GrandTotal            float64 `json:"grandTotal"`
+	TotalOptionable       float64 `json:"totalOptionable"`
+	TotalTreasuryInterest float64 `json:"totalTreasuryInterest"`
 }
 
 // MonthlyData holds data for the monthly template
 type MonthlyData struct {
-	Symbols                  []string                      `json:"symbols"`
-	AllSymbols               []string                      `json:"allSymbols"` // For navigation compatibility
-	PutsData                 MonthlyOptionData             `json:"putsData"`
-	CallsData                MonthlyOptionData             `json:"callsData"`
-	CapGainsData             MonthlyFinancialData          `json:"capGainsData"`
-	DividendsData            MonthlyFinancialData          `json:"dividendsData"`
-	TableData                []MonthlyTableRow             `json:"tableData"`
-	TableYearMonths          []string                      `json:"tableYearMonths"` // Sorted yyyy-mm columns for table
-	TableMonthLabels         []string                      `json:"tableMonthLabels"` // Formatted labels ("2025 Jan", etc.)
-	TableTotalsByMonth       map[string]float64            `json:"tableTotalsByMonth"` // yyyy-mm -> total for table
-	TotalsByMonth            []MonthlyTotal                `json:"totalsByMonth"` // Jan-Dec for charts
-	MonthlyPremiumsBySymbol  []MonthlyPremiumsBySymbol     `json:"monthlyPremiumsBySymbol"`
-	OptionsIndex             map[string]interface{}        `json:"options_index"`
-	OptionsIndexJSON         template.JS                   `json:"-"` // JSON-encoded for template
-	GrandTotal               float64                       `json:"grandTotal"`
-	CurrentDB                string                        `json:"currentDB"`
-	ActivePage               string                        `json:"activePage"`
-	SelectedFromDate         string                        `json:"selectedFromDate"`
-	SelectedToDate           string                        `json:"selectedToDate"`
+	Symbols                 []string                  `json:"symbols"`
+	AllSymbols              []string                  `json:"allSymbols"` // For navigation compatibility
+	PutsData                MonthlyOptionData         `json:"putsData"`
+	CallsData               MonthlyOptionData         `json:"callsData"`
+	CapGainsData            MonthlyFinancialData      `json:"capGainsData"`
+	DividendsData           MonthlyFinancialData      `json:"dividendsData"`
+	TreasuriesData          MonthlyFinancialData      `json:"treasuriesData"`
+	TableData               []MonthlyTableRow         `json:"tableData"`
+	TableYearMonths         []string                  `json:"tableYearMonths"`    // Sorted yyyy-mm columns for table
+	TableMonthLabels        []string                  `json:"tableMonthLabels"`   // Formatted labels ("2025 Jan", etc.)
+	TableTotalsByMonth      map[string]float64        `json:"tableTotalsByMonth"` // yyyy-mm -> total for table
+	TotalsByMonth           []MonthlyTotal            `json:"totalsByMonth"`      // Jan-Dec for charts
+	MonthlyPremiumsBySymbol []MonthlyPremiumsBySymbol `json:"monthlyPremiumsBySymbol"`
+	OptionsIndex            map[string]interface{}    `json:"options_index"`
+	OptionsIndexJSON        template.JS               `json:"-"` // JSON-encoded for template
+	GrandTotal              float64                   `json:"grandTotal"`
+	CurrentDB               string                    `json:"currentDB"`
+	ActivePage              string                    `json:"activePage"`
+	SelectedFromDate        string                    `json:"selectedFromDate"`
+	SelectedToDate          string                    `json:"selectedToDate"`
 }
 
 type MonthlyOptionData struct {
@@ -182,7 +203,7 @@ type MonthlyTotal struct {
 
 // MonthlyPremiumsBySymbol holds data for stacked bar chart showing monthly premiums by symbol
 type MonthlyPremiumsBySymbol struct {
-	Month   string             `json:"month"`
+	Month   string              `json:"month"`
 	Symbols []SymbolPremiumData `json:"symbols"`
 }
 
@@ -196,7 +217,7 @@ type TreasuriesData struct {
 	Symbols    []string           `json:"symbols"`
 	AllSymbols []string           `json:"allSymbols"` // For navigation compatibility
 	Treasuries []*models.Treasury `json:"treasuries"`
-	Options    []*models.Option   `json:"options"`    // For put exposure chart
+	Options    []*models.Option   `json:"options"` // For put exposure chart
 	Summary    TreasuriesSummary  `json:"summary"`
 	CurrentDB  string             `json:"currentDB"`
 	ActivePage string             `json:"activePage"`
@@ -224,21 +245,21 @@ type OptionsData struct {
 
 // AllOptionsData holds data for the all options template
 type AllOptionsData struct {
-	Symbols       []string                    `json:"symbols"`
-	AllSymbols    []string                    `json:"allSymbols"` // For navigation compatibility
-	OptionsIndex  map[string]interface{}      `json:"options_index"`
-	CurrentDB     string                      `json:"currentDB"`
-	ActivePage    string                      `json:"activePage"`
+	Symbols      []string               `json:"symbols"`
+	AllSymbols   []string               `json:"allSymbols"` // For navigation compatibility
+	OptionsIndex map[string]interface{} `json:"options_index"`
+	CurrentDB    string                 `json:"currentDB"`
+	ActivePage   string                 `json:"activePage"`
 }
 
 // AllOptionsDataWithJSON includes JSON-encoded version for JavaScript
 type AllOptionsDataWithJSON struct {
-	Symbols          []string                    `json:"symbols"`
-	AllSymbols       []string                    `json:"allSymbols"` // For navigation compatibility
-	OptionsIndex     map[string]interface{}      `json:"options_index"`
-	OptionsIndexJSON template.JS                 `json:"-"` // JSON-encoded for template
-	CurrentDB        string                      `json:"currentDB"`
-	ActivePage       string                      `json:"activePage"`
+	Symbols          []string               `json:"symbols"`
+	AllSymbols       []string               `json:"allSymbols"` // For navigation compatibility
+	OptionsIndex     map[string]interface{} `json:"options_index"`
+	OptionsIndexJSON template.JS            `json:"-"` // JSON-encoded for template
+	CurrentDB        string                 `json:"currentDB"`
+	ActivePage       string                 `json:"activePage"`
 }
 
 // SymbolMonthlyResult represents monthly results for a specific symbol
@@ -270,11 +291,15 @@ type SymbolData struct {
 	Dividends         string                 `json:"dividends"`
 	TotalProfits      string                 `json:"totalProfits"`
 	CashOnCash        string                 `json:"cashOnCash"`
+	LongDollarDays    float64                `json:"longDollarDays"`
+	PutDollarDays     float64                `json:"putDollarDays"`
+	TotalDollarDays   float64                `json:"totalDollarDays"`
 	DividendsList     []*models.Dividend     `json:"dividendsList"`
 	DividendsTotal    float64                `json:"dividendsTotal"`
 	OptionsList       []*models.Option       `json:"optionsList"`
 	LongPositionsList []*models.LongPosition `json:"longPositionsList"`
 	MonthlyResults    []SymbolMonthlyResult  `json:"monthlyResults"`
+	PriceHistory      []*models.PriceBar     `json:"priceHistory"`
 	CurrentDB         string                 `json:"currentDB"`
 	ActivePage        string                 `json:"activePage"`
 }
@@ -302,7 +327,7 @@ type DividendRequest struct {
 }
 
 type LongPositionRequest struct {
-	ID        *int     `json:"id,omitempty"`        // For updates
+	ID        *int     `json:"id,omitempty"` // For updates
 	Symbol    string   `json:"symbol"`
 	Shares    int      `json:"shares"`
 	BuyPrice  float64  `json:"buy_price"`
@@ -313,16 +338,16 @@ type LongPositionRequest struct {
 }
 
 type AllocationData struct {
-	LongByTicker        []ChartData `json:"longByTicker"`
-	PutsByTicker        []ChartData `json:"putsByTicker"`
-	CallsToLongs        []ChartData `json:"callsToLongs"`
-	TotalAllocation     []ChartData `json:"totalAllocation"`
-	PutROI              float64     `json:"putROI"`
-	LongROI             float64     `json:"longROI"`
-	TotalPutPremiums    float64     `json:"totalPutPremiums"`
-	TotalCallPremiums   float64     `json:"totalCallPremiums"`
-	TotalCallCovered    float64     `json:"totalCallCovered"`
-	TotalOptionable     float64     `json:"totalOptionable"`
+	LongByTicker      []ChartData `json:"longByTicker"`
+	PutsByTicker      []ChartData `json:"putsByTicker"`
+	CallsToLongs      []ChartData `json:"callsToLongs"`
+	TotalAllocation   []ChartData `json:"totalAllocation"`
+	PutROI            float64     `json:"putROI"`
+	LongROI           float64     `json:"longROI"`
+	TotalPutPremiums  float64     `json:"totalPutPremiums"`
+	TotalCallPremiums float64     `json:"totalCallPremiums"`
+	TotalCallCovered  float64     `json:"totalCallCovered"`
+	TotalOptionable   float64     `json:"totalOptionable"`
 }
 
 type ChartPoint struct {
@@ -341,7 +366,7 @@ type OptionScatterPoint struct {
 	ExpirationDate string  `json:"expirationDate"` // For JS Date parsing
 	Profit         float64 `json:"profit"`         // Y-axis value
 	Symbol         string  `json:"symbol"`         // For tooltip
-	Type           string  `json:"type"`           // "Put" or "Call"  
+	Type           string  `json:"type"`           // "Put" or "Call"
 	Strike         float64 `json:"strike"`         // Strike price
 	Contracts      int     `json:"contracts"`      // Quantity
 	DTE            int     `json:"dte"`            // Days to expiration
@@ -384,12 +409,12 @@ type TutorialIncomeData struct {
 
 // MetricsData holds data for the metrics template
 type MetricsData struct {
-	PageTitle  string            `json:"pageTitle"`
-	Symbols    []string          `json:"symbols"`
-	AllSymbols []string          `json:"allSymbols"` // For navigation compatibility
-	Metrics    []*models.Metric  `json:"metrics"`
-	CurrentDB  string            `json:"currentDB"`
-	ActivePage string            `json:"activePage"`
+	PageTitle  string           `json:"pageTitle"`
+	Symbols    []string         `json:"symbols"`
+	AllSymbols []string         `json:"allSymbols"` // For navigation compatibility
+	Metrics    []*models.Metric `json:"metrics"`
+	CurrentDB  string           `json:"currentDB"`
+	ActivePage string           `json:"activePage"`
 }
 
 // HelpData holds data for the help template
@@ -425,36 +450,36 @@ type ZenData struct {
 
 // DividendSymbolData holds dividend information for symbols on the dividends page
 type DividendSymbolData struct {
-	Symbol            string     `json:"symbol"`
-	Price             float64    `json:"price"`
-	Dividend          float64    `json:"dividend"`          // Quarterly dividend
-	AnnualDividend    float64    `json:"annualDividend"`    // Quarterly x 4
-	YieldPercent      float64    `json:"yieldPercent"`      // Based on annual dividend
-	ExDividendDate    *time.Time `json:"exDividendDate"`
-	DividendCount     int        `json:"dividendCount"`
-	Shares            int        `json:"shares"`            // Total number of shares held
-	TotalAnnualIncome float64    `json:"totalAnnualIncome"` // Shares x annual dividend
-	Positions         []*models.LongPosition `json:"positions"` // Individual positions
-	DividendPayments  []*models.Dividend     `json:"dividendPayments"` // Historical dividend payments
+	Symbol            string                 `json:"symbol"`
+	Price             float64                `json:"price"`
+	Dividend          float64                `json:"dividend"`       // Quarterly dividend
+	AnnualDividend    float64                `json:"annualDividend"` // Quarterly x 4
+	YieldPercent      float64                `json:"yieldPercent"`   // Based on annual dividend
+	ExDividendDate    *time.Time             `json:"exDividendDate"`
+	DividendCount     int                    `json:"dividendCount"`
+	Shares            int                    `json:"shares"`            // Total number of shares held
+	TotalAnnualIncome float64                `json:"totalAnnualIncome"` // Shares x annual dividend
+	Positions         []*models.LongPosition `json:"positions"`         // Individual positions
+	DividendPayments  []*models.Dividend     `json:"dividendPayments"`  // Historical dividend payments
 }
 
 // DividendsPageData holds all data for the enhanced dividends page
 type DividendsPageData struct {
 	PageData
-	DividendSymbols        []DividendSymbolData       `json:"dividendSymbols"`
-	IncomeBySymbol         []ChartData                `json:"incomeBySymbol"`         // Pie chart data
-	DividendsOverTime      []MonthlyChartData         `json:"dividendsOverTime"`      // Historical payments (deprecated)
+	DividendSymbols         []DividendSymbolData       `json:"dividendSymbols"`
+	IncomeBySymbol          []ChartData                `json:"incomeBySymbol"`          // Pie chart data
+	DividendsOverTime       []MonthlyChartData         `json:"dividendsOverTime"`       // Historical payments (deprecated)
 	DividendsStackedByMonth []DividendStackedMonthData `json:"dividendsStackedByMonth"` // Stacked bar chart data
-	UpcomingExDivDates     []UpcomingDividendDate     `json:"upcomingExDivDates"`     // Calendar data
-	TotalAnnualIncome      float64                    `json:"totalAnnualIncome"`
-	TotalDividendsPaid     float64                    `json:"totalDividendsPaid"`
-	AverageYield           float64                    `json:"averageYield"`
+	UpcomingExDivDates      []UpcomingDividendDate     `json:"upcomingExDivDates"`      // Calendar data
+	TotalAnnualIncome       float64                    `json:"totalAnnualIncome"`
+	TotalDividendsPaid      float64                    `json:"totalDividendsPaid"`
+	AverageYield            float64                    `json:"averageYield"`
 }
 
 // DividendStackedMonthData holds stacked bar chart data for dividends by month and symbol
 type DividendStackedMonthData struct {
-	Months  []string                   `json:"months"`  // Sorted month labels
-	Symbols []string                   `json:"symbols"` // Sorted symbol list
+	Months  []string                      `json:"months"`  // Sorted month labels
+	Symbols []string                      `json:"symbols"` // Sorted symbol list
 	Data    map[string]map[string]float64 `json:"data"`    // data[symbol][month] = amount
 }
 

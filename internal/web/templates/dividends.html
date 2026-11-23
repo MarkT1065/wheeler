@@ -9,153 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
-    <style>
-        .dividends-calendar {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-        .calendar-month {
-            background: #2d2d2d;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #404040;
-        }
-        .calendar-header {
-            text-align: center;
-            font-size: 16px;
-            font-weight: bold;
-            color: #e0e0e0;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #404040;
-        }
-        .calendar-days-header {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            margin-bottom: 5px;
-        }
-        .calendar-day-name {
-            text-align: center;
-            font-size: 11px;
-            font-weight: bold;
-            color: #a0a0a0;
-            padding: 5px 0;
-        }
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-        }
-        .calendar-day {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #e0e0e0;
-            background: #1e1e1e;
-            border: 1px solid #2a2a2a;
-            cursor: default;
-            position: relative;
-        }
-        .calendar-day.empty {
-            background: transparent;
-            border: none;
-        }
-        .calendar-day.today {
-            background: #3498db;
-            border-color: #2980b9;
-            font-weight: bold;
-        }
-        .calendar-day.has-dividend {
-            background: #27ae60;
-            border-color: #229954;
-            cursor: pointer;
-        }
-        .calendar-day.has-dividend:hover {
-            background: #2ecc71;
-        }
-        .dividend-indicator {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 4px;
-            height: 4px;
-            background: #f39c12;
-            border-radius: 50%;
-        }
-        .accordion-item {
-            background: #2d2d2d;
-            border: 1px solid #404040;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-        .accordion-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            cursor: pointer;
-            background: #2d2d2d;
-            transition: background 0.2s;
-        }
-        .accordion-header:hover {
-            background: #353535;
-        }
-        .accordion-header-left {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .accordion-symbol {
-            font-size: 18px;
-            font-weight: bold;
-            color: #3498db;
-            min-width: 80px;
-        }
-        .accordion-stats {
-            display: flex;
-            gap: 20px;
-            font-size: 14px;
-            color: #a0a0a0;
-        }
-        .accordion-stat-item {
-            display: flex;
-            flex-direction: column;
-        }
-        .accordion-stat-label {
-            font-size: 11px;
-            color: #808080;
-        }
-        .accordion-stat-value {
-            font-size: 14px;
-            color: #e0e0e0;
-            font-weight: 500;
-        }
-        .accordion-chevron {
-            transition: transform 0.3s;
-            color: #a0a0a0;
-        }
-        .accordion-chevron.open {
-            transform: rotate(180deg);
-        }
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-        .accordion-content.open {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-        .accordion-table-container {
-            padding: 0 20px 20px 20px;
-        }
-    </style>
 </head>
 <body class="dividends-page">
     <div class="app-container">
@@ -165,28 +18,6 @@
         <!-- Main Content -->
         <div class="main-content">
             
-            <!-- Top Summary Metrics -->
-            <div class="content-section">
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Positions</div>
-                        <div class="summary-value">{{len .DividendSymbols}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Annual Income</div>
-                        <div class="summary-value positive">{{formatCurrency .TotalAnnualIncome}}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Average Yield</div>
-                        <div class="summary-value">{{printf "%.2f" .AverageYield}}%</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Paid (All Time)</div>
-                        <div class="summary-value positive">{{formatCurrency .TotalDividendsPaid}}</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Dividends Panel (50%) and Calendar (50%) -->
             <div class="section-row">
                 <!-- Dividends Section (from Monthly view) -->
@@ -604,64 +435,30 @@
                                     const symbolKeys = Object.keys(symbolSummary).sort();
                                     
                                     let html = `
-                                        <div style="
-                                            background: rgba(20, 20, 20, 0.95);
-                                            border: 2px solid #007acc;
-                                            border-radius: 8px;
-                                            padding: 16px;
-                                            font-family: monospace;
-                                            color: #ffffff;
-                                            width: 500px;
-                                            max-width: 90vw;
-                                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                                        ">
-                                            <div style="
-                                                font-size: 16px;
-                                                font-weight: bold;
-                                                text-align: center;
-                                                margin-bottom: 16px;
-                                                padding-bottom: 8px;
-                                                border-bottom: 1px solid #007acc;
-                                                color: #007acc;
-                                            ">
+                                        <div class="chart-tooltip chart-tooltip-narrow">
+                                            <div class="chart-tooltip-title">
                                                 ${monthName} Dividends Summary
                                             </div>
                                             
-                                            <table style="
-                                                width: 100%;
-                                                margin-bottom: 16px;
-                                                border-collapse: collapse;
-                                                background: rgba(0, 122, 204, 0.1);
-                                                border-radius: 4px;
-                                            ">
+                                            <table class="chart-tooltip-summary">
                                                 <tr>
-                                                    <td style="padding: 8px 12px; font-weight: bold; width: 40%;">TOTAL MONTH:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: #27ae60;">$${Math.round(total).toLocaleString()}</td>
+                                                    <td class="label-col-wide">TOTAL MONTH:</td>
+                                                    <td class="cell-green">$${Math.round(total).toLocaleString()}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td style="padding: 8px 12px; font-weight: bold;">SYMBOLS:</td>
-                                                    <td style="padding: 8px 12px; font-weight: bold; color: #ffffff;">${symbolKeys.length}</td>
+                                                    <td>SYMBOLS:</td>
+                                                    <td>${symbolKeys.length}</td>
                                                 </tr>
                                             </table>
                                             
-                                            <div style="
-                                                font-size: 14px;
-                                                font-weight: bold;
-                                                margin-bottom: 8px;
-                                                color: #007acc;
-                                            ">BREAKDOWN BY SYMBOL</div>
+                                            <div class="chart-tooltip-section">BREAKDOWN BY SYMBOL</div>
                                             
-                                            <table style="
-                                                width: 100%;
-                                                border-collapse: collapse;
-                                                font-size: 12px;
-                                                background: rgba(255, 255, 255, 0.05);
-                                            ">
+                                            <table class="chart-tooltip-detail">
                                                 <thead>
-                                                    <tr style="background: rgba(0, 122, 204, 0.3);">
-                                                        <th style="padding: 6px 8px; text-align: left; border-bottom: 1px solid #404040;">SYMBOL</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">AMOUNT</th>
-                                                        <th style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #404040;">% OF MONTH</th>
+                                                    <tr>
+                                                        <th>SYMBOL</th>
+                                                        <th class="text-right">AMOUNT</th>
+                                                        <th class="text-right">% OF MONTH</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>`;
@@ -669,13 +466,11 @@
                                     symbolKeys.forEach((symbol, index) => {
                                         const amount = symbolSummary[symbol];
                                         const percentage = total > 0 ? ((amount / total) * 100) : 0;
-                                        const bgColor = index % 2 === 0 ? 'rgba(255, 255, 255, 0.03)' : 'transparent';
-                                        
                                         html += `
-                                            <tr style="background: ${bgColor};">
-                                                <td style="padding: 4px 8px; font-weight: bold; color: #ffffff;">${symbol}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: #27ae60;">$${Math.round(amount).toLocaleString()}</td>
-                                                <td style="padding: 4px 8px; text-align: right; color: #f39c12;">${percentage.toFixed(1)}%</td>
+                                            <tr class="${index % 2 === 0 ? 'alt-row' : ''}">
+                                                <td class="cell-bold">${symbol}</td>
+                                                <td class="text-right cell-green">$${Math.round(amount).toLocaleString()}</td>
+                                                <td class="text-right cell-orange">${percentage.toFixed(1)}%</td>
                                             </tr>`;
                                     });
                                     

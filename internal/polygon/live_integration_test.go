@@ -47,10 +47,15 @@ func TestLivePolygonIntegration(t *testing.T) {
 	maskedKey := maskAPIKey(apiKey)
 	t.Logf("Running live integration tests with API key: %s", maskedKey)
 
-	// Create Polygon client and service
 	client := NewClient(apiKey)
 	symbolService := models.NewSymbolService(dbWrapper.DB)
-	service := NewService(symbolService, settingService)
+	optionService := models.NewOptionService(dbWrapper.DB)
+	longPositionService := models.NewLongPositionService(dbWrapper.DB)
+	dividendService := models.NewDividendService(dbWrapper.DB)
+	priceHistoryService := models.NewPriceHistoryService(dbWrapper.DB)
+	optionHistoryService := models.NewOptionHistoryService(dbWrapper.DB)
+	indexHistoryService := models.NewIndexHistoryService(dbWrapper.DB)
+	service := NewService(symbolService, optionService, longPositionService, dividendService, settingService, priceHistoryService, optionHistoryService, indexHistoryService)
 
 	// Run tests with generous timeout for API calls
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

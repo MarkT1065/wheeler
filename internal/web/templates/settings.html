@@ -18,7 +18,7 @@
                 <div class="section-title">Polygon</div>
                 <div class="section-subtitle">Configure your Polygon.io API key for live market data</div>
                 
-                <!-- API Key Configuration Form -->
+                <div class="polygon-top-row">
                 <div class="settings-form-container">
                     <div class="settings-card">
                         <div class="settings-card-header">
@@ -62,22 +62,72 @@
                                 </div>
                             </div>
                             
-                            <!-- API Actions -->
                             <div class="api-actions" id="apiActions" style="display: none;">
                                 <button type="button" class="btn btn-secondary" id="testConnectionBtn">
                                     <i class="fas fa-flask"></i>
                                     Test Connection
                                 </button>
-                                <button type="button" class="btn btn-primary" id="updatePricesBtn">
-                                    <i class="fas fa-sync-alt"></i>
-                                    Update All
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- API Key Information -->
+
+                <div class="worker-section">
+                    <div class="settings-card">
+                        <div class="settings-card-header">
+                            <i class="fas fa-cogs"></i>
+                            <h3>Background Worker</h3>
+                        </div>
+                        <div class="settings-card-body">
+                            <div class="worker-status-grid">
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Status</span>
+                                    <span class="worker-stat-value" id="workerRunning">--</span>
+                                </div>
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Uptime</span>
+                                    <span class="worker-stat-value" id="workerUptime">--</span>
+                                </div>
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Current Task</span>
+                                    <span class="worker-stat-value" id="workerTask">--</span>
+                                </div>
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Total API Calls</span>
+                                    <span class="worker-stat-value" id="workerCalls">--</span>
+                                </div>
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Avg Response</span>
+                                    <span class="worker-stat-value" id="workerAvgMs">--</span>
+                                </div>
+                                <div class="worker-stat">
+                                    <span class="worker-stat-label">Last Error</span>
+                                    <span class="worker-stat-value worker-error" id="workerLastError">none</span>
+                                </div>
+                            </div>
+
+                            <div class="recent-calls-header">Recent API Calls (last 20)</div>
+                            <div class="recent-calls-table-wrap">
+                                <table class="recent-calls-table" id="recentCallsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Endpoint</th>
+                                            <th>Symbol</th>
+                                            <th>Status</th>
+                                            <th>Response</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recentCallsBody">
+                                        <tr><td colspan="5" class="no-data">No API calls yet</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
                 <div class="info-section">
                     <div class="info-card">
                         <div class="info-header">
@@ -85,13 +135,15 @@
                             <h4>About Polygon.io API</h4>
                         </div>
                         <div class="info-content">
-                            <p>The Polygon.io API provides real-time and historical market data for stocks, options, and other financial instruments.</p>
+                            <p>Wheeler uses the Polygon.io (Massive) API to automatically fetch market data in the background.</p>
                             <ul>
-                                <li><strong>Free Tier:</strong> 5 API calls per minute, delayed data</li>
-                                <li><strong>Starter Plan:</strong> 100 API calls per minute, real-time data</li>
-                                <li><strong>Developer Plan:</strong> 1000 API calls per minute, additional endpoints</li>
+                                <li><strong>Stock Prices:</strong> Daily close prices for all tracked symbols</li>
+                                <li><strong>Price History:</strong> Historical OHLCV bars for charting and analysis</li>
+                                <li><strong>Option History:</strong> Daily bars for open option contracts</li>
+                                <li><strong>Index Data:</strong> SPX, NDX, DJI, VIX historical data</li>
+                                <li><strong>Dividends:</strong> Corporate action data for dividend tracking</li>
                             </ul>
-                            <p>Your API key will be used to automatically update stock prices and fetch dividend information.</p>
+                            <p>The background worker runs continuously using the free tier (5 calls/min, 12s between requests). No manual updates needed.</p>
                         </div>
                     </div>
                 </div>
@@ -101,170 +153,6 @@
 
     <!-- Include Shared Symbol Modal -->
     {{template "_symbol_modal.html"}}
-
-    <style>
-        .settings-form-container {
-            max-width: 600px;
-            margin: 20px 0;
-        }
-
-        .settings-card {
-            background: #2d2d2d;
-            border: 1px solid #404040;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        .settings-card-header {
-            padding: 20px;
-            border-bottom: 1px solid #404040;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .settings-card-header i {
-            color: #27ae60;
-            font-size: 18px;
-        }
-
-        .settings-card-header h3 {
-            margin: 0;
-            color: #e0e0e0;
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .settings-card-body {
-            padding: 20px;
-        }
-
-        .form-help {
-            font-size: 12px;
-            color: #888;
-            margin-top: 5px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .form-help a {
-            color: #27ae60;
-            text-decoration: none;
-        }
-
-        .form-help a:hover {
-            text-decoration: underline;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .api-status {
-            margin-top: 20px;
-            padding: 15px;
-            background: #1e1e1e;
-            border-radius: 6px;
-            border-left: 4px solid #666;
-        }
-
-        .api-status.configured {
-            border-left-color: #27ae60;
-        }
-
-        .api-status.error {
-            border-left-color: #e74c3c;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 5px;
-        }
-
-        .status-indicator i {
-            font-size: 8px;
-        }
-
-        .status-indicator.configured i {
-            color: #27ae60;
-        }
-
-        .status-indicator.error i {
-            color: #e74c3c;
-        }
-
-        .status-indicator.not-configured i {
-            color: #666;
-        }
-
-        .status-description {
-            font-size: 12px;
-            color: #888;
-            margin-left: 16px;
-        }
-
-        .info-section {
-            max-width: 600px;
-        }
-
-        .info-card {
-            background: #2d2d2d;
-            border: 1px solid #404040;
-            border-radius: 8px;
-            padding: 20px;
-        }
-
-        .info-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .info-header i {
-            color: #f39c12;
-            font-size: 16px;
-        }
-
-        .info-header h4 {
-            margin: 0;
-            color: #e0e0e0;
-            font-size: 16px;
-            font-weight: 600;
-        }
-
-        .info-content {
-            color: #b0b0b0;
-            line-height: 1.5;
-        }
-
-        .info-content ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-
-        .info-content li {
-            margin: 5px 0;
-        }
-
-        .info-content strong {
-            color: #e0e0e0;
-        }
-
-        .api-actions {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #404040;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-    </style>
 
     <script>
         // Get API key value from backend
@@ -391,47 +279,51 @@
             });
         });
 
-        // Update all prices
-        document.getElementById('updatePricesBtn').addEventListener('click', function() {
-            const btn = this;
-            
-            if (!confirm('This will update prices for all symbols using your Polygon.io API quota. Continue?')) {
-                return;
-            }
-            
-            btn.disabled = true;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-            
-            fetch('/api/polygon/update-prices', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ all: true })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Price update completed! Updated: ${data.updated}, Failed: ${data.failed}`, 'success');
-                } else {
-                    showNotification('Price update failed: ' + (data.message || 'Unknown error'), 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error updating prices:', error);
-                showNotification('Error updating prices: ' + error.message, 'error');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            });
-        });
+        function pollWorkerStatus() {
+            fetch('/api/polygon/worker-status')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('workerRunning').textContent = data.running ? 'Running' : 'Stopped';
+                    document.getElementById('workerRunning').style.color = data.running ? '#27ae60' : '#e74c3c';
+                    document.getElementById('workerUptime').textContent = data.uptime || '--';
+                    document.getElementById('workerTask').textContent = data.current_task || '--';
+                    document.getElementById('workerCalls').textContent = data.total_api_calls || '0';
+                    document.getElementById('workerAvgMs').textContent = data.avg_response_ms ? data.avg_response_ms.toFixed(0) + 'ms' : '--';
+                    document.getElementById('workerLastError').textContent = data.last_error || 'none';
+                    if (data.last_error) {
+                        document.getElementById('workerLastError').style.color = '#e74c3c';
+                    } else {
+                        document.getElementById('workerLastError').style.color = '#888';
+                    }
 
+                    const tbody = document.getElementById('recentCallsBody');
+                    if (data.recent_calls && data.recent_calls.length > 0) {
+                        tbody.innerHTML = data.recent_calls.slice().reverse().map(call => {
+                            const t = new Date(call.timestamp);
+                            const timeStr = t.toLocaleTimeString();
+                            const statusClass = call.error ? 'status-err' : 'status-ok';
+                            const statusText = call.error ? 'ERR' : call.status_code;
+                            const respMs = Math.round(call.response_time_ms / 1000000);
+                            return `<tr>
+                                <td>${timeStr}</td>
+                                <td>${call.endpoint}</td>
+                                <td>${call.symbol}</td>
+                                <td class="${statusClass}">${statusText}</td>
+                                <td>${respMs}ms</td>
+                            </tr>`;
+                        }).join('');
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No API calls yet</td></tr>';
+                    }
+                })
+                .catch(() => {});
+        }
 
-        // Initialize status display
+        setInterval(pollWorkerStatus, 10000);
+
         document.addEventListener('DOMContentLoaded', function() {
             updateApiStatus(currentApiKey.length > 0);
+            pollWorkerStatus();
         });
 
         function showNotification(message, type) {

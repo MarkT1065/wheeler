@@ -9,136 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/styles.css?v=2">
-    <style>
-        /* Options page uses large chart size for detailed visualization */
-        .options-page .chart-container {
-            height: 400px;
-            min-height: 400px;
-            max-height: 400px;
-        }
-        
-        /* Highlight effect for symbol navigation */
-        .symbol-nav-item.highlighted {
-            background-color: #27ae60 !important;
-            color: #ffffff !important;
-            transform: scale(1.05);
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
-        }
-        
-        /* 8-column grid layout for accordion headers */
-        .accordion-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            align-items: center;
-            gap: 8px;
-            width: 100%;
-            padding: 0 5px;
-        }
-        
-        .grid-item {
-            font-size: 12px;
-            font-weight: 500;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding: 2px 4px;
-        }
-        
-        .grid-item.span-2 {
-            grid-column: span 2;
-        }
-        
-        .grid-item.span-1 {
-            grid-column: span 1;
-        }
-        
-        .grid-item.expiration-section {
-            color: #e0e0e0;
-            font-weight: 700;
-            font-size: 14px;
-        }
-        
-        .grid-item.expiration-section i {
-            margin-right: 6px;
-        }
-        
-        .grid-item.dte-section {
-            color: #a0a0a0;
-        }
-        
-        .grid-item.positions-count {
-            color: #e0e0e0;
-        }
-        
-        .grid-item.calls-info {
-            color: #e0e0e0;
-        }
-        
-        .grid-item.puts-info {
-            color: #e0e0e0;
-        }
-        
-        /* Dynamic panel sizing for Open Positions */
-        .options-dynamic-panel {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 40px;
-        }
-        
-        .options-dynamic-panel .section-title {
-            flex-shrink: 0;
-            margin-bottom: 20px;
-        }
-        
-        .options-dynamic-panel .accordion-container {
-            flex: 1;
-            overflow: visible;
-        }
-        
-        /* Sortable table styling */
-        .sortable-table th.sortable {
-            cursor: pointer;
-            user-select: none;
-            transition: background-color 0.2s;
-        }
-        
-        .sortable-table th.sortable:hover {
-            background-color: #404040;
-        }
-        
-        .sortable-table th.sortable i {
-            margin-left: 5px;
-            opacity: 0.5;
-        }
-        
-        .sortable-table th.sortable.asc i:before {
-            content: "\f0de";
-            opacity: 1;
-        }
-        
-        .sortable-table th.sortable.desc i:before {
-            content: "\f0dd"; 
-            opacity: 1;
-        }
-        
-        /* Status badges */
-        .status-open {
-            color: #27ae60;
-            font-weight: bold;
-        }
-        
-        .status-closed {
-            color: #95a5a6;
-            font-weight: bold;
-        }
-        
-        .text-muted {
-            color: #95a5a6;
-            font-style: italic;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/styles.css?v=3">
 </head>
 <body class="options-page">
     <div class="app-container">
@@ -273,10 +144,10 @@
                         </div>
                         {{end}}
                     {{else}}
-                        <div style="text-align: center; color: #a0a0a0; padding: 40px;">
-                            <i class="fas fa-chart-line" style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;"></i>
-                            <div style="font-size: 18px; margin-bottom: 10px;">No Open Option Positions</div>
-                            <div style="font-size: 14px;">All your option positions have been closed.</div>
+                        <div class="empty-state-lg">
+                            <i class="fas fa-chart-line empty-state-icon"></i>
+                            <div class="empty-state-title">No Open Option Positions</div>
+                            <div class="empty-state-subtitle">All your option positions have been closed.</div>
                         </div>
                     {{end}}
                 </div>

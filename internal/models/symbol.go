@@ -69,8 +69,23 @@ func (lp *LongPosition) CalculateAmount() float64 {
 }
 
 func (lp *LongPosition) CalculateTotalInvested() float64 {
-	// For now, same as amount (but could include fees, etc. in future)
 	return lp.BuyPrice * float64(lp.Shares)
+}
+
+func (lp *LongPosition) CalculateDaysHeld() int {
+	endDate := time.Now()
+	if lp.Closed != nil {
+		endDate = *lp.Closed
+	}
+	days := int(endDate.Sub(lp.Opened).Hours() / 24)
+	if days < 1 {
+		days = 1
+	}
+	return days
+}
+
+func (lp *LongPosition) CalculateDollarDays() float64 {
+	return lp.BuyPrice * float64(lp.Shares) * float64(lp.CalculateDaysHeld())
 }
 
 func (lp *LongPosition) GetExitPriceValue() float64 {
@@ -235,6 +250,25 @@ func (o *Option) CalculateAROI() float64 {
 	return aroi
 }
 
+func (o *Option) CalculateDaysOpen() int {
+	endDate := time.Now()
+	if o.Closed != nil {
+		endDate = *o.Closed
+	}
+	days := int(endDate.Sub(o.Opened).Hours() / 24)
+	if days < 1 {
+		days = 1
+	}
+	return days
+}
+
+func (o *Option) CalculatePutExposureDollarDays() float64 {
+	if o.Type != "Put" {
+		return 0
+	}
+	return o.Strike * float64(o.Contracts) * 100 * float64(o.CalculateDaysOpen())
+}
+
 func (o *Option) GetExitPriceValue() float64 {
 	if o.ExitPrice != nil {
 		return *o.ExitPrice
@@ -376,6 +410,40 @@ func (s *SymbolService) GetActivePositionSymbols() ([]string, error) {
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active position symbols: %w", err)
+	}
+	defer rows.Close()
+
+	var symbols []string
+	for rows.Next() {
+		var symbol string
+		if err := rows.Scan(&symbol); err != nil {
+			return nil, fmt.Errorf("failed to scan symbol: %w", err)
+		}
+		symbols = append(symbols, symbol)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating symbols: %w", err)
+	}
+
+	return symbols, nil
+}
+
+func (s *SymbolService) GetInactivePositionSymbols() ([]string, error) {
+	query := `
+		SELECT DISTINCT s.symbol
+		FROM symbols s
+		WHERE s.symbol NOT IN (
+			SELECT symbol FROM long_positions WHERE closed IS NULL
+			UNION
+			SELECT symbol FROM options WHERE closed IS NULL
+		)
+		ORDER BY s.symbol
+	`
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get inactive position symbols: %w", err)
 	}
 	defer rows.Close()
 

@@ -9,18 +9,65 @@ import (
 	"time"
 )
 
-// Service provides Polygon.io integration for Wheeler
 type Service struct {
-	client         *Client
-	symbolService  *models.SymbolService
-	settingService *models.SettingService
+	client               *Client
+	symbolService        *models.SymbolService
+	optionService        *models.OptionService
+	longPositionService  *models.LongPositionService
+	dividendService      *models.DividendService
+	settingService       *models.SettingService
+	priceHistoryService  *models.PriceHistoryService
+	optionHistoryService *models.OptionHistoryService
+	indexHistoryService  *models.IndexHistoryService
+	worker               *Worker
 }
 
-// NewService creates a new Polygon service
-func NewService(symbolService *models.SymbolService, settingService *models.SettingService) *Service {
+func NewService(
+	symbolService *models.SymbolService,
+	optionService *models.OptionService,
+	longPositionService *models.LongPositionService,
+	dividendService *models.DividendService,
+	settingService *models.SettingService,
+	priceHistoryService *models.PriceHistoryService,
+	optionHistoryService *models.OptionHistoryService,
+	indexHistoryService *models.IndexHistoryService,
+) *Service {
 	return &Service{
-		symbolService:  symbolService,
-		settingService: settingService,
+		symbolService:        symbolService,
+		optionService:        optionService,
+		longPositionService:  longPositionService,
+		dividendService:      dividendService,
+		settingService:       settingService,
+		priceHistoryService:  priceHistoryService,
+		optionHistoryService: optionHistoryService,
+		indexHistoryService:  indexHistoryService,
+	}
+}
+
+func (s *Service) StartWorker(ctx context.Context) {
+	s.worker = NewWorker(
+		s.symbolService,
+		s.optionService,
+		s.longPositionService,
+		s.dividendService,
+		s.priceHistoryService,
+		s.optionHistoryService,
+		s.indexHistoryService,
+		s.settingService,
+	)
+	s.worker.Start(ctx)
+}
+
+func (s *Service) GetWorkerStatus() WorkerStatus {
+	if s.worker == nil {
+		return WorkerStatus{}
+	}
+	return s.worker.GetStatus()
+}
+
+func (s *Service) WaitForWorker() {
+	if s.worker != nil {
+		s.worker.Wait()
 	}
 }
 
@@ -196,7 +243,7 @@ func (s *Service) TestConnection(ctx context.Context) error {
 // GetAPIKeyStatus returns information about the current API key configuration
 func (s *Service) GetAPIKeyStatus() *APIKeyStatus {
 	apiKey := s.settingService.GetValue("POLYGON_API_KEY")
-	
+
 	status := &APIKeyStatus{
 		Configured: apiKey != "",
 		Masked:     "",
@@ -230,7 +277,7 @@ type SymbolInfo struct {
 	PreviousClose float64 `json:"previous_close"`
 	High          float64 `json:"high"`
 	Low           float64 `json:"low"`
-	Volume        float64   `json:"volume"`
+	Volume        float64 `json:"volume"`
 }
 
 // DividendInfo represents dividend information from Polygon
